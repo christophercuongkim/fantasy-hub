@@ -229,7 +229,7 @@ Long-format metrics. One row per manager per metric per scope.
 | `model_version` | `text` | no | e.g. `v2.1-volume`. Never overwrite; insert new rows. |
 | `generated_at` | `timestamptz` | no | |
 
-**Bye-week guard.** The single easiest bug to ship: a nonzero projection for a player who isn't playing. Assert `is_playing = false → mean = 0` in a check constraint.
+**Bye-week guard.** The single easiest bug to ship: a nonzero projection for a player who isn't playing. Assert `is_playing = false → mean = 0` in **application logic** before every write — not a DB `CHECK`. Business rules live in the app; the DB is dumb storage.
 
 ---
 

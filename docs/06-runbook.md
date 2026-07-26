@@ -151,7 +151,7 @@ curl -s https://fantasy.yourdomain.com/api/health | jq
 
 **Diagnosis, in order:**
 
-1. **Bye week guard.** Is `is_playing` false with a nonzero mean? That's a bug — the check constraint should have caught it.
+1. **Bye week guard.** Is `is_playing` false with a nonzero mean? That's a bug — the application-logic assert before write should have caught it.
 2. **Crosswalk break.** Did `player_id` fail to match? `/admin/crosswalk` will show it. Unmatched players fall back to priors.
 3. **Scoring settings.** Did the league scoring change? Re-run `sync-league` and check `scoring_json`.
 4. **Stale aggregates.** Did `ingest-week` actually write? Check row counts:
