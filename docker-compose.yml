@@ -5,9 +5,9 @@ services:
   web:
     build: ./web
     environment:
-      - API_URL=http://api:8000
+      - API_URL=http://api:4001
     ports:
-      - "3000:3000"
+      - "4000:4000"
     depends_on:
       - api
 
@@ -18,4 +18,4 @@ services:
     volumes:
       - ./.data/fantasy:/data   # prod uses /srv/fantasy via Dokploy volume config
     ports:
-      - "8000:8000"
+      - "4001:4001"

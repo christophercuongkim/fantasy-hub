@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const API_URL = process.env.API_URL ?? "http://localhost:8000";
+const API_URL = process.env.API_URL ?? "http://localhost:4001";
 
 // Web health check. Reports the web layer as ok and proxies the API's health
 // so a single probe tells you whether the browser-facing service and its

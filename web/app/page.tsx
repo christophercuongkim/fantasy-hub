@@ -1,4 +1,4 @@
-const API_URL = process.env.API_URL ?? "http://localhost:8000";
+const API_URL = process.env.API_URL ?? "http://localhost:4001";
 
 async function getApiStatus(): Promise<string> {
   try {

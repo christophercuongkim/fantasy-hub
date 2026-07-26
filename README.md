@@ -30,25 +30,28 @@ nix develop
 Then, per service:
 
 ```sh
-cd web && pnpm install && pnpm dev      # http://localhost:3000
-cd api && uv sync && uv run uvicorn app.main:app --reload --port 8000
+cd web && pnpm install && pnpm dev      # http://localhost:4000
+cd api && uv sync && uv run uvicorn app.main:app --reload --port 4001
 ```
 
 Both at once via Docker:
 
 ```sh
 docker compose up --build
-# web  → http://localhost:3000
-# api  → http://localhost:8000/health
+# web  → http://localhost:4000
+# api  → http://localhost:4001/health
 ```
 
 ## Health
 
-- `GET http://localhost:8000/health` → FastAPI status
-- `GET http://localhost:3000/api/health` → web status (proxies the API check)
+- `GET http://localhost:4001/health` → FastAPI status
+- `GET http://localhost:4000/api/health` → web status (proxies the API check)
 
 Subsystem checks (Postgres, DuckDB, Parquet) are added as those layers land.
 
 ## Deploy
 
-Two Dokploy applications (`web`, `api`), each built from its own Dockerfile. CI joins the tailnet and triggers each app's deploy webhook — see [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Required GitHub secrets: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `DOKPLOY_WEB_WEBHOOK`, `DOKPLOY_API_WEBHOOK`.
+Two Dokploy applications (`web`, `api`), each built from its own Dockerfile. CI joins the tailnet and triggers each app's deploy webhook — see [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+
+- **Container ports** (set in each app's Domain settings): web `4000`, api `4001`. Chosen to avoid the VPS's in-use ports (80, 3000, 8000, 8080). Traefik routes by domain to these; no host ports are published in prod.
+- **Required GitHub secrets:** `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `DOKPLOY_WEB_WEBHOOK`, `DOKPLOY_API_WEBHOOK`.
