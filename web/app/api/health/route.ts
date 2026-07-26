@@ -1,10 +1,11 @@
+import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { getDb } from "@/db";
 
 const API_URL = process.env.API_URL ?? "http://localhost:4001";
 
-// Web health check. Reports the web layer as ok and proxies the API's health
-// so a single probe tells you whether the browser-facing service and its
-// backend are both up.
+// Web health check. Reports the web layer, proxies the API's health, and probes
+// Postgres so a single request tells you whether all three are up.
 export async function GET() {
   let api: string;
   try {
@@ -14,9 +15,17 @@ export async function GET() {
     api = "unreachable";
   }
 
-  const ok = api === "ok";
+  let postgres: string;
+  try {
+    await getDb().execute(sql`select 1`);
+    postgres = "ok";
+  } catch {
+    postgres = "unreachable";
+  }
+
+  const ok = api === "ok" && postgres === "ok";
   return NextResponse.json(
-    { status: ok ? "ok" : "degraded", web: "ok", api },
+    { status: ok ? "ok" : "degraded", web: "ok", api, postgres },
     { status: ok ? 200 : 503 },
   );
 }
