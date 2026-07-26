@@ -21,7 +21,7 @@ Repo-specific rules. Layers on top of the global `~/CLAUDE.md`.
 ## Conventions (best-practice from day 1, not solo-dev shortcuts)
 
 - **Migrations:** timestamp filenames `YYYYMMDDHHMMSS_name.sql`, never sequence numbers.
-- **DB is dumb storage, app holds logic.** Declarative constraints only (`NOT NULL`, `UNIQUE`, `CHECK`, `FK`, `DEFAULT <literal|now()|gen_random_uuid()>`). No triggers/procs/functions. `updated_at` bumped by the app. (The projections bye-guard `CHECK` is declarative → allowed.)
+- **DB is dumb storage, app holds logic.** Declarative constraints only (`NOT NULL`, `UNIQUE`, `CHECK`, `FK`, `DEFAULT <literal|now()|gen_random_uuid()>`). No triggers/procs/functions. `updated_at` bumped by the app. The projections bye-guard (`is_playing = false → mean = 0`) is enforced in **application logic** — assert it before every write — not as a DB `CHECK`. Keeps all business rules in one place.
 - **CORS from day 1** on any browser-facing API, even before a browser client exists.
 - **Config + its CI enforcer land in the same PR.** Don't disable a tool default unless the replacement ships in the same PR.
 - **GitHub Actions writing to PRs** need explicit `permissions: pull-requests: write`.
