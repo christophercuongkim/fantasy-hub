@@ -1,0 +1,6 @@
+# pnpm 11 reads settings from here, not the package.json "pnpm" field.
+# Approve the native-build postinstall scripts we trust so `pnpm install`
+# doesn't exit non-zero (which would block CI and the Docker build).
+allowBuilds:
+  sharp: true          # Next.js image optimization
+  unrs-resolver: true  # eslint-plugin-import resolver

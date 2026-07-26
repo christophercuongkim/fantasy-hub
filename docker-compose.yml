@@ -1,0 +1,21 @@
+# Local development only. In production each service is a separate Dokploy
+# application built from its own Dockerfile (web/Dockerfile, api/Dockerfile)
+# and triggered by its own deploy webhook — see docs and .github/workflows/deploy.yml.
+services:
+  web:
+    build: ./web
+    environment:
+      - API_URL=http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  api:
+    build: ./api
+    environment:
+      - PARQUET_ROOT=/data
+    volumes:
+      - ./.data/fantasy:/data   # prod uses /srv/fantasy via Dokploy volume config
+    ports:
+      - "8000:8000"
