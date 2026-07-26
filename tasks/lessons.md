@@ -26,6 +26,17 @@ Never add `Co-Authored-By: Claude ...`, `Claude-Session:`, or `🤖 Generated wi
 
 ---
 
+## Tooling (this stack)
+
+### pnpm 11: build-script approvals live in `pnpm-workspace.yaml`, and the Dockerfile deps stage must COPY it
+pnpm 11 no longer reads the `pnpm` field in `package.json` (`[WARN] The "pnpm" field in package.json is no longer read`). Native postinstall builds (e.g. `sharp`, `unrs-resolver`) are blocked by default and `pnpm install` **exits non-zero** (`ERR_PNPM_IGNORED_BUILDS`) until you approve them — which fails CI and the Docker build. Approvals go in `pnpm-workspace.yaml` under `allowBuilds:` (pnpm scaffolds this exact file/shape for you). The Docker deps stage that runs `pnpm install --frozen-lockfile` must `COPY pnpm-workspace.yaml` alongside `package.json`/`pnpm-lock.yaml`, or the container install re-hits the exit-1.
+
+**Why:** Hit both halves building the skeleton — first the ignored `pnpm` field, then a green local install but a failing `docker build` because the deps stage didn't copy the workspace file.
+
+**How to apply:** Put `allowBuilds:` (or `onlyBuiltDependencies`) in `pnpm-workspace.yaml`, pin pnpm via `packageManager` so corepack matches, and COPY the workspace file in every Docker stage that installs. Verify with an actual `docker compose build`, not just a local `pnpm install`.
+
+---
+
 ## Carried over from triptogether (stack-agnostic)
 
 These held across the prior project; kept only the ones that port to Next.js + Python.
