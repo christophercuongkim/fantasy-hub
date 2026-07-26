@@ -50,4 +50,4 @@ The six Tier-1 tests that catch silent-wrongness — write these first, assert i
 5. `reach_delta` positive = drafted earlier than ADP.
 6. Scoring parse: half-PPR `rec=0.5` vs full `rec=1.0` reorders the board.
 
-Plus the bye-week guard: `is_playing = false → mean = 0`, enforced by a `CHECK` constraint and a test.
+Plus the bye-week guard: `is_playing = false → mean = 0`, enforced in **application logic** (assert before every write) plus a test — not a DB `CHECK` constraint. Business rules stay in the app; the DB is dumb storage.
