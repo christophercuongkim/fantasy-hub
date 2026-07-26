@@ -44,6 +44,18 @@ In CI, `pnpm/action-setup@v4` gets its version from `packageManager` in `package
 
 ---
 
+## Database (Neon / Drizzle)
+
+### drizzle-kit does timestamp migration filenames natively — no Flyway
+`drizzle.config.ts` → `migrations: { prefix: "timestamp" }` yields `YYYYMMDDHHMMSS_name.sql` (verified: `20260726192019_init_hot_tier.sql`). Use `--name` on `db:generate` for a meaningful tag. Keep `casing: "snake_case"` in **both** the config and the runtime `drizzle()` call, or camelCase TS keys map to the wrong columns. Connection: lazy singleton (`getDb()`), never a module-level client — importing it must not require `DATABASE_URL` or `next build` (no DB) throws. `postgres(url, { prepare: false })` for Neon's pooled/pgbouncer endpoint.
+
+### Neon branch actions: 401 = wrong/unscoped API key, not a project-id problem
+`create-branch-action` failing with `AxiosError: status code 401` means `NEON_API_KEY` is rejected even though `project_id` is right. Causes: secret holds a stale value (re-save it), trailing newline when pasted, or — most common — the project lives in a Neon **organization** and the key is a *personal* key. Fix: create the API key **inside the org** that owns the project. Verify a key against a project directly: `curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $KEY" https://console.neon.tech/api/v2/projects/<id>` (200 = good).
+
+**Action versions/inputs (verified July 2026):** `create-branch-action@v6` (inputs `project_id`, `api_key`, `branch_name`; outputs `db_url`, `db_url_pooled`), `schema-diff-action@v1` (needs `permissions: pull-requests: write` to post the comment), `delete-branch-action@v3`. `NEON_PROJECT_ID` is a repo **variable**, `NEON_API_KEY`/`PROD_DATABASE_URL` are **secrets**.
+
+---
+
 ## Deploy (Dokploy)
 
 ### Monorepo Dockerfiles: build from the REPO ROOT context, not per-subdir
