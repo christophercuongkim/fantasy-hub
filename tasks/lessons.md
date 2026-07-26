@@ -28,6 +28,12 @@ Never add `Co-Authored-By: Claude ...`, `Claude-Session:`, or `🤖 Generated wi
 
 ## Tooling (this stack)
 
+### pre-commit local hooks shell out to pinned tools — commit/push from inside the dev shell
+Our hooks are `repo: local`, `language: system`, calling `pnpm`/`uv` directly (so they match CI and the flake, not pre-commit's isolated envs). That means `git commit` / `git push` must run with the dev shell active — direnv loads it automatically in the project dir. A commit from a bare terminal fails with `Executable 'pnpm' not found`; that's the safety net, not a bug. When committing programmatically (or outside direnv), wrap it: `nix develop --command git commit ...`.
+
+### ruff pre-commit hook needs `pass_filenames: true` (or an explicit path), or it reformats the whole repo
+With `pass_filenames: false`, `ruff format` runs with no path argument and walks the entire tree from the repo root — it reformatted Python code blocks inside `docs/`. A `files: ^api/` filter only decides *whether* the hook fires, not *what* ruff touches. Pass the filenames so ruff only sees the files pre-commit selected. (eslint/prettier can keep `pass_filenames: false` because they invoke whole-directory scripts — `next lint` / `prettier --write .` — already scoped to `web/`.) Verify a formatter hook with `pre-commit run --all-files` then `git status` — anything outside the intended dir is a scoping bug.
+
 ### pnpm 11: build-script approvals live in `pnpm-workspace.yaml`, and the Dockerfile deps stage must COPY it
 pnpm 11 no longer reads the `pnpm` field in `package.json` (`[WARN] The "pnpm" field in package.json is no longer read`). Native postinstall builds (e.g. `sharp`, `unrs-resolver`) are blocked by default and `pnpm install` **exits non-zero** (`ERR_PNPM_IGNORED_BUILDS`) until you approve them — which fails CI and the Docker build. Approvals go in `pnpm-workspace.yaml` under `allowBuilds:` (pnpm scaffolds this exact file/shape for you). The Docker deps stage that runs `pnpm install --frozen-lockfile` must `COPY pnpm-workspace.yaml` alongside `package.json`/`pnpm-lock.yaml`, or the container install re-hits the exit-1.
 
