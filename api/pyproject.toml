@@ -1,0 +1,24 @@
+[project]
+name = "fantasy-hub-api"
+version = "0.0.0"
+description = "fantasy-hub projection + simulation service"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9",
+]
+
+# App, not a distributable package — uv installs deps without building this project.
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
