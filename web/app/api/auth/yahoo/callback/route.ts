@@ -30,7 +30,10 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const res = NextResponse.redirect(new URL("/?yahoo=connected", req.url));
+  // Redirect against APP_BASE_URL, not req.url: behind Traefik, req.url is the
+  // internal request (container hostname:4000), which the browser can't resolve.
+  const base = process.env.APP_BASE_URL ?? req.url;
+  const res = NextResponse.redirect(new URL("/?yahoo=connected", base));
   res.cookies.delete("yahoo_oauth_state");
   return res;
 }
