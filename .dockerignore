@@ -1,0 +1,19 @@
+# Build context is the repo root for both services, so this is the single
+# .dockerignore both Dockerfiles use. Keep the context small and free of
+# build artifacts / secrets.
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.ruff_cache
+**/.pytest_cache
+.git
+.direnv
+.data
+**/.env
+**/.env.local
+# Not needed by either image build:
+docs
+tasks
+.github

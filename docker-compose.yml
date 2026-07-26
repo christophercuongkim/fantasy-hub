@@ -1,9 +1,14 @@
 # Local development only. In production each service is a separate Dokploy
 # application built from its own Dockerfile (web/Dockerfile, api/Dockerfile)
 # and triggered by its own deploy webhook — see docs and .github/workflows/deploy.yml.
+#
+# Build context is the repo root for both services (context: .) so the Dockerfiles
+# are identical here and on Dokploy (whose default context is also the repo root).
 services:
   web:
-    build: ./web
+    build:
+      context: .
+      dockerfile: web/Dockerfile
     environment:
       - API_URL=http://api:4001
     ports:
@@ -12,7 +17,9 @@ services:
       - api
 
   api:
-    build: ./api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     environment:
       - PARQUET_ROOT=/data
     volumes:
