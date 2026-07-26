@@ -44,6 +44,17 @@ In CI, `pnpm/action-setup@v4` gets its version from `packageManager` in `package
 
 ---
 
+## Deploy (Dokploy)
+
+### Dokploy build context must be set to the service subdir — our Dockerfiles are subdir-relative
+Each service's Dockerfile (`web/Dockerfile`, `api/Dockerfile`) is written for a build context of its **own directory** — it matches `docker compose`'s `build: ./web`, so `COPY package.json ...` means `web/package.json`. Dokploy defaults the build context to the **repo root**, so the build fails with `"/pnpm-lock.yaml": not found`. In each Dokploy app set **Docker Context Path** to `web` / `api` (Dockerfile path stays `web/Dockerfile` / `api/Dockerfile`). On Dokploy versions with a single **Build Path** + **Dockerfile Name**, use Build Path `web`, Dockerfile Name `Dockerfile`.
+
+**Why:** First fantasy-hub Dokploy deploy failed here. Differs from triptogether, whose Dockerfiles were root-context (`COPY backend/...`) so the default root context worked — don't assume the same Dokploy build settings carry over.
+
+**How to apply:** Keep Dockerfiles context-local (matches compose), and set each Dokploy app's context to its subdir. Or, if you want Dokploy's default to just work, restructure both Dockerfiles + compose to root context (`COPY web/...`) — one context everywhere. We chose subdir-context.
+
+---
+
 ## Carried over from triptogether (stack-agnostic)
 
 These held across the prior project; kept only the ones that port to Next.js + Python.
