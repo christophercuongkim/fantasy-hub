@@ -20,7 +20,11 @@
             pkgs.uv          # api dependency + venv manager
           ];
 
+          # Python binary wheels (duckdb, psycopg-binary, ...) link against the
+          # C++ stdlib and zlib, which aren't on the default library path in a
+          # pure Nix shell. Expose them so the wheels load.
           shellHook = ''
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.zlib ]}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             echo "fantasy-hub dev shell — node $(node --version), pnpm $(pnpm --version), python $(python3 --version), uv $(uv --version)"
           '';
         };
