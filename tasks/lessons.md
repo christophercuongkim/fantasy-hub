@@ -15,6 +15,8 @@ Every non-trivial change ships as its own PR. Surface design calls in chat befor
 
 **How to apply:** After `gh pr create`, post the self-review, say the PR is up, and hand back. Do not merge. Planning/research while waiting is fine; new committed code is not.
 
+**Exception — doc-only PRs self-merge.** If a PR touches only docs/metadata (`docs/**`, `*.md`, `CLAUDE.md`, `tasks/**`, memory, `.gitignore`), open it, post the self-review for the record, and merge it yourself right away (`gh pr merge --squash --delete-branch`) — no waiting for review. Only code/migrations/infra/CI PRs go through the wait.
+
 ### No AI attribution trailers in commits or PRs
 Never add `Co-Authored-By: Claude ...`, `Claude-Session:`, or `🤖 Generated with Claude Code` to commit messages or PR bodies. Chris does not want them.
 

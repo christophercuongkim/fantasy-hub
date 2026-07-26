@@ -14,7 +14,7 @@ Repo-specific rules. Layers on top of the global `~/CLAUDE.md`.
 6. **STOP and wait.** Chris reviews manually. Do not merge. Do not start the next PR's code until review comes back. While waiting, planning/research/scaffolding notes are fine; new committed code is not.
 7. **Address review** in follow-up commits on the same branch, then re-request.
 
-**Merge speed exception:** docs/metadata-only chore (touches only `docs/**`, `README.md`, `*.md`, `.gitignore`, `CLAUDE.md`, memory) → open and merge immediately, no CI wait. Anything touching code/migrations/infra/CI → full flow above.
+**Doc-only PRs self-merge — no waiting for review.** If a PR touches only docs/metadata (`docs/**`, `README.md`, `*.md`, `.gitignore`, `CLAUDE.md`, `tasks/**`, memory), open it, post the self-review for the record, and **merge it yourself immediately** (`gh pr merge --squash --delete-branch`). Do not sit in step 6. Anything touching code/migrations/infra/CI → full flow above, including the wait.
 
 **Done bar:** a PR isn't done until `git log` shows the commit. Verify with `git status` / `git log`, not memory. Tooling changes: run the thing end-to-end, not just static checks.
 
