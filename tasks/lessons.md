@@ -46,12 +46,24 @@ In CI, `pnpm/action-setup@v4` gets its version from `packageManager` in `package
 
 ## Deploy (Dokploy)
 
-### Dokploy build context must be set to the service subdir — our Dockerfiles are subdir-relative
-Each service's Dockerfile (`web/Dockerfile`, `api/Dockerfile`) is written for a build context of its **own directory** — it matches `docker compose`'s `build: ./web`, so `COPY package.json ...` means `web/package.json`. Dokploy defaults the build context to the **repo root**, so the build fails with `"/pnpm-lock.yaml": not found`. In each Dokploy app set **Docker Context Path** to `web` / `api` (Dockerfile path stays `web/Dockerfile` / `api/Dockerfile`). On Dokploy versions with a single **Build Path** + **Dockerfile Name**, use Build Path `web`, Dockerfile Name `Dockerfile`.
+### Monorepo Dockerfiles: build from the REPO ROOT context, not per-subdir
+Final answer after a long fight: keep both Dockerfiles root-context (`COPY web/...`, `COPY api/...`), point compose at `context: .` with an explicit `dockerfile:`, and use one root `.dockerignore`. In each Dokploy app set **Context Path `.`** and **Dockerfile Path `web/Dockerfile` / `api/Dockerfile`**. This matches Dokploy's default and its most-tested path, and local `docker compose` and Dokploy then use the identical context.
 
-**Why:** First fantasy-hub Dokploy deploy failed here. Differs from triptogether, whose Dockerfiles were root-context (`COPY backend/...`) so the default root context worked — don't assume the same Dokploy build settings carry over.
+**Why the subdir approach failed:** we first tried subdir-context Dockerfiles + Dokploy Context Path `web`/`api`. That field behaved inconsistently across redeploys — sometimes root context (`transferring context: 671kB`, `pnpm-workspace.yaml not found`), sometimes empty (`2B`, `COPY app not found`). The decisive misconfig was Context Path set to `..` (parent of the clone → empty context, `2B`). Chasing that field was the whole saga; root context removes it entirely. (Differs from triptogether only in that we made it explicit here.)
 
-**How to apply:** Keep Dockerfiles context-local (matches compose), and set each Dokploy app's context to its subdir. Or, if you want Dokploy's default to just work, restructure both Dockerfiles + compose to root context (`COPY web/...`) — one context everywhere. We chose subdir-context.
+**Diagnostics that pinpoint it:**
+- `#N load .dockerignore … transferring context: 2B` = Dokploy is NOT at your repo root (a real root `.dockerignore` would show its true size). Empty/2B context = wrong Context Path.
+- Same BuildKit context ref (`c5019836…`) on every build = the `default` docker-driver builder; its cache/ctx can wedge. Dokploy's "Clean Cache" doesn't always clear it — host-level `docker builder prune -af` or restarting the buildkit/docker daemon does.
+- **Redeploying the *same commit*** can hand buildkit a stale/empty cached context. A new commit (new SHA) always gets a fresh context — normal merges deploy fine; only same-SHA re-fires during setup hit this.
+
+**How to apply:** root-context Dockerfiles + `context: .` in compose + Dokploy Context Path `.`. Verify with `docker compose build --no-cache` locally (mimics a clean Dokploy build) before trusting a deploy.
+
+### Separate Dokploy apps talk over `dokploy-network` by service name — set the URL env explicitly
+Two-app deploy (web + api as separate Dokploy applications): the web container reaching the api via `http://localhost:4001` hits *itself*, not the api. Set `API_URL=http://<api-service-name>:4001` on the web app's Environment (service name from `docker ps`, e.g. `fantasyhub-api-ovkt8f`); both apps share `dokploy-network` by default so name resolution works. Env changes need an app restart.
+
+**Why:** After both built, the site rendered but showed `API status: unreachable` — the default `localhost` fallback. Setting `API_URL` to the api service name fixed it.
+
+**How to apply:** any cross-app call in a multi-app Dokploy deploy goes to the other app's service name on `dokploy-network`, never `localhost`. Keep a `localhost` default only for local dev.
 
 ---
 
