@@ -1,0 +1,66 @@
+# Local hooks call our pinned toolchains (pnpm/uv) so behaviour matches CI and
+# the dev shell, rather than pre-commit's isolated environments.
+#
+# Install both stages once (the flake dev shell does this automatically):
+#   pre-commit install --hook-type pre-commit --hook-type pre-push
+#
+# commit stage: lint + format (fast).  push stage: unit tests.
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(web/pnpm-lock\.yaml|api/uv\.lock|web/drizzle/)
+      - id: end-of-file-fixer
+        exclude: ^(web/pnpm-lock\.yaml|api/uv\.lock|web/drizzle/)
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+
+  - repo: local
+    hooks:
+      # pass_filenames stays true so ruff only touches the api files pre-commit
+      # selects — with it false, `ruff format` (no path) walks the whole repo and
+      # reformats Python code blocks inside docs/.
+      - id: ruff-check
+        name: ruff check (api)
+        entry: uv run --project api ruff check --fix
+        language: system
+        types: [python]
+        files: ^api/
+
+      - id: ruff-format
+        name: ruff format (api)
+        entry: uv run --project api ruff format
+        language: system
+        types: [python]
+        files: ^api/
+
+      - id: eslint
+        name: eslint (web)
+        entry: pnpm --dir web lint
+        language: system
+        files: ^web/.*\.(ts|tsx|mjs)$
+        pass_filenames: false
+
+      - id: prettier
+        name: prettier (web)
+        # pnpm runs the script with cwd=web, so `prettier --write .` resolves
+        # paths + .prettierignore correctly (pre-commit passes root-relative
+        # paths that wouldn't line up if we cd'd into web ourselves).
+        entry: pnpm --dir web format
+        language: system
+        files: ^web/.*\.(ts|tsx|mjs|json|css|md)$
+        exclude: ^web/(pnpm-lock\.yaml|drizzle/)
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest (api)
+        entry: uv run --project api pytest -q
+        language: system
+        types: [python]
+        files: ^api/
+        pass_filenames: false
+        stages: [pre-push]

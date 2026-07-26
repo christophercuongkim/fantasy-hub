@@ -1,4 +1,10 @@
-import { integer, numeric, pgTable, primaryKey, uuid } from "drizzle-orm/pg-core";
+import {
+  integer,
+  numeric,
+  pgTable,
+  primaryKey,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { leagueTeams, leagues } from "./league";
 import { players } from "./identity";
 
