@@ -58,7 +58,11 @@ export const crosswalkMethodEnum = pgEnum("crosswalk_method", [
   "manual",
 ]);
 
-export const waiverTypeEnum = pgEnum("waiver_type", ["FAAB", "rolling", "reverse"]);
+export const waiverTypeEnum = pgEnum("waiver_type", [
+  "FAAB",
+  "rolling",
+  "reverse",
+]);
 
 // nflverse injury report status (injuries.report_status).
 export const reportStatusEnum = pgEnum("report_status", [
@@ -67,7 +71,11 @@ export const reportStatusEnum = pgEnum("report_status", [
   "Questionable",
 ]);
 
-export const practiceStatusEnum = pgEnum("practice_status", ["DNP", "Limited", "Full"]);
+export const practiceStatusEnum = pgEnum("practice_status", [
+  "DNP",
+  "Limited",
+  "Full",
+]);
 
 // Yahoo game-day injury status (injuries.yahoo_status) — more current than nflverse.
 export const yahooInjuryStatusEnum = pgEnum("yahoo_injury_status", [
