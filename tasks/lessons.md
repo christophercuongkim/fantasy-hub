@@ -26,6 +26,14 @@ Never add `Co-Authored-By: Claude ...`, `Claude-Session:`, or `🤖 Generated wi
 
 ---
 
+## Web / Next.js
+
+### Behind Traefik, `req.url` is the internal request — build absolute redirects from `APP_BASE_URL`
+The Yahoo OAuth callback redirected to `https://<container-id>:4000/?yahoo=connected` because it used `new URL("/…", req.url)`. Behind Traefik (TLS terminated at the proxy) `req.url` reflects the internal request — container hostname + internal port — which the browser can't resolve. Build any external-facing absolute URL (redirects, links in emails, OAuth redirect_uri) from a configured public base (`APP_BASE_URL`), never from `req.url`/`req.headers.host`. Fall back to `req.url` only for local dev where it's already correct.
+
+### OAuth `state` cookie mismatch is usually a retry/multi-tab artifact, not a code bug
+`{"error":"state mismatch"}` on the callback means the `state` query param didn't match the cookie set at `/start`. With an httpOnly + `SameSite=Lax` + `Secure` cookie the happy path works; mismatches came from opening `/start` twice (second overwrites the cookie) then completing an older Yahoo tab, or replaying a stale callback URL after the cookie was consumed. A single clean flow works. If it ever fails on a genuinely clean flow behind a proxy/CDN, move the state to a short-lived server-side (Postgres) store instead of a cookie.
+
 ## Tooling (this stack)
 
 ### pre-commit local hooks shell out to pinned tools — commit/push from inside the dev shell
