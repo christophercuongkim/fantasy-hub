@@ -53,3 +53,22 @@ def health() -> JSONResponse:
             "version": app.version,
         },
     )
+
+
+@app.get("/yahoo/game")
+def yahoo_game() -> JSONResponse:
+    """Proof that the stored Yahoo token works: fetch the current NFL game key.
+
+    Never hardcode the game key — it changes yearly. See yahoo cookbook §3.1.
+    """
+    from app.yahoo.client import YahooClient, YahooError
+
+    try:
+        data = YahooClient().get("/game/nfl")
+        game = data["fantasy_content"]["game"][0]
+        return JSONResponse({"game_key": game["game_key"], "season": game["season"]})
+    except YahooError as e:
+        # Upstream dependency failed (no token, refresh failed, Yahoo down).
+        return JSONResponse(status_code=424, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — surface config errors as 500
+        return JSONResponse(status_code=500, content={"error": str(e)})

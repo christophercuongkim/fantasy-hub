@@ -8,6 +8,13 @@
       "when": 1785093619457,
       "tag": "20260726192019_init_hot_tier",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785105567683,
+      "tag": "20260726223927_yahoo_tokens",
+      "breakpoints": true
     }
   ]
 }

@@ -9,13 +9,14 @@ dependencies = [
     "pydantic-settings>=2.7",
     "psycopg[binary]>=3.2",
     "duckdb>=1.1",
+    "httpx>=0.28",
+    "cryptography>=44",
 ]
 
 [dependency-groups]
 dev = [
     "ruff>=0.9",
     "pytest>=8.3",
-    "httpx>=0.28",
 ]
 
 # App, not a distributable package — uv installs deps without building this project.
