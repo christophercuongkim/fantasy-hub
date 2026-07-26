@@ -35,6 +35,13 @@ pnpm 11 no longer reads the `pnpm` field in `package.json` (`[WARN] The "pnpm" f
 
 **How to apply:** Put `allowBuilds:` (or `onlyBuiltDependencies`) in `pnpm-workspace.yaml`, pin pnpm via `packageManager` so corepack matches, and COPY the workspace file in every Docker stage that installs. Verify with an actual `docker compose build`, not just a local `pnpm install`.
 
+### `pnpm/action-setup` reads `packageManager` from the repo-root package.json — point it at the subdir in a monorepo
+In CI, `pnpm/action-setup@v4` gets its version from `packageManager` in `package.json`, defaulting to the **repo root**. With the web app under `web/`, there's no root package.json, so it fails: `Error: No pnpm version is specified`. `defaults.run.working-directory` does **not** apply to `uses:` steps.
+
+**Why:** PR #4's first CI run failed here — api passed, web died at the setup step before ever installing.
+
+**How to apply:** Pass `with: package_json_file: web/package.json` to `pnpm/action-setup` (or set `with: version:` explicitly). Same trap for any `uses:` action that needs a path — set its input, don't rely on `working-directory`.
+
 ---
 
 ## Carried over from triptogether (stack-agnostic)
