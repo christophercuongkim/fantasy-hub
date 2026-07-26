@@ -3,6 +3,14 @@ name: deploy
 on:
   push:
     branches: [main]
+  # Manual "Run workflow" button: force-deploy on demand, bypassing path filters.
+  workflow_dispatch:
+    inputs:
+      service:
+        description: Which service to deploy
+        type: choice
+        options: [both, web, api]
+        default: both
 
 # Include event_name so a pull_request:closed on merge can't cancel the push deploy.
 concurrency:
@@ -13,7 +21,9 @@ permissions:
   contents: read
 
 jobs:
+  # Only meaningful on push (needs a diff to filter). Skipped on manual dispatch.
   changes:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       web: ${{ steps.filter.outputs.web }}
@@ -31,7 +41,13 @@ jobs:
 
   deploy-web:
     needs: changes
-    if: needs.changes.outputs.web == 'true'
+    # Deploy on a manual dispatch (both|web) or when a push changed web/**.
+    # always() lets this evaluate even though `changes` is skipped on dispatch.
+    if: |
+      always() && (
+        (github.event_name == 'workflow_dispatch' && (inputs.service == 'both' || inputs.service == 'web'))
+        || (github.event_name == 'push' && needs.changes.outputs.web == 'true')
+      )
     runs-on: ubuntu-latest
     steps:
       - name: Join tailnet
@@ -50,7 +66,11 @@ jobs:
 
   deploy-api:
     needs: changes
-    if: needs.changes.outputs.api == 'true'
+    if: |
+      always() && (
+        (github.event_name == 'workflow_dispatch' && (inputs.service == 'both' || inputs.service == 'api'))
+        || (github.event_name == 'push' && needs.changes.outputs.api == 'true')
+      )
     runs-on: ubuntu-latest
     steps:
       - name: Join tailnet
