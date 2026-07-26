@@ -75,12 +75,17 @@ def test_bye_teams_excluded():
     assert not playing.team.isin(byes).any()
 ```
 
-Also enforce at the database level:
+Also enforce in application logic — assert before every write, not a DB `CHECK`. Business rules live in the app; the DB is dumb storage.
 
-```sql
-ALTER TABLE projections ADD CONSTRAINT bye_guard
-  CHECK (is_playing OR (mean = 0 AND p50 = 0 AND p80 = 0));
+```python
+def assert_bye_guard(row):
+    """Refuse to persist a projection for a player who isn't playing."""
+    if not row.is_playing:
+        assert row.mean == 0 and row.p50 == 0 and row.p80 == 0, \
+            f"bye-guard: {row.player_id} not playing but projected {row.mean}"
 ```
+
+Call this in the write path just before the batched `COPY`, so a bad row never reaches Postgres.
 
 ### 2.4 Defense rank direction
 
