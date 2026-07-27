@@ -11,6 +11,7 @@ from app.config import settings
 # Datasets stored as Parquet. `backups` is for pg_dump output, not a dataset.
 DATASETS: tuple[str, ...] = (
     "pbp",
+    "schedules",
     "weekly",
     "team",
     "defense_vs_pos",

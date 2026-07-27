@@ -11,6 +11,8 @@ dependencies = [
     "duckdb>=1.1",
     "httpx>=0.28",
     "cryptography>=44",
+    "nfl_data_py>=0.3.3",
+    "pyarrow>=17",
 ]
 
 [dependency-groups]
@@ -22,6 +24,9 @@ dev = [
 # App, not a distributable package — uv installs deps without building this project.
 [tool.uv]
 package = false
+# nfl_data_py pins an old pandas (1.5.3) with no Python 3.12 wheels; force a
+# modern pandas/numpy that has wheels and works with nfl_data_py at runtime.
+override-dependencies = ["pandas>=2.2", "numpy>=1.26"]
 
 [tool.ruff]
 target-version = "py312"
