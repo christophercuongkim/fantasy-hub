@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from app.config import settings
 from app.storage import duck, parquet, postgres
@@ -72,3 +73,42 @@ def yahoo_game() -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
     except Exception as e:  # noqa: BLE001 — surface config errors as 500
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+class IngestSeasonRequest(BaseModel):
+    season: int
+    datasets: list[str] | None = None  # defaults to pbp + schedules
+    force: bool = False
+
+
+class IngestWeekRequest(BaseModel):
+    season: int
+    week: int
+
+
+# Ingestion jobs are synchronous — a full-season PBP pull is minutes, and the
+# only caller is a Dokploy scheduled curl that can wait. Idempotent per season.
+@app.post("/jobs/ingest-season")
+def ingest_season(body: IngestSeasonRequest) -> JSONResponse:
+    from app.ingest import nflverse
+
+    try:
+        return JSONResponse(
+            nflverse.ingest_season(body.season, body.datasets, force=body.force)
+        )
+    except ValueError as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — nflverse download/parse failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
+@app.post("/jobs/ingest-week")
+def ingest_week(body: IngestWeekRequest) -> JSONResponse:
+    from app.ingest import nflverse
+
+    try:
+        return JSONResponse(nflverse.ingest_week(body.season, body.week))
+    except ValueError as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(status_code=424, content={"error": str(e)})
