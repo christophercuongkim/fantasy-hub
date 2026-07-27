@@ -1,0 +1,45 @@
+{
+  "fantasy_content": {
+    "team": [
+      [{ "team_key": "461.l.123456.t.3" }, { "name": "My Team" }],
+      {
+        "roster": {
+          "0": {
+            "players": {
+              "0": {
+                "player": [
+                  [
+                    { "player_key": "461.p.31883" },
+                    { "player_id": "31883" },
+                    { "name": { "full": "Patrick Mahomes", "first": "Patrick", "last": "Mahomes" } },
+                    { "editorial_team_abbr": "KC" },
+                    { "display_position": "QB" },
+                    { "primary_position": "QB" },
+                    { "status": "Q" },
+                    { "injury_note": "ankle" }
+                  ],
+                  { "selected_position": [{ "coverage_type": "week" }, { "position": "QB" }] }
+                ]
+              },
+              "1": {
+                "player": [
+                  [
+                    { "player_key": "461.p.40021" },
+                    { "player_id": "40021" },
+                    { "name": { "full": "Marvin Harrison Jr.", "first": "Marvin", "last": "Harrison Jr." } },
+                    { "editorial_team_abbr": "ARI" },
+                    { "display_position": "WR" },
+                    { "primary_position": "WR" },
+                    { "status": null }
+                  ],
+                  { "selected_position": [{ "coverage_type": "week" }, { "position": "BN" }] }
+                ]
+              },
+              "count": 2
+            }
+          }
+        }
+      }
+    ]
+  }
+}

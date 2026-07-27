@@ -1,0 +1,37 @@
+{
+  "fantasy_content": {
+    "league": [
+      { "league_key": "461.l.123456" },
+      {
+        "players": {
+          "0": {
+            "player": [
+              [
+                { "player_key": "461.p.99999" },
+                { "player_id": "99999" },
+                { "name": { "full": "Free Agent Flex" } },
+                { "editorial_team_abbr": "CAR" },
+                { "display_position": "WR,RB" },
+                { "primary_position": "WR" },
+                { "status": null }
+              ]
+            ]
+          },
+          "1": {
+            "player": [
+              [
+                { "player_key": "461.p.88888" },
+                { "player_id": "88888" },
+                { "name": { "full": "Streaming DEF" } },
+                { "editorial_team_abbr": "NYJ" },
+                { "display_position": "DEF" },
+                { "primary_position": "DEF" }
+              ]
+            ]
+          },
+          "count": 2
+        }
+      }
+    ]
+  }
+}

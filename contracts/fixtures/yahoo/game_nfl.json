@@ -1,0 +1,14 @@
+{
+  "fantasy_content": {
+    "game": [
+      {
+        "game_key": "461",
+        "game_id": "461",
+        "name": "Football",
+        "code": "nfl",
+        "type": "full",
+        "season": "2025"
+      }
+    ]
+  }
+}
