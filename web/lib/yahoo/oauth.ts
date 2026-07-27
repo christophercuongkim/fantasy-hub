@@ -19,6 +19,10 @@ export function buildAuthUrl(state: string): string {
     client_id: required("YAHOO_CLIENT_ID"),
     redirect_uri: redirectUri(),
     response_type: "code",
+    // Fantasy Sports read scope — without it the token has NO Fantasy access and
+    // every call 401s with oauth_problem="additional_authorization_required".
+    // Yahoo grants Fantasy via this scope param, not via an app-permission checkbox.
+    scope: "fspt-r",
     language: "en-us",
     state,
   });
