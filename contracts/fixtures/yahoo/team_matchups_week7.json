@@ -1,0 +1,36 @@
+{
+  "fantasy_content": {
+    "team": [
+      [{ "team_key": "461.l.123456.t.3" }, { "name": "My Team" }],
+      {
+        "matchups": {
+          "0": {
+            "matchup": [
+              { "week": "7", "is_playoffs": "0" },
+              {
+                "teams": {
+                  "0": {
+                    "team": [
+                      [{ "team_key": "461.l.123456.t.3" }, { "name": "My Team" }],
+                      { "team_points": { "coverage_type": "week", "week": "7", "total": "0.00" } },
+                      { "team_projected_points": { "coverage_type": "week", "week": "7", "total": "118.40" } }
+                    ]
+                  },
+                  "1": {
+                    "team": [
+                      [{ "team_key": "461.l.123456.t.8" }, { "name": "Opponent" }],
+                      { "team_points": { "total": "0.00" } },
+                      { "team_projected_points": { "total": "112.70" } }
+                    ]
+                  },
+                  "count": 2
+                }
+              }
+            ]
+          },
+          "count": 1
+        }
+      }
+    ]
+  }
+}
