@@ -1,0 +1,46 @@
+# Copy to bootstrap/league.yaml and fill in from your Yahoo league.
+# (league.yaml + draft-*.csv are gitignored — they're your personal data.)
+league:
+  yahoo_league_key: "461.l.123456" # {game_key}.l.{league_id}, from your league URL
+  name: "My League"
+  season: 2025
+  num_teams: 12
+  # Our scoring keys -> point values (from your league's Settings page):
+  scoring:
+    pass_yd: 0.04
+    pass_td: 4
+    pass_int: -1
+    rush_yd: 0.1
+    rush_td: 6
+    rec: 0.5 # 0.5 = half-PPR, 1 = full PPR, 0 = standard
+    rec_yd: 0.1
+    rec_td: 6
+    fum_lost: -2
+    two_pt: 2
+  roster_positions:
+    QB: 1
+    RB: 2
+    WR: 2
+    TE: 1
+    W/R/T: 1
+    K: 1
+    DEF: 1
+    BN: 6
+  playoff_start_week: 15
+  num_playoff_teams: 6
+  waiver_type: FAAB # FAAB | rolling | reverse
+  trade_deadline: "2025-11-19"
+
+# One entry per manager. manager_name is the join key for the draft CSVs, so it
+# must match the `manager` column there. Mark exactly one team is_mine: true.
+teams:
+  - name: "Team One"
+    manager_name: "Alice"
+    is_mine: false
+    draft_position: 1
+    yahoo_team_key: "461.l.123456.t.1" # optional
+  - name: "My Team"
+    manager_name: "Chris"
+    is_mine: true
+    draft_position: 3
+    yahoo_team_key: "461.l.123456.t.3"

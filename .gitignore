@@ -18,6 +18,11 @@ __pycache__/
 # Local dev data (Parquet bind mount)
 .data/
 
+# Personal league bootstrap data (keep only the *.example.* templates)
+bootstrap/league.yaml
+bootstrap/draft-*.csv
+!bootstrap/*.example.*
+
 # Env
 .env
 .env.local
