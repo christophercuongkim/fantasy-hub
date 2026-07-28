@@ -4,8 +4,9 @@ Per league in config/import.yaml, per season: resolve the archived league URL
 off the stable slug landing page, then scrape the draft grid, the teams/identity
 table, and the settings page.
 
-Run (NixOS): nix shell nixpkgs#chromedriver nixpkgs#chromium -c \
-  uv run python -m importer.scrape [--attach 127.0.0.1:9222] [--only 2025,2024]
+Run (from repo root): nix develop .#scrape -c bash -c \
+  'cd bootstrap && uv run python -m importer.scrape [--attach 127.0.0.1:9222] [--only 2025]'
+(the .#scrape dev shell provides version-matched chromedriver + chromium)
 """
 
 from __future__ import annotations
