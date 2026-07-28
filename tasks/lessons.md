@@ -120,3 +120,11 @@ The six Tier-1 tests that catch silent-wrongness — write these first, assert i
 6. Scoring parse: half-PPR `rec=0.5` vs full `rec=1.0` reorders the board.
 
 Plus the bye-week guard: `is_playing = false → mean = 0`, enforced in **application logic** (assert before every write) plus a test — not a DB `CHECK` constraint. Business rules stay in the app; the DB is dumb storage.
+
+## pre-commit "installed in migration mode" bug aborts commits
+
+Symptom: `git commit` prints `bug: pre-commit's script is installed in migration mode` and exits non-zero **even though every hook passes**, so the commit silently doesn't land (check `git log`, not the hook output). Cause: the installed `.git/hooks/pre-commit` is an outdated shim.
+
+Fix once: `nix develop --command pre-commit install -f --hook-type pre-commit`, then re-commit. How-to-apply: if a commit "passes hooks" but HEAD didn't move, reinstall the hook before assuming the commit worked.
+
+Also: drizzle-kit `generate` prompts (needs a TTY) when a table both drops and adds a column in one diff (rename-vs-create). In a non-TTY shell it errors. Split into two generates (add first, drop next) so no table has a simultaneous add+drop; name them with `--name=`.
