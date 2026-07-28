@@ -1,0 +1,9 @@
+# Leagues to import. Scraped data lives in bootstrap/data/<slug>/ (gitignored).
+# Re-runnable: the loader upserts, so add seasons / leagues and rerun.
+leagues:
+  - sport: nfl
+    slug: people_can_eat
+    name: PeopleCanEat
+    owner_guid: OJP3ANS4PWZCN2H4IV5PZ6PAT4 # Chris — marks is_mine
+    seasons:
+      [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
