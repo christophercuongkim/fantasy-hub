@@ -22,6 +22,20 @@
       "when": 1785139603358,
       "tag": "20260727080643_draft_pick_player_name",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785280459696,
+      "tag": "20260728231419_multi_league_families_managers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785280475134,
+      "tag": "20260728231435_drop_league_teams_manager_name",
+      "breakpoints": true
     }
   ]
 }

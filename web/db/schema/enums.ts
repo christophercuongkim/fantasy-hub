@@ -1,5 +1,16 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
+// Sports the platform imports leagues for. Each sport brings its own position/
+// roster enums in its own migration (NFL is the first); this enum just grows.
+export const sportEnum = pgEnum("sport", ["nfl"]);
+
+// team_claims lifecycle: a member claims a historical (unclaimed) team, admin decides.
+export const claimStatusEnum = pgEnum("claim_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
 // Fantasy-relevant positions first; OL/DL/LB/DB kept for completeness. See data dictionary §players.
 export const positionEnum = pgEnum("position", [
   "QB",

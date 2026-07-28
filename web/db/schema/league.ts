@@ -10,12 +10,26 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { acquiredViaEnum, rosterSlotEnum, waiverTypeEnum } from "./enums";
+import {
+  acquiredViaEnum,
+  claimStatusEnum,
+  rosterSlotEnum,
+  sportEnum,
+  waiverTypeEnum,
+} from "./enums";
+import { leagueFamilies, managers } from "./families";
 import { players } from "./identity";
 import type { RosterPositions, ScoringJson } from "./types";
 
+// One row per (family, season): Yahoo mints a new league_key each season, so a
+// 12-year league is 12 rows sharing a family_id. Scoring/roster live here since
+// they're per-season (and per-sport).
 export const leagues = pgTable("leagues", {
   id: uuid().primaryKey().defaultRandom(),
+  familyId: uuid()
+    .notNull()
+    .references(() => leagueFamilies.id),
+  sport: sportEnum().notNull(), // immutable per family; denormalized for filtering
   yahooLeagueKey: text().notNull().unique(), // {game_key}.l.{league_id}
   name: text().notNull(),
   season: integer().notNull(),
@@ -34,11 +48,30 @@ export const leagueTeams = pgTable("league_teams", {
   leagueId: uuid()
     .notNull()
     .references(() => leagues.id),
-  yahooTeamKey: text().notNull(), // {league_key}.t.{team_id}
-  name: text().notNull(), // manager-chosen, changes freely
-  managerName: text(), // more stable than name; key tendency profiles off this
+  // The canonical person. NULL = unclaimed (hidden pre-membership seasons whose
+  // managers Yahoo won't reveal); resolved later via an approved team_claim.
+  managerId: uuid().references(() => managers.id),
+  yahooTeamKey: text(), // {league_key}.t.{team_id}; null when bootstrap lacks it
+  name: text().notNull(), // vanity team name, per season; changes freely
   isMine: boolean().notNull().default(false), // exactly one true per league
   draftPosition: integer(),
+});
+
+// A member claims a historical unclaimed team as theirs; the admin (Chris)
+// approves, which sets that league_team's manager_id. See id_crosswalk_log for
+// the sibling review-queue pattern.
+export const teamClaims = pgTable("team_claims", {
+  id: uuid().primaryKey().defaultRandom(),
+  leagueTeamId: uuid()
+    .notNull()
+    .references(() => leagueTeams.id),
+  claimantManagerId: uuid()
+    .notNull()
+    .references(() => managers.id),
+  status: claimStatusEnum().notNull().default("pending"),
+  reviewedBy: text(), // admin identifier; null until reviewed
+  reviewedAt: timestamp({ withTimezone: true }),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
 // Snapshot of who was rostered, by week. One row per player per team per week.

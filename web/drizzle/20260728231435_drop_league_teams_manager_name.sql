@@ -1,0 +1,1 @@
+ALTER TABLE "league_teams" DROP COLUMN "manager_name";
