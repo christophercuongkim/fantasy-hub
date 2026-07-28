@@ -85,25 +85,16 @@ def _upsert_league(cur: psycopg.Cursor, family_id: str, s: cfg.LeagueSettings,
     return cur.fetchone()[0]
 
 
-def _load_season(cur, family_id, slug, season, owner_guid, data_dir) -> dict:
-    settings_html = data_dir / f"settings-{season}.html"
+def _load_season(cur, family_id, slug, season, owner_guid, data_dir, s) -> dict:
     teams = _read_csv(data_dir / f"teams-{season}.csv")
     draft = _read_csv(data_dir / f"draft-{season}.csv")
     if not teams or not draft:
         return {"season": season, "skipped": "no teams/draft csv"}
 
-    if settings_html.exists():
-        s = cfg.parse_settings(settings_html.read_text())
-    else:
-        # No settings page scraped for this season: fall back to a minimal config
-        # (num_teams from the roster we do have). Scoring/roster left empty — rerun
-        # the scraper with --settings to fill these in.
-        s = cfg.LeagueSettings(
-            league_id=f"{slug}-{season}", name=slug, num_teams=len(teams),
-            scoring={}, roster_positions={}, playoff_start_week=None,
-            num_playoff_teams=None, waiver_type=None, trade_deadline=None,
-        )
-    key = nfl.league_key(season, s.league_id or f"{slug}-{season}")
+    # num_teams is authoritative per season (league size changed over the years).
+    s.num_teams = len(teams)
+    league_id_str = s.league_id or f"{slug}-{season}"
+    key = nfl.league_key(season, league_id_str)
     league_id = _upsert_league(cur, family_id, s, season, key)
 
     # teams: upsert manager by GUID, create league_team, map team_name -> id
@@ -119,7 +110,12 @@ def _load_season(cur, family_id, slug, season, owner_guid, data_dir) -> dict:
         cur.execute(
             """
             INSERT INTO league_teams (league_id, manager_id, name, is_mine)
-            VALUES (%s, %s, %s, %s) RETURNING id
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (league_id, name) DO UPDATE SET
+                -- keep a claim-set manager_id when the scrape has none (hidden era)
+                manager_id = COALESCE(EXCLUDED.manager_id, league_teams.manager_id),
+                is_mine = EXCLUDED.is_mine
+            RETURNING id
             """,
             (league_id, manager_id, t["team_name"], t.get("guid") == owner_guid),
         )
@@ -164,6 +160,31 @@ def _int_or_none(v):
     return int(v) if v.isdigit() else None
 
 
+def _settings_for(seasons, data_dir, slug) -> dict[int, cfg.LeagueSettings]:
+    """Parse each season's settings page; borrow the nearest year's config for
+    seasons scraped without one (scoring/roster/playoffs are stable). Borrowed
+    seasons get a synthetic league_id so their yahoo_league_key stays unique."""
+    import dataclasses
+
+    parsed = {
+        season: cfg.parse_settings((data_dir / f"settings-{season}.html").read_text())
+        for season in seasons
+        if (data_dir / f"settings-{season}.html").exists()
+    }
+    if not parsed:
+        raise SystemExit(f"{slug}: no settings-*.html at all; scrape settings first")
+    out = {}
+    for season in seasons:
+        if season in parsed:
+            out[season] = parsed[season]
+        else:
+            nearest = min(parsed, key=lambda y: abs(y - season))
+            out[season] = dataclasses.replace(
+                parsed[nearest], league_id=f"{slug}-{season}", name=slug
+            )
+    return out
+
+
 def load(config_path: Path) -> list[dict]:
     doc = yaml.safe_load(config_path.read_text())
     results = []
@@ -172,10 +193,13 @@ def load(config_path: Path) -> list[dict]:
             family_id = _upsert_family(cur, fam["sport"], fam["slug"], fam["name"])
             data_dir = ROOT / "data" / fam["slug"]
             owner_guid = fam.get("owner_guid")
+            seasons = sorted(int(s) for s in fam["seasons"])
+            settings = _settings_for(seasons, data_dir, fam["slug"])
             # ascending so managers.display_name ends on the latest season's name
-            for season in sorted(int(s) for s in fam["seasons"]):
+            for season in seasons:
                 results.append(
-                    _load_season(cur, family_id, fam["slug"], season, owner_guid, data_dir)
+                    _load_season(cur, family_id, fam["slug"], season, owner_guid,
+                                 data_dir, settings[season])
                 )
         conn.commit()
     return results

@@ -1,0 +1,1 @@
+ALTER TABLE "league_teams" ADD CONSTRAINT "league_teams_leagueId_name_unique" UNIQUE("league_id","name");

@@ -36,6 +36,13 @@
       "when": 1785280475134,
       "tag": "20260728231435_drop_league_teams_manager_name",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785280952533,
+      "tag": "20260728232232_league_teams_unique_name",
+      "breakpoints": true
     }
   ]
 }

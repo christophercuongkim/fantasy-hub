@@ -8,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 import {
@@ -43,19 +44,27 @@ export const leagues = pgTable("leagues", {
   updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
-export const leagueTeams = pgTable("league_teams", {
-  id: uuid().primaryKey().defaultRandom(),
-  leagueId: uuid()
-    .notNull()
-    .references(() => leagues.id),
-  // The canonical person. NULL = unclaimed (hidden pre-membership seasons whose
-  // managers Yahoo won't reveal); resolved later via an approved team_claim.
-  managerId: uuid().references(() => managers.id),
-  yahooTeamKey: text(), // {league_key}.t.{team_id}; null when bootstrap lacks it
-  name: text().notNull(), // vanity team name, per season; changes freely
-  isMine: boolean().notNull().default(false), // exactly one true per league
-  draftPosition: integer(),
-});
+export const leagueTeams = pgTable(
+  "league_teams",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    leagueId: uuid()
+      .notNull()
+      .references(() => leagues.id),
+    // The canonical person. NULL = unclaimed (hidden pre-membership seasons whose
+    // managers Yahoo won't reveal); resolved later via an approved team_claim.
+    managerId: uuid().references(() => managers.id),
+    yahooTeamKey: text(), // {league_key}.t.{team_id}; null when bootstrap lacks it
+    name: text().notNull(), // vanity team name, per season; changes freely
+    isMine: boolean().notNull().default(false), // exactly one true per league
+    draftPosition: integer(),
+  },
+  (t) => [
+    // A team is identified by (league, name) within a season — lets the importer
+    // upsert idempotently and preserve a claim-set manager_id across re-scrapes.
+    unique().on(t.leagueId, t.name),
+  ],
+);
 
 // A member claims a historical unclaimed team as theirs; the admin (Chris)
 // approves, which sets that league_team's manager_id. See id_crosswalk_log for
