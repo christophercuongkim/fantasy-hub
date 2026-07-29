@@ -43,6 +43,13 @@
       "when": 1785280952533,
       "tag": "20260728232232_league_teams_unique_name",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785283301993,
+      "tag": "20260729000141_nullable_playoff_cols",
+      "breakpoints": true
     }
   ]
 }

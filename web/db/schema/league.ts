@@ -37,8 +37,10 @@ export const leagues = pgTable("leagues", {
   numTeams: integer().notNull(),
   scoringJson: jsonb().$type<ScoringJson>().notNull(),
   rosterPositionsJson: jsonb().$type<RosterPositions>().notNull(),
-  playoffStartWeek: integer().notNull(),
-  numPlayoffTeams: integer().notNull(),
+  // Nullable: Yahoo's pre-2021 settings pages don't expose playoff structure,
+  // so bootstrapped historical seasons store it as unknown rather than fabricate.
+  playoffStartWeek: integer(),
+  numPlayoffTeams: integer(),
   waiverType: waiverTypeEnum(),
   tradeDeadline: date(), // suppress trade suggestions after this
   updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
