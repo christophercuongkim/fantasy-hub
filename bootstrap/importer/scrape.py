@@ -141,29 +141,36 @@ def scrape_week(driver, base: str, week: int) -> list[dict]:
     """One matchup week. Each matchup <li> has two a.F-link team names and two
     .Fz-lg actual scores (the winner's also carries .Fw-b). JS-hydrated, so wait
     for the links. Returns [] when the week has no matchups (past the schedule)."""
-    browser.goto(driver, nfl.matchup_url(base, week))
-    for _ in range(16):
-        if driver.find_elements(By.CSS_SELECTOR, "a.F-link"):
-            break
-        time.sleep(0.5)
+    browser.goto(driver, nfl.matchup_url(base, week), settle=3)
+    # the full-week scoreboard lazy-loads on scroll. Fixed generous wait (mirrors
+    # the capture that got all 6 matchups) — no early break, since partial
+    # hydration renders my own matchup first and misses the rest.
+    for _ in range(5):
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+        time.sleep(1.5)
     soup = BeautifulSoup(driver.page_source, "lxml")
-    out, seen = [], set()
-    for li in soup.select("li"):
-        names = [a.get_text(strip=True) for a in li.select("a.F-link")]
-        scores = li.select('[class~="Fz-lg"]')
-        if len(names) < 2 or len(scores) < 2:
-            continue
-        a, b = names[0], names[1]
-        try:
-            sa, sb = float(scores[0].get_text(strip=True)), float(scores[1].get_text(strip=True))
-        except ValueError:
-            continue
-        key = frozenset((a, b))
-        if key in seen:  # my matchup can render twice (detail + scoreboard)
-            continue
-        seen.add(key)
-        out.append({"week": week, "team_a": a, "score_a": sa, "team_b": b, "score_b": sb})
-    return out
+
+    def parse(soup):
+        out, seen = [], set()
+        for li in soup.select("li"):
+            names = [a.get_text(strip=True) for a in li.select("a.F-link")]
+            scores = li.select('[class~="Fz-lg"]')
+            if len(names) < 2 or len(scores) < 2:
+                continue
+            a, b = names[0], names[1]
+            try:
+                sa = float(scores[0].get_text(strip=True))
+                sb = float(scores[1].get_text(strip=True))
+            except ValueError:
+                continue
+            key = frozenset((a, b))
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({"week": week, "team_a": a, "score_a": sa, "team_b": b, "score_b": sb})
+        return out
+
+    return parse(soup)
 
 
 def scrape_matchups(driver, base: str, season: int, max_week: int = 18) -> pd.DataFrame:
@@ -171,12 +178,16 @@ def scrape_matchups(driver, base: str, season: int, max_week: int = 18) -> pd.Da
     for week in range(1, max_week + 1):
         wk = scrape_week(driver, base, week)
         if not wk:
-            break  # past the season's schedule
+            if rows:
+                break  # natural end of the season's schedule
+            # week 1 empty = a real failure (hydration/structure); dump to inspect
+            dbg = ROOT / "data" / "_dumps" / f"matchup-EMPTY-{season}-w{week}.html"
+            dbg.parent.mkdir(parents=True, exist_ok=True)
+            dbg.write_text(driver.page_source, encoding="utf-8")
+            raise RuntimeError(f"{season} week {week}: no matchups; dumped {dbg.name}")
         for r in wk:
             r["season"] = season
         rows += wk
-    if not rows:
-        raise RuntimeError(f"{season}: no matchups")
     cols = ["season", "week", "team_a", "score_a", "team_b", "score_b"]
     return pd.DataFrame(rows)[cols]
 
