@@ -175,8 +175,74 @@ def _load_season(cur, family_id, slug, season, owner_guid, guid_to_mid, s, data_
           team_to_id[_norm(d["manager"])], d["player_name"], d.get("player_key") or None,
           _int_or_none(d.get("cost"))) for d in draft],
     )
-    claimed = sum(1 for t in teams if t.get("guid"))
-    return {"season": season, "teams": len(teams), "claimed": claimed, "picks": len(draft)}
+    counts = {"season": season, "teams": len(teams),
+              "claimed": sum(1 for t in teams if t.get("guid")), "picks": len(draft)}
+    _load_standings(cur, league_id, team_to_id, data_dir, season, counts)
+    _load_matchups(cur, league_id, team_to_id, data_dir, season,
+                   s.playoff_start_week, counts)
+    return counts
+
+
+def _load_standings(cur, league_id, team_to_id, data_dir, season, counts) -> None:
+    """final_rank only (1 = champion, final placement). W-L-T / PF / PA come from
+    matchups so they're all on the same game set (regular season)."""
+    rows = _read_csv(data_dir / f"standings-{season}.csv")
+    if not rows:
+        return
+    updates = [
+        (_int_or_none(r.get("final_rank")), team_to_id[_norm(r["team_name"])])
+        for r in rows if _norm(r["team_name"]) in team_to_id
+    ]
+    cur.executemany(
+        "UPDATE league_teams SET final_rank = %s WHERE id = %s", updates
+    )
+    counts["standings"] = len(updates)
+
+
+def _load_matchups(cur, league_id, team_to_id, data_dir, season, playoff_week, counts) -> None:
+    rows = _read_csv(data_dir / f"matchups-{season}.csv")
+    if not rows:
+        return
+    cur.execute("DELETE FROM matchups WHERE league_id = %s", (league_id,))  # clean replace
+    rec: dict[str, list] = {}  # team_id -> [w, l, t, pf, pa]
+    inserts = []
+    for r in rows:
+        a = team_to_id.get(_norm(r["team_a"]))
+        b = team_to_id.get(_norm(r["team_b"]))
+        if a is None or b is None:
+            continue
+        sa, sb, week = float(r["score_a"]), float(r["score_b"]), int(r["week"])
+        is_playoff = bool(playoff_week) and week >= playoff_week
+        # store every matchup once with canonical ordering (lower UUID as team_a)
+        if str(a) <= str(b):
+            inserts.append((league_id, week, a, b, sa, sb, is_playoff))
+        else:
+            inserts.append((league_id, week, b, a, sb, sa, is_playoff))
+        # records/PF/PA from REGULAR SEASON only (matches how standings work);
+        # playoff games live in `matchups` for separate queries.
+        if is_playoff:
+            continue
+        for tid, own, opp in ((a, sa, sb), (b, sb, sa)):
+            w = rec.setdefault(tid, [0, 0, 0, 0.0, 0.0])
+            w[3] += own
+            w[4] += opp
+            w[0 if own > opp else 1 if own < opp else 2] += 1
+    cur.executemany(
+        """
+        INSERT INTO matchups (league_id, week, team_a_id, team_b_id,
+            team_a_score, team_b_score, is_playoff)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
+        inserts,
+    )
+    cur.executemany(
+        """
+        UPDATE league_teams SET wins = %s, losses = %s, ties = %s,
+            points_for = %s, points_against = %s WHERE id = %s
+        """,
+        [(w[0], w[1], w[2], round(w[3], 2), round(w[4], 2), tid) for tid, w in rec.items()],
+    )
+    counts["matchups"] = len(inserts)
 
 
 def _settings_for(seasons, data_dir, slug) -> dict[int, cfg.LeagueSettings]:
@@ -228,8 +294,9 @@ def load(config_path: Path, only: set[int] | None = None) -> list[dict]:
                 if "skipped" in r:
                     print(f"\r  [{fam['slug']} {season}] skipped: {r['skipped']}   ", flush=True)
                 else:
+                    extra = f" matchups={r['matchups']}" if "matchups" in r else ""
                     print(f"\r  [{fam['slug']} {season}] teams={r['teams']} "
-                          f"claimed={r['claimed']} picks={r['picks']}      ", flush=True)
+                          f"claimed={r['claimed']} picks={r['picks']}{extra}      ", flush=True)
         conn.commit()
 
     dt = time.monotonic() - t0

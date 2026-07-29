@@ -60,6 +60,14 @@ export const leagueTeams = pgTable(
     name: text().notNull(), // vanity team name, per season; changes freely
     isMine: boolean().notNull().default(false), // exactly one true per league
     draftPosition: integer(),
+    // Season results (from standings + derived from matchups). Nullable: not all
+    // seasons are scraped, and older pages omit some of it.
+    finalRank: integer(), // 1 = champion (final placement, not points order)
+    wins: integer(),
+    losses: integer(),
+    ties: integer(),
+    pointsFor: numeric({ precision: 7, scale: 2 }),
+    pointsAgainst: numeric({ precision: 7, scale: 2 }),
   },
   (t) => [
     // A team is identified by (league, name) within a season — lets the importer
