@@ -44,8 +44,15 @@ Data (`bootstrap/data/`) and the Chrome profile are gitignored (personal data).
    player's season fantasy points scored by the league rules (ingest player
    season stats → apply scoring → crosswalk `draft_picks.player_name` →
    value vs. draft slot). Build after the crosswalk (see #1-style review queue).
-3. **Add league #2** — new entry in `config/import.yaml`, re-run. Cross-league
+3. **Manager tendency profiles (private, Chris-only)** — a deep per-manager
+   scouting report for competitive intel, gated to `is_mine`/admin (NOT the
+   public hall of records). Per opponent: draft tendencies (positional priority
+   by round, reach/steal habits, favorite teams/players), roster construction,
+   in-season behavior (waiver aggressiveness, trade patterns), scoring/lineup
+   patterns, and how they play *you* (H2H/matchup tendencies). Aligns with the
+   planned `manager_profiles` (schema §Phase 5); leans on the same data +
+   draft superlatives + the player crosswalk. Auth-gated route.
+4. **Add league #2** — new entry in `config/import.yaml`, re-run. Cross-league
    identity links automatically via GUID.
-4. **Multi-sport (layer 3)** — per-sport enum migration + `sports/<sport>.py`.
-5. **Loader hardening** — (topic under discussion) error handling, per-league
-   transactions, dry-run, reporting.
+5. **Multi-sport (layer 3)** — per-sport enum migration + `sports/<sport>.py`.
+6. **Loader hardening** — error handling, per-league transactions, dry-run, reporting.
