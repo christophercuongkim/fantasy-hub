@@ -12,9 +12,10 @@ from app.config import settings
 DATASETS: tuple[str, ...] = (
     "pbp",
     "schedules",
-    "weekly",
-    "team",
-    "defense_vs_pos",
+    "player_stats",  # raw nflverse weekly box score (input to aggregation)
+    "weekly",  # derived: stats_weekly
+    "team",  # derived: team_weekly
+    "defense_vs_pos",  # derived: defense_vs_pos
     "projections_archive",
     "api_archive",
 )
