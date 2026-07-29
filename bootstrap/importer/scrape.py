@@ -115,12 +115,14 @@ def main() -> None:
     ap.add_argument("--user-data-dir", default=str(ROOT / ".chrome-profile"))
     ap.add_argument("--dump-url", help="save this URL's html to data/_dumps/, then exit")
     ap.add_argument("--settle", type=float, default=3.0, help="dump: seconds to wait for JS")
+    ap.add_argument("--login-gate", action="store_true",
+                    help="prompt for login even in --attach mode (for the all-in-one flow)")
     args = ap.parse_args()
 
     doc = yaml.safe_load(CONFIG.read_text())
     driver = browser.build_driver(Path(args.user_data_dir), args.attach)
     try:
-        if not args.attach:
+        if not args.attach or args.login_gate:
             browser.manual_login_gate(driver)
         if args.dump_url:
             browser.goto(driver, args.dump_url, settle=args.settle)
