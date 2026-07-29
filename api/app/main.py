@@ -112,3 +112,21 @@ def ingest_week(body: IngestWeekRequest) -> JSONResponse:
         return JSONResponse(status_code=422, content={"error": str(e)})
     except Exception as e:  # noqa: BLE001
         return JSONResponse(status_code=424, content={"error": str(e)})
+
+
+class AggregateRequest(BaseModel):
+    season: int
+
+
+# DuckDB aggregation of the raw cold-tier Parquet into weekly/team/dvp tables.
+# Synchronous + idempotent, same as ingestion; run after the weekly ingest.
+@app.post("/jobs/aggregate")
+def aggregate(body: AggregateRequest) -> JSONResponse:
+    from app.aggregate import weekly
+
+    try:
+        return JSONResponse(weekly.aggregate_season(body.season))
+    except FileNotFoundError as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — DuckDB / parquet failure
+        return JSONResponse(status_code=424, content={"error": str(e)})

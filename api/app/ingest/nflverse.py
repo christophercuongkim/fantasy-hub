@@ -15,7 +15,9 @@ from app.storage import parquet
 
 # Earliest season with reliable route-participation data (data dictionary Part 2).
 MIN_SEASON = 2019
-DEFAULT_DATASETS = ("pbp", "schedules")
+# player_stats = nflverse's vetted weekly player box score (fantasy points,
+# targets, target_share, position, opponent) — the base for stats_weekly + dvp.
+DEFAULT_DATASETS = ("pbp", "schedules", "player_stats")
 
 
 def _write(dataset: str, season: int, df) -> int:
@@ -39,9 +41,15 @@ def _ingest_schedules(season: int) -> int:
     return _write("schedules", season, df)
 
 
+def _ingest_player_stats(season: int) -> int:
+    df = nfl.import_weekly_data([season], downcast=True)
+    return _write("player_stats", season, df)
+
+
 _INGESTORS: dict[str, Callable[[int], int]] = {
     "pbp": _ingest_pbp,
     "schedules": _ingest_schedules,
+    "player_stats": _ingest_player_stats,
 }
 
 
