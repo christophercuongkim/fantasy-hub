@@ -5,7 +5,7 @@ import {
   headToHead,
   managerSeasons,
   scatterPoints,
-} from "@/lib/superlatives";
+} from "@/lib/hall-of-records";
 import { Charts } from "./charts";
 
 export const dynamic = "force-dynamic"; // reads live DB
@@ -25,7 +25,7 @@ type Award = {
   note?: string;
 };
 
-export default async function Superlatives() {
+export default async function HallOfRecords() {
   const [career, seasons, weeks, h2h, mSeasons, scatter] = await Promise.all([
     careerLeaderboard(),
     teamSeasons(),

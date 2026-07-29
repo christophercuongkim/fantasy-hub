@@ -38,7 +38,7 @@ Data (`bootstrap/data/`) and the Chrome profile are gitignored (personal data).
 1. **Team-claims feature** — member-facing page to claim an old unclaimed team
    ("2018 X was me"), admin (Chris) approve action that sets `manager_id`. Table
    + review-queue pattern already exist (mirrors `id_crosswalk_log`).
-2. **Superlatives** — `/superlatives` page shipped (career/season/week/H2H,
+2. **Superlatives** — `/hall_of_records` page shipped (career/season/week/H2H,
    4 D3 charts, award cards, tables). Deferred: **draft superlatives**
    (best pick / biggest steal) — needs the player crosswalk + each drafted
    player's season fantasy points scored by the league rules (ingest player
