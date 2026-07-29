@@ -9,8 +9,8 @@ import type {
   ScatterPoint,
 } from "@/lib/superlatives";
 
-// Structural colors come from CSS vars (theme-aware, defined in globals.css).
-// Data-driven color *scales* need the actual surface, so we read the theme.
+// Structural colors from CSS vars (theme-aware). Data-color *scales* need the
+// actual surface, so we read the theme for those.
 function useIsDark() {
   const [dark, setDark] = useState(false);
   useEffect(() => {
@@ -26,6 +26,17 @@ function useIsDark() {
 const INK = "var(--sl-ink)";
 const MUTED = "var(--sl-muted)";
 const GRID = "var(--sl-grid)";
+const ACCENT = "var(--sl-accent)";
+
+// Shared interaction context: one highlighted manager across every chart + one
+// cursor-following tooltip.
+type Tip = { x: number; y: number; lines: string[] } | null;
+type Ctx = {
+  hi: string | null;
+  setHi: (m: string | null) => void;
+  show: (e: React.MouseEvent, lines: string[], m?: string) => void;
+  hide: () => void;
+};
 
 function Panel({
   title,
@@ -56,36 +67,66 @@ export function Charts({
   scatter: ScatterPoint[];
   career: CareerRow[];
 }) {
+  const [hi, setHi] = useState<string | null>(null);
+  const [tip, setTip] = useState<Tip>(null);
+  const ctx: Ctx = {
+    hi,
+    setHi,
+    show: (e, lines, m) => {
+      setTip({ x: e.clientX, y: e.clientY, lines });
+      if (m !== undefined) setHi(m);
+    },
+    hide: () => setTip(null),
+  };
+
   return (
-    <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <section className="relative grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Panel
         title="Finish over time"
         sub="final placement each season — hover a line"
       >
-        <BumpChart data={managerSeasons} />
+        <BumpChart data={managerSeasons} ctx={ctx} />
       </Panel>
       <Panel title="Wall of history" sub="final rank per season · gold = title">
-        <FinishHeatmap data={managerSeasons} />
+        <FinishHeatmap data={managerSeasons} ctx={ctx} />
       </Panel>
       <Panel
         title="Head-to-head"
         sub="regular-season win rate vs each opponent"
       >
-        <H2HHeatmap data={headToHead} />
+        <H2HHeatmap data={headToHead} ctx={ctx} />
       </Panel>
       <Panel
         title="Luck vs. skill"
         sub="points-for vs wins · line = expected wins"
       >
-        <LuckSkill data={scatter} career={career} />
+        <LuckSkill data={scatter} career={career} ctx={ctx} />
       </Panel>
+
+      {tip && (
+        <div
+          className="pointer-events-none fixed z-50 rounded-md border border-neutral-200 bg-white/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95"
+          style={{ left: tip.x + 14, top: tip.y + 14 }}
+        >
+          {tip.lines.map((l, i) => (
+            <div
+              key={i}
+              className={i === 0 ? "font-semibold" : "text-neutral-500"}
+            >
+              {l}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
+// dim opacity for a mark not belonging to the highlighted manager
+const dim = (hi: string | null, m: string) => (hi && hi !== m ? 0.15 : 1);
+
 // ---------------------------------------------------------------- bump chart
-function BumpChart({ data }: { data: ManagerSeason[] }) {
-  const [hover, setHover] = useState<string | null>(null);
+function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   const W = 520,
     H = 300,
     m = { t: 16, r: 96, b: 28, l: 28 };
@@ -117,17 +158,16 @@ function BumpChart({ data }: { data: ManagerSeason[] }) {
       aria-label="Finish over time"
     >
       {y.ticks(Math.min(maxRank, 6)).map((t) => (
-        <g key={t}>
-          <text
-            x={m.l - 6}
-            y={y(t) + 4}
-            fontSize="10"
-            fill={MUTED}
-            textAnchor="end"
-          >
-            {t}
-          </text>
-        </g>
+        <text
+          key={t}
+          x={m.l - 6}
+          y={y(t) + 4}
+          fontSize="10"
+          fill={MUTED}
+          textAnchor="end"
+        >
+          {t}
+        </text>
       ))}
       {seasons.map((s) => (
         <text
@@ -141,21 +181,38 @@ function BumpChart({ data }: { data: ManagerSeason[] }) {
           {s}
         </text>
       ))}
-      {byMgr.map(({ mgr, pts }) => {
-        const active = hover === mgr;
+      {byMgr.map(({ mgr, pts }, i) => {
+        const active = ctx.hi === mgr;
         return (
           <g
             key={mgr}
-            onMouseEnter={() => setHover(mgr)}
-            onMouseLeave={() => setHover(null)}
+            onMouseMove={(e) =>
+              ctx.show(
+                e,
+                [
+                  mgr,
+                  `finished #${pts[pts.length - 1].finalRank} in ${pts[pts.length - 1].season}`,
+                ],
+                mgr,
+              )
+            }
+            onMouseLeave={() => {
+              ctx.setHi(null);
+              ctx.hide();
+            }}
             style={{ cursor: "pointer" }}
           >
             <path
+              className="sl-line"
+              style={{
+                ["--sl-len" as string]: 1400,
+                animationDelay: `${i * 55}ms`,
+              }}
               d={path(pts)!}
               fill="none"
-              stroke={active ? "var(--sl-accent)" : MUTED}
+              stroke={active ? ACCENT : MUTED}
               strokeWidth={active ? 2.5 : 1.5}
-              opacity={active ? 1 : hover ? 0.2 : 0.65}
+              opacity={active ? 1 : ctx.hi ? 0.15 : 0.65}
             />
             {pts.map((p) => (
               <circle
@@ -163,24 +220,20 @@ function BumpChart({ data }: { data: ManagerSeason[] }) {
                 cx={x(p.season)}
                 cy={y(p.finalRank)}
                 r={active ? 4 : 2.5}
-                fill={active ? "var(--sl-accent)" : MUTED}
-                opacity={active ? 1 : hover ? 0.2 : 0.65}
+                fill={active ? ACCENT : MUTED}
+                opacity={active ? 1 : ctx.hi ? 0.15 : 0.65}
               />
             ))}
-            {(() => {
-              const last = pts[pts.length - 1];
-              return (
-                <text
-                  x={x(last.season)! + 8}
-                  y={y(last.finalRank) + 3}
-                  fontSize="10"
-                  fill={active ? INK : MUTED}
-                  fontWeight={active ? 600 : 400}
-                >
-                  {mgr}
-                </text>
-              );
-            })()}
+            <text
+              x={x(pts[pts.length - 1].season)! + 8}
+              y={y(pts[pts.length - 1].finalRank) + 3}
+              fontSize="10"
+              fill={active ? INK : MUTED}
+              fontWeight={active ? 600 : 400}
+              opacity={dim(ctx.hi, mgr)}
+            >
+              {mgr}
+            </text>
           </g>
         );
       })}
@@ -189,7 +242,7 @@ function BumpChart({ data }: { data: ManagerSeason[] }) {
 }
 
 // ------------------------------------------------------------ finish heatmap
-function FinishHeatmap({ data }: { data: ManagerSeason[] }) {
+function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   const dark = useIsDark();
   const seasons = [...new Set(data.map((d) => d.season))].sort((a, b) => a - b);
   const managers = [...new Set(data.map((d) => d.manager))].sort();
@@ -201,7 +254,6 @@ function FinishHeatmap({ data }: { data: ManagerSeason[] }) {
     H = top + managers.length * cell;
   const at = (mgr: string, s: number) =>
     data.find((d) => d.manager === mgr && d.season === s);
-  // sequential blue: rank 1 (best) = dark, worst = light
   const c = scaleLinear<string>()
     .domain([1, maxRank])
     .range(dark ? ["#3987e5", "#12233a"] : ["#0d366b", "#cde2fb"]);
@@ -213,18 +265,27 @@ function FinishHeatmap({ data }: { data: ManagerSeason[] }) {
       role="img"
       aria-label="Finish rank per season"
     >
-      {seasons.map((s) => (
+      {seasons.map((s, ci) => (
         <text
           key={s}
-          x={labelW + seasons.indexOf(s) * cell + cell / 2}
+          x={labelW + ci * cell + cell / 2}
           y={13}
           fontSize="9"
           fill={MUTED}
           textAnchor="middle"
-        >{`'${String(s).slice(2)}`}</text>
+        >
+          {`'${String(s).slice(2)}`}
+        </text>
       ))}
       {managers.map((mgr, r) => (
-        <g key={mgr}>
+        <g
+          key={mgr}
+          opacity={dim(ctx.hi, mgr)}
+          onMouseLeave={() => {
+            ctx.setHi(null);
+            ctx.hide();
+          }}
+        >
           <text
             x={labelW - 6}
             y={top + r * cell + cell / 2 + 3}
@@ -240,6 +301,8 @@ function FinishHeatmap({ data }: { data: ManagerSeason[] }) {
             return (
               <g key={s}>
                 <rect
+                  className="sl-pop"
+                  style={{ animationDelay: `${(r + ci) * 25}ms` }}
                   x={labelW + ci * cell + 1}
                   y={top + r * cell + 1}
                   width={cell - 2}
@@ -248,9 +311,11 @@ function FinishHeatmap({ data }: { data: ManagerSeason[] }) {
                   fill={d ? c(d.finalRank) : "transparent"}
                   stroke={champ ? "#eda100" : "none"}
                   strokeWidth={champ ? 2 : 0}
-                >
-                  {d && <title>{`${mgr} — ${s}: #${d.finalRank}`}</title>}
-                </rect>
+                  onMouseMove={(e) =>
+                    d &&
+                    ctx.show(e, [mgr, `${s}: finished #${d.finalRank}`], mgr)
+                  }
+                />
                 {d && (
                   <text
                     x={labelW + ci * cell + cell / 2}
@@ -273,7 +338,7 @@ function FinishHeatmap({ data }: { data: ManagerSeason[] }) {
 }
 
 // --------------------------------------------------------------- h2h heatmap
-function H2HHeatmap({ data }: { data: H2HCell[] }) {
+function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
   const managers = [...new Set(data.map((d) => d.a))].sort();
   const cell = 26,
     labelW = 96,
@@ -282,7 +347,6 @@ function H2HHeatmap({ data }: { data: H2HCell[] }) {
     H = top + managers.length * cell;
   const get = (a: string, b: string) =>
     data.find((d) => d.a === a && d.b === b);
-  // diverging blue(win) <-> red(loss), gray midpoint at 0.5
   const c = scaleLinear<string>()
     .domain([0, 0.5, 1])
     .range(["#d03b3b", "#f0efec", "#2a78d6"]);
@@ -302,6 +366,7 @@ function H2HHeatmap({ data }: { data: H2HCell[] }) {
           fontSize="9"
           fill={MUTED}
           textAnchor="start"
+          opacity={dim(ctx.hi, b)}
           transform={`rotate(-45 ${labelW + ci * cell + cell / 2} ${top - 6})`}
         >
           {b}
@@ -315,10 +380,12 @@ function H2HHeatmap({ data }: { data: H2HCell[] }) {
             fontSize="10"
             fill={INK}
             textAnchor="end"
+            opacity={dim(ctx.hi, a)}
           >
             {a}
           </text>
           {managers.map((b, ci) => {
+            const highlighted = !ctx.hi || ctx.hi === a || ctx.hi === b;
             if (a === b)
               return (
                 <rect
@@ -337,17 +404,31 @@ function H2HHeatmap({ data }: { data: H2HCell[] }) {
             return (
               <rect
                 key={b}
+                className="sl-fade"
+                style={{ animationDelay: `${(r + ci) * 20}ms` }}
                 x={labelW + ci * cell + 1}
                 y={top + r * cell + 1}
                 width={cell - 2}
                 height={cell - 2}
                 rx={2}
                 fill={rate == null ? "transparent" : c(rate)}
-              >
-                {g && (
-                  <title>{`${a} vs ${b}: ${g.wins}-${g.games - g.wins}`}</title>
-                )}
-              </rect>
+                opacity={highlighted ? 1 : 0.15}
+                onMouseMove={(e) =>
+                  g &&
+                  ctx.show(
+                    e,
+                    [
+                      `${a} vs ${b}`,
+                      `${g.wins}-${g.games - g.wins} (${Math.round((g.wins / g.games) * 100)}%)`,
+                    ],
+                    a,
+                  )
+                }
+                onMouseLeave={() => {
+                  ctx.setHi(null);
+                  ctx.hide();
+                }}
+              />
             );
           })}
         </g>
@@ -360,15 +441,17 @@ function H2HHeatmap({ data }: { data: H2HCell[] }) {
 function LuckSkill({
   data,
   career,
+  ctx,
 }: {
   data: ScatterPoint[];
   career: CareerRow[];
+  ctx: Ctx;
 }) {
   const W = 520,
     H = 300,
     m = { t: 16, r: 16, b: 36, l: 40 };
   const managers = new Set(career.map((c) => c.manager));
-  const pts = data.filter((d) => d.manager && managers.has(d.manager)); // person era
+  const pts = data.filter((d) => d.manager && managers.has(d.manager));
   const xs = pts.map((d) => d.pointsFor),
     ys = pts.map((d) => d.wins);
   const x = scaleLinear()
@@ -377,7 +460,6 @@ function LuckSkill({
   const y = scaleLinear()
     .domain([Math.min(...ys) - 1, Math.max(...ys) + 1])
     .range([H - m.b, m.t]);
-  // expected wins ~ linear fit of wins on points_for (least squares)
   const n = pts.length,
     sx = xs.reduce((a, b) => a + b, 0),
     sy = ys.reduce((a, b) => a + b, 0);
@@ -435,7 +517,6 @@ function LuckSkill({
       >
         wins →
       </text>
-      {/* expected-wins line */}
       <line
         x1={x(x0)}
         y1={y(fit(x0))}
@@ -450,15 +531,30 @@ function LuckSkill({
         return (
           <circle
             key={i}
+            className="sl-pop"
+            style={{ animationDelay: `${i * 20}ms` }}
             cx={x(d.pointsFor)}
             cy={y(d.wins)}
-            r={4}
+            r={ctx.hi === d.manager ? 6 : 4}
             fill={lucky ? "#2a78d6" : "#d03b3b"}
             stroke="var(--sl-surface)"
             strokeWidth={1}
-          >
-            <title>{`${d.manager} ${d.season}: ${d.wins} wins, ${d.pointsFor.toFixed(0)} pts (${lucky ? "lucky" : "unlucky"})`}</title>
-          </circle>
+            opacity={dim(ctx.hi, d.manager!)}
+            onMouseMove={(e) =>
+              ctx.show(
+                e,
+                [
+                  `${d.manager} · ${d.season}`,
+                  `${d.wins} wins, ${d.pointsFor.toFixed(0)} pts — ${lucky ? "lucky" : "unlucky"}`,
+                ],
+                d.manager!,
+              )
+            }
+            onMouseLeave={() => {
+              ctx.setHi(null);
+              ctx.hide();
+            }}
+          />
         );
       })}
     </svg>
