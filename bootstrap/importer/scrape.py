@@ -113,6 +113,8 @@ def main() -> None:
     ap.add_argument("--attach", metavar="HOST:PORT", help="attach to your own Chrome")
     ap.add_argument("--only", help="comma seasons to limit to, e.g. 2025,2024")
     ap.add_argument("--user-data-dir", default=str(ROOT / ".chrome-profile"))
+    ap.add_argument("--dump-url", help="save this URL's html to data/_dumps/, then exit")
+    ap.add_argument("--settle", type=float, default=3.0, help="dump: seconds to wait for JS")
     args = ap.parse_args()
 
     doc = yaml.safe_load(CONFIG.read_text())
@@ -120,6 +122,17 @@ def main() -> None:
     try:
         if not args.attach:
             browser.manual_login_gate(driver)
+        if args.dump_url:
+            browser.goto(driver, args.dump_url, settle=args.settle)
+            # scroll to trigger any lazy-loaded matchup/standings modules
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+            time.sleep(args.settle)
+            dumps = ROOT / "data" / "_dumps"
+            dumps.mkdir(parents=True, exist_ok=True)
+            name = re.sub(r"[^\w.-]", "_", args.dump_url.split("//", 1)[-1])[:120]
+            (dumps / f"{name}.html").write_text(driver.page_source, encoding="utf-8")
+            print(f"dumped data/_dumps/{name}.html", flush=True)
+            return
         for fam in doc["leagues"]:
             out = ROOT / "data" / fam["slug"]
             out.mkdir(parents=True, exist_ok=True)
