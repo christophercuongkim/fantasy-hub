@@ -45,6 +45,14 @@ def settings_url(base: str) -> str:
     return f"{base}/settings"
 
 
+def standings_url(base: str) -> str:
+    return f"{base}/standings"
+
+
+def matchup_url(base: str, week: int) -> str:
+    return f"{base}/matchup?week={week}"
+
+
 # --- scoring: Yahoo settings label -> our canonical key ----------------------
 # "yards per point" labels become 1/N. Keys match api STAT_ID_MAP exactly.
 SCORING_YPP = {

@@ -108,6 +108,79 @@ def scrape_teams(driver, base: str, season: int) -> pd.DataFrame:
     raise RuntimeError(f"{season}: Team Name/Manager table not found")
 
 
+def scrape_standings(driver, base: str, season: int) -> pd.DataFrame:
+    """/standings is server-rendered: a points table where col 0 is the FINAL
+    rank (1 = champion; not points order), col 1 the team, and the last numeric
+    cell the season points-for total."""
+    browser.goto(driver, nfl.standings_url(base))
+    soup = BeautifulSoup(driver.page_source, "lxml")
+    rows = []
+    seen = set()
+    for tbl in soup.select("table"):
+        for tr in tbl.select("tr"):
+            cells = [td.get_text(" ", strip=True) for td in tr.find_all(["td", "th"])]
+            if not cells or not re.match(r"^\d+\.$", cells[0]):
+                continue
+            team = cells[1]
+            if team in seen:
+                continue
+            nums = [c for c in cells if re.match(r"^\d+\.\d\d$", c)]
+            rows.append({
+                "season": season,
+                "team_name": team,
+                "final_rank": int(cells[0].rstrip(".")),
+                "points_for": float(nums[-1]) if nums else "",
+            })
+            seen.add(team)
+    if not rows:
+        raise RuntimeError(f"{season}: no standings rows")
+    return pd.DataFrame(rows).sort_values("final_rank")
+
+
+def scrape_week(driver, base: str, week: int) -> list[dict]:
+    """One matchup week. Each matchup <li> has two a.F-link team names and two
+    .Fz-lg actual scores (the winner's also carries .Fw-b). JS-hydrated, so wait
+    for the links. Returns [] when the week has no matchups (past the schedule)."""
+    browser.goto(driver, nfl.matchup_url(base, week))
+    for _ in range(16):
+        if driver.find_elements(By.CSS_SELECTOR, "a.F-link"):
+            break
+        time.sleep(0.5)
+    soup = BeautifulSoup(driver.page_source, "lxml")
+    out, seen = [], set()
+    for li in soup.select("li"):
+        names = [a.get_text(strip=True) for a in li.select("a.F-link")]
+        scores = li.select('[class~="Fz-lg"]')
+        if len(names) < 2 or len(scores) < 2:
+            continue
+        a, b = names[0], names[1]
+        try:
+            sa, sb = float(scores[0].get_text(strip=True)), float(scores[1].get_text(strip=True))
+        except ValueError:
+            continue
+        key = frozenset((a, b))
+        if key in seen:  # my matchup can render twice (detail + scoreboard)
+            continue
+        seen.add(key)
+        out.append({"week": week, "team_a": a, "score_a": sa, "team_b": b, "score_b": sb})
+    return out
+
+
+def scrape_matchups(driver, base: str, season: int, max_week: int = 18) -> pd.DataFrame:
+    rows = []
+    for week in range(1, max_week + 1):
+        wk = scrape_week(driver, base, week)
+        if not wk:
+            break  # past the season's schedule
+        for r in wk:
+            r["season"] = season
+        rows += wk
+    if not rows:
+        raise RuntimeError(f"{season}: no matchups")
+    cols = ["season", "week", "team_a", "score_a", "team_b", "score_b"]
+    return pd.DataFrame(rows)[cols]
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--attach", metavar="HOST:PORT", help="attach to your own Chrome")
@@ -151,7 +224,12 @@ def main() -> None:
                     tdf.to_csv(out / f"teams-{season}.csv", index=False)
                     browser.goto(driver, nfl.settings_url(base))
                     (out / f"settings-{season}.html").write_text(driver.page_source, encoding="utf-8")
-                    print(f"  ok: {tdf['guid'].astype(bool).sum()}/{len(tdf)} guids", flush=True)
+                    sdf = scrape_standings(driver, base, season)
+                    sdf.to_csv(out / f"standings-{season}.csv", index=False)
+                    mdf = scrape_matchups(driver, base, season)
+                    mdf.to_csv(out / f"matchups-{season}.csv", index=False)
+                    print(f"  ok: {tdf['guid'].astype(bool).sum()}/{len(tdf)} guids, "
+                          f"{len(mdf)} matchups over {mdf['week'].nunique()} weeks", flush=True)
                 except Exception as e:  # noqa: BLE001 - report, keep going
                     print(f"  FAILED: {e}", flush=True)
     finally:
