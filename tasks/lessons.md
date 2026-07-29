@@ -128,3 +128,7 @@ Symptom: `git commit` prints `bug: pre-commit's script is installed in migration
 Fix once: `nix develop --command pre-commit install -f --hook-type pre-commit`, then re-commit. How-to-apply: if a commit "passes hooks" but HEAD didn't move, reinstall the hook before assuming the commit worked.
 
 Also: drizzle-kit `generate` prompts (needs a TTY) when a table both drops and adds a column in one diff (rename-vs-create). In a non-TTY shell it errors. Split into two generates (add first, drop next) so no table has a simultaneous add+drop; name them with `--name=`.
+
+## Make treats a bare `#` as a comment — escape flake/nix refs
+
+`SCRAPE_SHELL := nix develop '..#scrape'` silently becomes `nix develop '..` because Make starts a comment at `#`, even inside quotes. Same bites `nix shell nixpkgs#chromium`. Symptom: the target runs a truncated command. Fix: escape every `#` as `\#` in Makefiles (`'..\#scrape'`, `nixpkgs\#chromium`). Verify with `make -n <target>` — dry-run prints the fully expanded command.
