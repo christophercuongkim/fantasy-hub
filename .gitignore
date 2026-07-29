@@ -20,6 +20,8 @@ __pycache__/
 
 # Scraped personal league data (emails, GUIDs, names) — never commit.
 bootstrap/data/
+# Scraper's Chrome profile (holds the Yahoo login session/cookies).
+bootstrap/.chrome-profile/
 
 # Env
 .env
