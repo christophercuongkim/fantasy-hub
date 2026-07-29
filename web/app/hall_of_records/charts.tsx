@@ -7,7 +7,7 @@ import type {
   H2HCell,
   ManagerSeason,
   ScatterPoint,
-} from "@/lib/superlatives";
+} from "@/lib/hall-of-records";
 
 // Structural colors from CSS vars (theme-aware). Data-color *scales* need the
 // actual surface, so we read the theme for those.
