@@ -58,7 +58,9 @@ repos:
 
       - id: pytest
         name: pytest (api)
-        entry: uv run --project api pytest -q
+        # cd into api so collection is scoped to api/tests (not bootstrap/tests,
+        # which need their own env) and `from app...` imports resolve.
+        entry: bash -c 'cd api && uv run pytest -q'
         language: system
         types: [python]
         files: ^api/
