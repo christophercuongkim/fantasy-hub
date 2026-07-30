@@ -1,7 +1,8 @@
 import { inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { players as playersTable } from "@/db/schema";
-import { confirmMatch, dismiss } from "./actions";
+import { confirmMatch, dismiss, runCrosswalk } from "./actions";
+import { RunButton } from "./RunButton";
 
 // Personal app, no multi-user auth yet — this route just isn't linked publicly.
 export const dynamic = "force-dynamic";
@@ -50,14 +51,21 @@ export default async function CrosswalkAdmin() {
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-10">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Crosswalk review</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          {Number(counts.resolved).toLocaleString()} /{" "}
-          {Number(counts.total).toLocaleString()} draft picks linked to a player
-          · {queue.length} name
-          {queue.length === 1 ? "" : "s"} need a decision
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Crosswalk review
+          </h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            {Number(counts.resolved).toLocaleString()} /{" "}
+            {Number(counts.total).toLocaleString()} draft picks linked to a
+            player · {queue.length} name
+            {queue.length === 1 ? "" : "s"} need a decision
+          </p>
+        </div>
+        <form action={runCrosswalk} className="shrink-0">
+          <RunButton />
+        </form>
       </header>
 
       {queue.length === 0 ? (
