@@ -211,7 +211,10 @@ def resolve_draft_picks(conn: psycopg.Connection) -> dict:
             elif m["action"] == "defense":
                 counts["defenses"] += 1
             else:
-                counts["unmatched"] += 1  # retired-name gaps — not logged
+                # no candidate — still logged (no candidates_json) so it shows in
+                # the optional "unmatched" section for a manual search.
+                _log(cur, name, None, "fuzzy", None, None, verified=False)
+                counts["unmatched"] += 1
     return counts
 
 
