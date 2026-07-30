@@ -101,6 +101,7 @@ def build_players(conn: psycopg.Connection) -> int:
         "name_normalized",
         "position",
         "team",
+        "draft_year",
     )
     rows = [
         (
@@ -113,6 +114,7 @@ def build_players(conn: psycopg.Connection) -> int:
             normalize(r.name),
             r.position,
             _s(r.team),
+            _i(r.draft_year),
         )
         for r in ids.itertuples()
     ]
@@ -120,26 +122,36 @@ def build_players(conn: psycopg.Connection) -> int:
         cur.execute(
             "CREATE TEMP TABLE _px (gsis_id text, pfr_id text, espn_id text, "
             "yahoo_id text, sleeper_id text, full_name text, name_normalized text, "
-            '"position" "position", team text) ON COMMIT DROP'
+            '"position" "position", team text, draft_year integer) ON COMMIT DROP'
         )
     postgres.copy_rows(conn, "_px", cols, rows)
     with conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO players (gsis_id, pfr_id, espn_id, yahoo_id, sleeper_id,
-                full_name, name_normalized, "position", team, updated_at)
+                full_name, name_normalized, "position", team, draft_year, updated_at)
             SELECT gsis_id, pfr_id, espn_id, yahoo_id, sleeper_id, full_name,
-                name_normalized, "position", team, now() FROM _px
+                name_normalized, "position", team, draft_year, now() FROM _px
             ON CONFLICT (gsis_id) DO UPDATE SET
                 pfr_id = EXCLUDED.pfr_id, espn_id = EXCLUDED.espn_id,
                 yahoo_id = EXCLUDED.yahoo_id, sleeper_id = EXCLUDED.sleeper_id,
                 full_name = EXCLUDED.full_name,
                 name_normalized = EXCLUDED.name_normalized,
                 "position" = EXCLUDED."position", team = EXCLUDED.team,
-                updated_at = now()
+                draft_year = EXCLUDED.draft_year, updated_at = now()
             """
         )
     return len(rows)
+
+
+def _i(v) -> int | None:
+    """Coerce import_ids' float/NaN numeric to an int or None."""
+    if v is None or (isinstance(v, float) and v != v):
+        return None
+    try:
+        return int(v)
+    except (ValueError, TypeError):
+        return None
 
 
 def _log(cur, source_id, player_id, method, confidence, candidates, verified):
