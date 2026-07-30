@@ -20,6 +20,17 @@ export async function confirmMatch(sourceId: string, playerId: string) {
   revalidatePath("/admin/crosswalk");
 }
 
+// Fire the api crosswalk job (rebuild players + re-resolve) and refresh the page.
+export async function runCrosswalk() {
+  const apiUrl = process.env.API_URL ?? "http://localhost:4001";
+  const res = await fetch(`${apiUrl}/jobs/crosswalk`, {
+    method: "POST",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`crosswalk job failed (HTTP ${res.status})`);
+  revalidatePath("/admin/crosswalk");
+}
+
 // Dismiss: mark reviewed with no player (e.g. a DST or a player not in nflverse).
 export async function dismiss(sourceId: string) {
   const db = getDb();
