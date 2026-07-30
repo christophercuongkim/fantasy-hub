@@ -130,3 +130,15 @@ def aggregate(body: AggregateRequest) -> JSONResponse:
         return JSONResponse(status_code=422, content={"error": str(e)})
     except Exception as e:  # noqa: BLE001 — DuckDB / parquet failure
         return JSONResponse(status_code=424, content={"error": str(e)})
+
+
+# Build the player registry from nflverse ids + resolve draft_picks.player_id
+# by name; unresolved names land in id_crosswalk_log for the admin review page.
+@app.post("/jobs/crosswalk")
+def crosswalk() -> JSONResponse:
+    from app.crosswalk import build
+
+    try:
+        return JSONResponse(build.run())
+    except Exception as e:  # noqa: BLE001 — nflverse download / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})

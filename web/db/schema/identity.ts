@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import {
@@ -42,7 +43,9 @@ export const players = pgTable(
   },
   (t) => [
     index("players_name_normalized_idx").on(t.nameNormalized),
-    index("players_gsis_id_idx").on(t.gsisId),
+    // unique so the crosswalk job can upsert players ON CONFLICT (gsis_id).
+    // Postgres allows multiple NULLs, fine for rows without a gsis id.
+    uniqueIndex("players_gsis_id_idx").on(t.gsisId),
     index("players_yahoo_id_idx").on(t.yahooId),
   ],
 );
