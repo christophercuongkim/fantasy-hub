@@ -1,8 +1,36 @@
 "use server";
 
-import { sql } from "drizzle-orm";
+import { ilike, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/db";
+import { players as playersTable } from "@/db/schema";
+
+export type PlayerHit = {
+  id: string;
+  full_name: string;
+  position: string;
+  team: string | null;
+  draft_year: number | null;
+};
+
+// Free-text player search for the manual assign box (when suggestions are wrong
+// or absent). Matches on full name.
+export async function searchPlayers(q: string): Promise<PlayerHit[]> {
+  const query = q.trim();
+  if (query.length < 2) return [];
+  const db = getDb();
+  return db
+    .select({
+      id: playersTable.id,
+      full_name: playersTable.fullName,
+      position: playersTable.position,
+      team: playersTable.team,
+      draft_year: playersTable.draftYear,
+    })
+    .from(playersTable)
+    .where(ilike(playersTable.fullName, `%${query}%`))
+    .limit(8);
+}
 
 // Confirm a candidate: link every draft pick with this name to the player and
 // mark the crosswalk entry human-verified (method=manual, preserved on re-runs).
