@@ -218,8 +218,15 @@ def classify(name: str, by_norm: dict[str, list[str]], norms: list[str]) -> dict
             "confidence": 1.0,
             "candidates": None,
         }
-    # fuzzy only when there's no exact hit; an exact dup (2 players) needs a human
-    top = process.extract(norm, norms, scorer=fuzz.WRatio, limit=3) if not exact else []
+    if len(exact) > 1:  # same name, multiple players — surface them to pick
+        return {
+            "action": "review",
+            "candidates": [
+                {"player_id": pid, "name": norm, "score": 100.0} for pid in exact
+            ],
+        }
+    # no exact hit -> fuzzy candidates
+    top = process.extract(norm, norms, scorer=fuzz.WRatio, limit=3)
     cands = [
         {"player_id": by_norm[m][0], "name": m, "score": round(s, 1)}
         for m, s, _ in top
@@ -235,7 +242,7 @@ def classify(name: str, by_norm: dict[str, list[str]], norms: list[str]) -> dict
             "confidence": round(best[1] / 100, 3),
             "candidates": cands,
         }
-    if cands or len(exact) > 1:
+    if cands:
         return {"action": "review", "candidates": cands}
     return {"action": "unmatched"}
 
