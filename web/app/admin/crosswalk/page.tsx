@@ -1,6 +1,6 @@
 import { inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { players as playersTable } from "@/db/schema";
+import { draftPicks, players as playersTable } from "@/db/schema";
 import { confirmMatch, dismiss, runCrosswalk } from "./actions";
 import { RunButton } from "./RunButton";
 
@@ -14,6 +14,8 @@ type Player = {
   full_name: string;
   position: string;
   team: string | null;
+  draft_year: number | null;
+  status: string | null;
 };
 
 export default async function CrosswalkAdmin() {
@@ -37,11 +39,34 @@ export default async function CrosswalkAdmin() {
           full_name: playersTable.fullName,
           position: playersTable.position,
           team: playersTable.team,
+          draft_year: playersTable.draftYear,
+          status: playersTable.status,
         })
         .from(playersTable)
         .where(inArray(playersTable.id, candIds))
     : [];
   const pById = new Map(players.map((p) => [p.id, p]));
+
+  // Which league seasons each name was drafted in — dates the pick to help
+  // disambiguate same-name players.
+  const names = queue.map((r) => r.source_id);
+  const ctxRows = names.length
+    ? await db
+        .select({
+          name: draftPicks.playerName,
+          season: draftPicks.season,
+          round: draftPicks.round,
+        })
+        .from(draftPicks)
+        .where(inArray(draftPicks.playerName, names))
+    : [];
+  const draftedBy = new Map<string, { season: number; round: number }[]>();
+  for (const c of ctxRows) {
+    if (!c.name) continue;
+    const list = draftedBy.get(c.name) ?? [];
+    list.push({ season: c.season, round: c.round });
+    draftedBy.set(c.name, list);
+  }
 
   const [counts] = (await db.execute(sql`
     select count(*) filter (where player_id is not null) as resolved,
@@ -79,8 +104,29 @@ export default async function CrosswalkAdmin() {
               key={r.source_id}
               className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
             >
-              <div className="mb-2 flex items-center justify-between">
-                <span className="font-semibold">{r.source_id}</span>
+              <div className="mb-2 flex items-start justify-between">
+                <div>
+                  <span className="font-semibold">{r.source_id}</span>
+                  {(() => {
+                    const picks = draftedBy.get(r.source_id) ?? [];
+                    const seasons = [
+                      ...new Set(picks.map((p) => p.season)),
+                    ].sort();
+                    const rounds = [...new Set(picks.map((p) => p.round))].sort(
+                      (a, b) => a - b,
+                    );
+                    if (!seasons.length) return null;
+                    const rd =
+                      rounds.length > 1
+                        ? `R${rounds[0]}–${rounds[rounds.length - 1]}`
+                        : `R${rounds[0]}`;
+                    return (
+                      <span className="ml-2 text-xs text-neutral-400">
+                        drafted {seasons.join(", ")} · {rd}
+                      </span>
+                    );
+                  })()}
+                </div>
                 <form action={dismiss.bind(null, r.source_id)}>
                   <button className="text-xs text-neutral-400 hover:text-neutral-600 hover:underline">
                     no match
@@ -106,7 +152,18 @@ export default async function CrosswalkAdmin() {
                         </span>{" "}
                         <span className="text-neutral-500">
                           {p
-                            ? `${p.position}${p.team ? ` · ${p.team}` : ""}`
+                            ? [
+                                p.position,
+                                p.team ?? undefined,
+                                p.draft_year
+                                  ? `NFL '${String(p.draft_year).slice(2)}`
+                                  : undefined,
+                                p.status && p.status !== "ACT"
+                                  ? p.status
+                                  : undefined,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")
                             : ""}{" "}
                           · {c.score}%
                         </span>
