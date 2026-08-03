@@ -69,7 +69,10 @@ Everything below stays **service-scoped**. Don't hoist web's `AUTH_*` /
 
 **Env** (service-scoped only — `DATABASE_URL` + `APP_BASE_URL` come from shared):
 
-- [ ] `API_URL` = `http://api-qa:4001` ← internal name, NOT a domain
+- [ ] `API_URL` = `http://fantasyhub-api-qvnkhx:4001` ← qa-api's Dokploy service
+      name, NOT a domain. (prod-api is a *different* suffix, `-ovkt8f` — do not
+      use prod's here or qa-web writes hit prod.) Suffix is fixed for the app's
+      life; only changes if you delete + recreate the qa-api app.
 - [ ] `AUTH_SECRET` = ‹its own value›
 - [ ] `AUTH_GOOGLE_ID` = ‹same prod client›
 - [ ] `AUTH_GOOGLE_SECRET` = ‹same prod client›
