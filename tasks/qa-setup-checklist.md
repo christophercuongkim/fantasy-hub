@@ -135,17 +135,19 @@ service-scoped vars; leave `PARQUET_ROOT` **unset** (defaults to `/data`).
 ## Verify
 
 - [ ] `https://qa.chriskim.cloud` loads (public, no DB)
-- [ ] `https://qa.chriskim.cloud/hall_of_records` → **200 with data** ← DB smoke
-      check. A 500 = web-qa has no runtime `DATABASE_URL` (shared var not
-      referenced); a 200-but-empty = the `qa` Neon branch was cut from a parent
-      without the loaded data (reset it from the loaded parent).
+- [ ] `/hall_of_records` **signed-out → 302 → /login** (gated)
 - [ ] `curl .../api/auth/providers` → Google `callbackUrl` is
       `https://qa.chriskim.cloud/...`, **not** `https://<container-id>:4000/...`
       (confirms `AUTH_URL` took)
-- [ ] Google sign-in works; `/admin/crosswalk` loads signed-in, 302→login signed-out
+- [ ] Google sign-in works
+- [ ] **signed-in DB smoke check:** `/hall_of_records` → **200 with data**. A 500
+      = web-qa has no runtime `DATABASE_URL` (shared var not referenced); a
+      200-but-empty = the `qa` Neon branch was cut from a parent without the
+      loaded data (reset it from the loaded parent).
+- [ ] `/admin/crosswalk` loads signed-in, 302→login signed-out
 - [ ] `api-qa` not publicly reachable (no domain)
 
-> Note: `/api/health` is **gated** by the auth middleware (302→login) since it's
-> not in the public allowlist (`/`, `/login`, `/hall_of_records`, `/api/auth`).
-> Use `/hall_of_records` as the DB smoke check instead. (Whether health should be
-> public is a separate call — see the PR #34 review note.)
+> Note: only `/`, `/login`, `/api/auth` are public — `/hall_of_records` and
+> `/api/health` both 302→login signed-out. So the DB smoke check must be run
+> **signed in**; there's no public DB-backed page to curl. (Whether `/api/health`
+> should be public is a separate call — see the PR #34 review note.)
