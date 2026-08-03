@@ -53,6 +53,14 @@ overrides project on a name clash.
       decrypts it; **mismatch silently breaks Yahoo**
 - [ ] `APP_BASE_URL` = `https://qa.chriskim.cloud`
 
+> ⚠️ **Dokploy does NOT auto-inject project vars.** Defining them here is not
+> enough — **each service must reference each one** in its own env tab (below),
+> e.g. `DATABASE_URL=${{project.DATABASE_URL}}`. A service with no reference line
+> gets *nothing* → e.g. web-qa boots with no `DATABASE_URL` and every DB page
+> 500s while `/` and `/login` still work. For a solo setup, setting the values
+> directly per-service is a fine, simpler alternative. Verify from the container
+> logs/runtime env, not this project tab.
+
 Everything below stays **service-scoped**. Don't hoist web's `AUTH_*` /
 `ADMIN_EMAILS` secrets to the shared layer (api has no auth — least privilege).
 
@@ -67,17 +75,27 @@ Everything below stays **service-scoped**. Don't hoist web's `AUTH_*` /
 - [ ] Port: `4000`
 - [ ] Domain: `qa.chriskim.cloud`
 
-**Env** (service-scoped only — `DATABASE_URL` + `APP_BASE_URL` come from shared):
+**Env — reference the shared vars** (not auto-injected):
+
+- [ ] `DATABASE_URL` = `${{project.DATABASE_URL}}`
+- [ ] `TOKEN_ENC_KEY` = `${{project.TOKEN_ENC_KEY}}`
+- [ ] `APP_BASE_URL` = `${{project.APP_BASE_URL}}`
+
+**Env — service-scoped:**
 
 - [ ] `API_URL` = `http://fantasyhub-api-qvnkhx:4001` ← qa-api's Dokploy service
       name, NOT a domain. (prod-api is a *different* suffix, `-ovkt8f` — do not
       use prod's here or qa-web writes hit prod.) Suffix is fixed for the app's
       life; only changes if you delete + recreate the qa-api app.
+- [ ] `AUTH_URL` = `https://qa.chriskim.cloud` ← **required.** Auth.js only reads
+      `AUTH_URL`; without it, behind Traefik it builds the Google `redirect_uri`
+      from the internal container host and sign-in dies at
+      `/api/auth/error?error=Configuration`. Per-env (prod needs its own on
+      merge). Can't be set from code — next-auth reads it at import.
 - [ ] `AUTH_SECRET` = ‹its own value›
 - [ ] `AUTH_GOOGLE_ID` = ‹same prod client›
 - [ ] `AUTH_GOOGLE_SECRET` = ‹same prod client›
 - [ ] `ADMIN_EMAILS` = `christopher.cuong.kim@gmail.com`
-- [ ] `AUTH_TRUST_HOST` = `true`
 
 - [ ] Copy its deploy webhook → GitHub secret `DOKPLOY_WEB_QA_WEBHOOK`
 
@@ -96,8 +114,12 @@ Same Dokploy **project/network** as web-qa. **No domain.**
 - [ ] Port: `4001`
 - [ ] Domain: **none**
 
-**Env:** none service-scoped — api-qa inherits only the shared vars (mirror prod,
-which sets no api-only env). Leave `PARQUET_ROOT` **unset** (defaults to `/data`).
+**Env — reference the shared vars** (same trap: not auto-injected). No api-only
+service-scoped vars; leave `PARQUET_ROOT` **unset** (defaults to `/data`).
+
+- [ ] `DATABASE_URL` = `${{project.DATABASE_URL}}`
+- [ ] `TOKEN_ENC_KEY` = `${{project.TOKEN_ENC_KEY}}`
+- [ ] `APP_BASE_URL` = `${{project.APP_BASE_URL}}`
 
 - [ ] Copy its deploy webhook → GitHub secret `DOKPLOY_API_QA_WEBHOOK`
 
@@ -112,6 +134,18 @@ which sets no api-only env). Leave `PARQUET_ROOT` **unset** (defaults to `/data`
 
 ## Verify
 
-- [ ] `https://qa.chriskim.cloud` loads
-- [ ] `https://qa.chriskim.cloud/api/health` → all `ok` (web + api + postgres)
-- [ ] Google sign-in works; admin pages gated to `ADMIN_EMAILS`
+- [ ] `https://qa.chriskim.cloud` loads (public, no DB)
+- [ ] `https://qa.chriskim.cloud/hall_of_records` → **200 with data** ← DB smoke
+      check. A 500 = web-qa has no runtime `DATABASE_URL` (shared var not
+      referenced); a 200-but-empty = the `qa` Neon branch was cut from a parent
+      without the loaded data (reset it from the loaded parent).
+- [ ] `curl .../api/auth/providers` → Google `callbackUrl` is
+      `https://qa.chriskim.cloud/...`, **not** `https://<container-id>:4000/...`
+      (confirms `AUTH_URL` took)
+- [ ] Google sign-in works; `/admin/crosswalk` loads signed-in, 302→login signed-out
+- [ ] `api-qa` not publicly reachable (no domain)
+
+> Note: `/api/health` is **gated** by the auth middleware (302→login) since it's
+> not in the public allowlist (`/`, `/login`, `/hall_of_records`, `/api/auth`).
+> Use `/hall_of_records` as the DB smoke check instead. (Whether health should be
+> public is a separate call — see the PR #34 review note.)

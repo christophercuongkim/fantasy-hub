@@ -55,8 +55,7 @@ that branch pointed at whatever you're testing — see §4), in the **same Dokpl
 project/network** so the internal hostname resolves.
 
 **Shared (project/environment level)** — vars that must be *identical* in both
-apps. Set once at the QA project/environment level (pick one level) and reference
-per service with `${{project.VAR}}`; don't copy-paste, or they drift:
+apps. Define once at the QA project/environment level:
 
 ```
 DATABASE_URL  = ‹qa-DATABASE_URL›     # both apps, same Postgres — byte-identical
@@ -65,16 +64,38 @@ TOKEN_ENC_KEY = ‹its own value›       # web encrypts the Yahoo token, api de
 APP_BASE_URL  = https://qa.chriskim.cloud
 ```
 
-**web-qa** — domain `qa.chriskim.cloud`, port `4000` (service-scoped env):
+> ⚠️ **Dokploy does not auto-inject project vars into services.** Defining them
+> above is not enough — **each service must reference each one** in its own env
+> tab: `DATABASE_URL=${{project.DATABASE_URL}}` (and the same for `TOKEN_ENC_KEY`,
+> `APP_BASE_URL`). A service with no reference line gets *nothing* → web-qa boots
+> with no `DATABASE_URL` and every DB page 500s while `/`/`/login` still work.
+> Verify from the container logs/runtime env, not the project tab. (Solo-setup
+> alternative: skip project level and set the values directly per service.)
+
+**web-qa** — domain `qa.chriskim.cloud`, port `4000`:
 
 ```
+# reference the shared vars (not auto-injected):
+DATABASE_URL    = ${{project.DATABASE_URL}}
+TOKEN_ENC_KEY   = ${{project.TOKEN_ENC_KEY}}
+APP_BASE_URL    = ${{project.APP_BASE_URL}}
+# service-scoped:
 API_URL         = http://fantasyhub-api-qvnkhx:4001   # qa-api's Dokploy service name, NOT a domain
+AUTH_URL        = https://qa.chriskim.cloud   # REQUIRED — see note; per-env, prod needs its own
 AUTH_SECRET     = ‹its own value, may differ from prod›
 AUTH_GOOGLE_ID  = ‹same prod client›
 AUTH_GOOGLE_SECRET = ‹same prod client›
 ADMIN_EMAILS    = christopher.cuong.kim@gmail.com
-AUTH_TRUST_HOST = true
 ```
+
+> **`AUTH_URL` is required behind Traefik.** Auth.js only reads `AUTH_URL`; without
+> it, it builds the Google `redirect_uri` from the internal container host
+> (`https://<container-id>:4000/...`) and sign-in dies at
+> `/api/auth/error?error=Configuration`. It must be a real env var (next-auth
+> reads it at import — can't be set from code), and it's **per-deployment** (prod
+> needs `https://fantasy.chriskim.cloud` on merge). `auth.ts` also sets
+> `trustHost: true` (accepts the proxied host); the two work together. Confirm
+> with `curl .../api/auth/providers` → Google `callbackUrl` is the public host.
 
 > `API_URL` uses qa-api's Dokploy service name (`fantasyhub-api-qvnkhx`), taken
 > from the **qa** api app's General tab — **not** prod-api (`fantasyhub-api-ovkt8f`).
@@ -83,9 +104,14 @@ AUTH_TRUST_HOST = true
 > for the app's life; it changes only if you delete + recreate the qa-api app, in
 > which case update this one (service-scoped) value.
 
-**api-qa** — **no domain**, port `4001`. **No service-scoped env** — it inherits
-only the shared vars (§2.4 shared block). Mirrors prod, which sets no api-only
-env either.
+**api-qa** — **no domain**, port `4001`. No api-only service-scoped vars, but it
+still must **reference** the shared vars (same not-auto-injected trap):
+
+```
+DATABASE_URL  = ${{project.DATABASE_URL}}
+TOKEN_ENC_KEY = ${{project.TOKEN_ENC_KEY}}
+APP_BASE_URL  = ${{project.APP_BASE_URL}}
+```
 
 Don't hoist web's `AUTH_*` / `ADMIN_EMAILS` to the shared layer — api has no auth
 (least privilege). Service-level env overrides project-level on a name clash.
