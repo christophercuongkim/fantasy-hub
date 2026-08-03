@@ -68,7 +68,7 @@ APP_BASE_URL  = https://qa.chriskim.cloud
 **web-qa** — domain `qa.chriskim.cloud`, port `4000` (service-scoped env):
 
 ```
-API_URL         = http://api-qa:4001          # internal service name, NOT a domain
+API_URL         = http://fantasyhub-api-qvnkhx:4001   # qa-api's Dokploy service name, NOT a domain
 AUTH_SECRET     = ‹its own value, may differ from prod›
 AUTH_GOOGLE_ID  = ‹same prod client›
 AUTH_GOOGLE_SECRET = ‹same prod client›
@@ -76,9 +76,12 @@ ADMIN_EMAILS    = christopher.cuong.kim@gmail.com
 AUTH_TRUST_HOST = true
 ```
 
-> `api-qa` in `API_URL` must match api-qa's actual service name on the Dokploy
-> network — confirm it in the api-qa app settings and adjust if Dokploy names it
-> differently.
+> `API_URL` uses qa-api's Dokploy service name (`fantasyhub-api-qvnkhx`), taken
+> from the **qa** api app's General tab — **not** prod-api (`fantasyhub-api-ovkt8f`).
+> Both apps share the `dokploy-network` overlay and resolve network-wide, so the
+> unique suffix is the only thing keeping qa-web off prod-api. The suffix is fixed
+> for the app's life; it changes only if you delete + recreate the qa-api app, in
+> which case update this one (service-scoped) value.
 
 **api-qa** — **no domain**, port `4001`, volume (§2.5), service-scoped env:
 
