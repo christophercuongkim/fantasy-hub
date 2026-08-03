@@ -12,19 +12,15 @@ export function isAdmin(email?: string | null): boolean {
   return !!email && admins.includes(email.toLowerCase());
 }
 
-// Pin the public origin for Auth.js from our existing APP_BASE_URL. Behind
-// Traefik (TLS terminated at the proxy) Auth.js otherwise builds callback +
-// redirect URLs from the internal container host (https://<container-id>:4000),
-// which the browser can't resolve — the OAuth flow dies at
-// /api/auth/error?error=Configuration. Auth.js only reads AUTH_URL, so bridge
-// our one origin var to it rather than duplicating the value. trustHost lets it
-// accept the proxied request host. Same class as the Yahoo req.url redirect bug
-// (tasks/lessons.md): never derive external URLs from the internal request.
-if (process.env.APP_BASE_URL && !process.env.AUTH_URL) {
-  process.env.AUTH_URL = process.env.APP_BASE_URL;
-}
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Behind Traefik (TLS terminated at the proxy) Auth.js otherwise builds
+  // callback + redirect URLs from the internal container host
+  // (https://<container-id>:4000), which the browser can't resolve — the OAuth
+  // flow dies at /api/auth/error?error=Configuration. trustHost lets it accept
+  // the proxied request host; the public origin is pinned by the AUTH_URL env
+  // var (must be set per deployment — mutating process.env here is too late,
+  // next-auth reads AUTH_URL at import, before this module body runs). Same
+  // class as the Yahoo req.url redirect bug (tasks/lessons.md).
   trustHost: true,
   providers: [Google],
   pages: { signIn: "/login" },
