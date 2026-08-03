@@ -625,6 +625,14 @@ networks:
 
 ### 14.2 Bind-mount the Parquet volume
 
+> **Status:** not yet set up on prod, and not needed until Phase 2. `PARQUET_ROOT`
+> is currently **unset** (defaults to `/data`, ephemeral in-container). Nothing
+> reads the parquet cache yet — the api has no read endpoint serving weekly/team/
+> dvp, only `/health` + `/jobs/*`, and `ensure_layout()` makes empty dirs so
+> `/health` passes with zero data. When the projections/analytics read-path lands
+> and prod ingests parquet, do the mount below **or lose the cache on every
+> redeploy**. Same applies to QA (`docs/11-qa-environment.md` §2.5).
+
 Use an absolute host path (`/srv/fantasy:/data`), not a named Docker volume.
 
 **Why:** if you ever delete and recreate the application in Dokploy, named volumes can go with it. Re-downloading six seasons of play-by-play is a slow afternoon. A host path survives anything you do in the Dokploy UI.
