@@ -657,6 +657,24 @@ PARQUET_ROOT=/data
 
 The Yahoo **refresh token** is obtained at runtime, so store it in Postgres rather than an env var — it needs to survive redeploys and be rotatable without one.
 
+**Shared vs service-scoped env.** When web and api run as separate Dokploy apps
+(prod today and QA), a few vars must hold the *same* value in both — put those at
+**project/environment level** (a single source of truth) and reference them per
+service with `${{project.VAR}}`, rather than copy-pasting into each app where they
+can silently drift:
+
+| Var | Shared because |
+|-----|----------------|
+| `DATABASE_URL` | web and api hit the same Postgres — must be byte-identical |
+| `TOKEN_ENC_KEY` | web **encrypts** the Yahoo token on the OAuth callback; api **decrypts** it to call Yahoo. Mismatch silently breaks Yahoo — no error, just failed decrypts. |
+| `APP_BASE_URL` | both build the same OAuth redirect / absolute URLs |
+
+Everything else stays **service-scoped** — don't hoist single-service secrets to
+the shared layer (least privilege). api has no auth, so the `AUTH_*` /
+`ADMIN_EMAILS` secrets belong to web only; `PARQUET_ROOT` / mount paths belong to
+api only. Service-level env overrides project-level on a name clash. See
+`docs/11-qa-environment.md` for the concrete QA split.
+
 ### 14.5 Scheduled jobs
 
 Use Dokploy's built-in Schedules rather than host cron or systemd timers. They run inside the container and survive redeploys.
