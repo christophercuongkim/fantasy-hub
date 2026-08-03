@@ -1,0 +1,99 @@
+name: deploy-qa
+
+# Deploy any branch to the stable QA environment (qa.chriskim.cloud). The QA
+# Dokploy apps build from the `qa` branch, so "deploy branch X" = force-point
+# `qa` at X, then trigger the QA webhooks. Manual only — run it from the Actions
+# tab (or GitHub mobile). See docs/11-qa-environment.md.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to deploy to QA
+        type: string
+        default: main
+      service:
+        description: Which service to deploy
+        type: choice
+        options: [both, web, api]
+        default: both
+
+# One QA deploy at a time; a newer run supersedes an in-flight one.
+concurrency:
+  group: deploy-qa
+  cancel-in-progress: true
+
+permissions:
+  contents: write # force-push the chosen branch to `qa`
+
+jobs:
+  # Migrate the QA DB to the chosen branch's schema, THEN repoint `qa` at that
+  # branch. Schema goes forward before the new code deploys onto it. If migrate
+  # fails we never repoint or deploy, so QA is left on the last good state.
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0 # full history so the force-push to `qa` isn't shallow
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+
+      - name: Apply migrations to the QA database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_QA }}
+        run: pnpm db:migrate
+        working-directory: web
+
+      - name: Point `qa` at ${{ inputs.branch }}
+        run: git push --force origin HEAD:refs/heads/qa
+
+  # Trigger the QA Dokploy webhooks (same shape as the prod deploy: push event +
+  # a ref matching the app's tracked branch, `qa`). Split per service so `service`
+  # can deploy just one.
+  deploy-web:
+    needs: prepare
+    if: inputs.service == 'both' || inputs.service == 'web'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Join tailnet
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Trigger Dokploy web-qa deploy
+        run: |
+          curl --fail --show-error -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{"ref":"refs/heads/qa"}' \
+            "${{ secrets.DOKPLOY_WEB_QA_WEBHOOK }}"
+
+  deploy-api:
+    needs: prepare
+    if: inputs.service == 'both' || inputs.service == 'api'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Join tailnet
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Trigger Dokploy api-qa deploy
+        run: |
+          curl --fail --show-error -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -d '{"ref":"refs/heads/qa"}' \
+            "${{ secrets.DOKPLOY_API_QA_WEBHOOK }}"
