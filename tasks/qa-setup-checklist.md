@@ -41,6 +41,21 @@ Only these two actually gate the workflow code:
 
 ---
 
+## Dokploy — shared (project/environment) env
+
+Put vars that must be **identical** in both apps at the QA **project or
+environment level** (pick one level, not both), then reference per service with
+`${{project.VAR}}`. Single source of truth → no drift. Service-level env
+overrides project on a name clash.
+
+- [ ] `DATABASE_URL` = ‹qa branch› — both apps hit the same Postgres
+- [ ] `TOKEN_ENC_KEY` = ‹its own value› — web encrypts the Yahoo token, api
+      decrypts it; **mismatch silently breaks Yahoo**
+- [ ] `APP_BASE_URL` = `https://qa.chriskim.cloud`
+
+Everything below stays **service-scoped**. Don't hoist web's `AUTH_*` /
+`ADMIN_EMAILS` secrets to the shared layer (api has no auth — least privilege).
+
 ## Dokploy — web-qa app
 
 **Build tab** (clone prod-web; do NOT set a custom base dir — default = repo root):
@@ -52,16 +67,14 @@ Only these two actually gate the workflow code:
 - [ ] Port: `4000`
 - [ ] Domain: `qa.chriskim.cloud`
 
-**Env:**
+**Env** (service-scoped only — `DATABASE_URL` + `APP_BASE_URL` come from shared):
 
-- [ ] `DATABASE_URL` = ‹qa branch›
 - [ ] `API_URL` = `http://api-qa:4001` ← internal name, NOT a domain
 - [ ] `AUTH_SECRET` = ‹its own value›
 - [ ] `AUTH_GOOGLE_ID` = ‹same prod client›
 - [ ] `AUTH_GOOGLE_SECRET` = ‹same prod client›
 - [ ] `ADMIN_EMAILS` = `christopher.cuong.kim@gmail.com`
 - [ ] `AUTH_TRUST_HOST` = `true`
-- [ ] `APP_BASE_URL` = `https://qa.chriskim.cloud`
 
 - [ ] Copy its deploy webhook → GitHub secret `DOKPLOY_WEB_QA_WEBHOOK`
 
@@ -87,12 +100,9 @@ Same Dokploy **project/network** as web-qa. **No domain.**
 - [ ] Host Path: `/srv/fantasy-qa`
 - [ ] Mount Path: `/srv/fantasy-qa`
 
-**Env:**
+**Env** (service-scoped only — `DATABASE_URL`, `TOKEN_ENC_KEY`, `APP_BASE_URL` come from shared):
 
-- [ ] `DATABASE_URL` = ‹qa branch› (same as web-qa)
 - [ ] `PARQUET_ROOT` = `/srv/fantasy-qa`
-- [ ] `TOKEN_ENC_KEY` = ‹its own value›
-- [ ] `APP_BASE_URL` = `https://qa.chriskim.cloud`
 
 - [ ] Copy its deploy webhook → GitHub secret `DOKPLOY_API_QA_WEBHOOK`
 

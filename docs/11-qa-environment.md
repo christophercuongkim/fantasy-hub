@@ -54,31 +54,40 @@ Create two apps, **both building from branch `qa`** (the deploy workflow keeps
 that branch pointed at whatever you're testing — see §4), in the **same Dokploy
 project/network** so the internal hostname resolves.
 
-**web-qa** — domain `qa.chriskim.cloud`, port `4000`:
+**Shared (project/environment level)** — vars that must be *identical* in both
+apps. Set once at the QA project/environment level (pick one level) and reference
+per service with `${{project.VAR}}`; don't copy-paste, or they drift:
 
 ```
-DATABASE_URL    = ‹qa-DATABASE_URL›
+DATABASE_URL  = ‹qa-DATABASE_URL›     # both apps, same Postgres — byte-identical
+TOKEN_ENC_KEY = ‹its own value›       # web encrypts the Yahoo token, api decrypts;
+                                      # mismatch silently breaks Yahoo
+APP_BASE_URL  = https://qa.chriskim.cloud
+```
+
+**web-qa** — domain `qa.chriskim.cloud`, port `4000` (service-scoped env):
+
+```
 API_URL         = http://api-qa:4001          # internal service name, NOT a domain
 AUTH_SECRET     = ‹its own value, may differ from prod›
 AUTH_GOOGLE_ID  = ‹same prod client›
 AUTH_GOOGLE_SECRET = ‹same prod client›
 ADMIN_EMAILS    = christopher.cuong.kim@gmail.com
 AUTH_TRUST_HOST = true
-APP_BASE_URL    = https://qa.chriskim.cloud
 ```
 
 > `api-qa` in `API_URL` must match api-qa's actual service name on the Dokploy
 > network — confirm it in the api-qa app settings and adjust if Dokploy names it
 > differently.
 
-**api-qa** — **no domain**, port `4001`, volume (§2.5):
+**api-qa** — **no domain**, port `4001`, volume (§2.5), service-scoped env:
 
 ```
-DATABASE_URL  = ‹qa-DATABASE_URL›             # same branch as web-qa
 PARQUET_ROOT  = /srv/fantasy-qa
-TOKEN_ENC_KEY = ‹its own value›
-APP_BASE_URL  = https://qa.chriskim.cloud
 ```
+
+Don't hoist web's `AUTH_*` / `ADMIN_EMAILS` to the shared layer — api has no auth
+(least privilege). Service-level env overrides project-level on a name clash.
 
 ### 2.5 Parquet mount
 Prod bind-mounts parquet from a host directory (`/srv/fantasy` — see the
