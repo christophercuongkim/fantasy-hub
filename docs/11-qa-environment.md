@@ -83,43 +83,44 @@ AUTH_TRUST_HOST = true
 > for the app's life; it changes only if you delete + recreate the qa-api app, in
 > which case update this one (service-scoped) value.
 
-**api-qa** — **no domain**, port `4001`, volume (§2.5), service-scoped env:
-
-```
-PARQUET_ROOT  = /srv/fantasy-qa
-```
+**api-qa** — **no domain**, port `4001`. **No service-scoped env** — it inherits
+only the shared vars (§2.4 shared block). Mirrors prod, which sets no api-only
+env either.
 
 Don't hoist web's `AUTH_*` / `ADMIN_EMAILS` to the shared layer — api has no auth
 (least privilege). Service-level env overrides project-level on a name clash.
 
-### 2.5 Parquet mount
-Prod bind-mounts parquet from a host directory (`/srv/fantasy` — see the
-implementation plan §14). QA mirrors that with a **bind mount** to a *separate*
-host dir so it never touches prod data.
+### 2.5 Parquet mount — deferred to Phase 2 (not needed now)
+**Skip this for now — prod runs mountless and so should QA.**
 
-api-qa → Advanced → Mounts → Add Mount:
-- Mount Type: **Bind Mount**
-- Host Path: `/srv/fantasy-qa`
-- Mount Path (container): `/srv/fantasy-qa`
+`PARQUET_ROOT` is left **unset** in both prod and QA, so it falls back to the
+`config.py` default `/data` — an empty, ephemeral in-container dir. That's fine
+today because **nothing reads the parquet cache yet**: the api exposes only
+`/health`, `/yahoo/game`, and the `/jobs/*` compute endpoints — no read endpoint
+serves weekly/team/dvp to the web app. `ensure_layout()` mkdirs empty dirs on
+boot, so `/health` reports `parquet_root: ok` with zero data, and every current
+feature (hall-of-records from Postgres, crosswalk admin) works without parquet.
 
-Then `PARQUET_ROOT=/srv/fantasy-qa` (§2.4) points the app at it. Host path ==
-container path, same as prod, so runbook commands (`ls /srv/fantasy-qa/pbp/…`)
-work identically. Create the dir once over SSH if Dokploy doesn't:
-`sudo mkdir -p /srv/fantasy-qa`.
+**When Phase 2 (projections/analytics) lands** and a read endpoint actually
+serves parquet, **both prod and QA** will need a persistent mount + a real
+ingest — otherwise the cache vanishes on every redeploy (and QA redeploys
+constantly). At that point:
 
-Starts empty; `ensure_layout()` mkdirs the dataset dirs on boot so `/health`
-goes green before ingest. Fill it in §3.
+- api → Advanced → Mounts → Add **Bind Mount**: Host `/srv/fantasy-qa` → container
+  `/srv/fantasy-qa` (QA); prod gets its own `/srv/fantasy`. `sudo mkdir -p` the
+  host dir first.
+- Set `PARQUET_ROOT` to that path.
+- Seed it (§3).
+
+Until then, none of this is required.
 
 ---
 
-## 3. Seeding parquet
+## 3. Seeding parquet — deferred to Phase 2
 
-Parquet is a **re-derivable cache** of nflverse (public, free), not precious
-data — so regenerate it rather than copy. The `qa` Neon branch already holds the
-warm DB rows; only the cold parquet cache on the volume needs filling.
-
-Because api-qa has **no public URL**, run the seed from **inside the api-qa
-container** (Dokploy per-app web terminal):
+Not needed until the mount exists (§2.5) and a read endpoint consumes parquet.
+When that time comes, seed from **inside the api container** (no public URL) via
+the Dokploy per-app terminal:
 
 ```bash
 for s in $(seq 2014 2025); do
@@ -130,19 +131,9 @@ for s in $(seq 2014 2025); do
 done
 ```
 
-`ingest-season` downloads pbp/schedules/player_stats into
-`/srv/fantasy-qa/{dataset}/season=$s/`; `aggregate` DuckDB-derives weekly/team/dvp
-parquet from it. Both idempotent — safe to re-run. ~a few min/season.
-
-**Alternative — copy prod's parquet** (only if a fresh ingest is too slow). Both
-are host bind-mount dirs (§2.5), so it's a plain copy over SSH:
-
-```bash
-sudo cp -a /srv/fantasy/. /srv/fantasy-qa/
-```
-
-Re-ingest is preferred: self-contained, touches nothing prod, and exercises the
-api's own ingest path (which is what QA is for).
+`ingest-season` downloads pbp/schedules/player_stats; `aggregate` DuckDB-derives
+weekly/team/dvp. Both idempotent. Alternatively copy prod's dir once it exists:
+`sudo cp -a /srv/fantasy/. /srv/fantasy-qa/`.
 
 ---
 

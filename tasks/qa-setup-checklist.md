@@ -96,37 +96,17 @@ Same Dokploy **project/network** as web-qa. **No domain.**
 - [ ] Port: `4001`
 - [ ] Domain: **none**
 
-**Bind mount** (Advanced → Mounts → Add Mount):
-
-- [ ] `sudo mkdir -p /srv/fantasy-qa` on the VPS first
-- [ ] Mount Type: **Bind Mount**
-- [ ] Host Path: `/srv/fantasy-qa`
-- [ ] Mount Path: `/srv/fantasy-qa`
-
-**Env** (service-scoped only — `DATABASE_URL`, `TOKEN_ENC_KEY`, `APP_BASE_URL` come from shared):
-
-- [ ] `PARQUET_ROOT` = `/srv/fantasy-qa`
+**Env:** none service-scoped — api-qa inherits only the shared vars (mirror prod,
+which sets no api-only env). Leave `PARQUET_ROOT` **unset** (defaults to `/data`).
 
 - [ ] Copy its deploy webhook → GitHub secret `DOKPLOY_API_QA_WEBHOOK`
 
----
-
-## Seed parquet (after api-qa is up)
-
-The `qa` Neon branch already holds all DB rows (it's a branch of main) — do NOT
-re-run `/jobs/crosswalk`. Only the parquet cache needs filling. api-qa has no
-public URL, so run from **api-qa's Dokploy web terminal**:
-
-- [ ] Ingest + aggregate all seasons:
-  ```bash
-  for s in $(seq 2014 2025); do
-    curl -fsS -X POST http://localhost:4001/jobs/ingest-season \
-      -H 'Content-Type: application/json' -d "{\"season\": $s}"
-    curl -fsS -X POST http://localhost:4001/jobs/aggregate \
-      -H 'Content-Type: application/json' -d "{\"season\": $s}"
-  done
-  ```
-- [ ] (fallback if ingest too slow) copy prod parquet: `sudo cp -a /srv/fantasy/. /srv/fantasy-qa/`
+> **No bind mount, no parquet seeding — deferred to Phase 2.** Prod runs mountless
+> and nothing reads the parquet cache yet (`ensure_layout()` makes empty dirs →
+> `/health` ok; current features are all Postgres-backed). Add a persistent mount
+> (`/srv/fantasy-qa`) + ingest for **both prod and QA** when the
+> projections/analytics read-path lands. Detail in `docs/11-qa-environment.md`
+> §2.5/§3.
 
 ---
 
