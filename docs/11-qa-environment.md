@@ -80,10 +80,20 @@ TOKEN_ENC_KEY = ‹its own value›
 APP_BASE_URL  = https://qa.chriskim.cloud
 ```
 
-### 2.5 Parquet volume
-api-qa → Advanced → Volumes → Add:
-- Type **Volume** (named, persists across redeploys), name `fantasy-qa`
-- Mount path `/srv/fantasy-qa`
+### 2.5 Parquet mount
+Prod bind-mounts parquet from a host directory (`/srv/fantasy` — see the
+implementation plan §14). QA mirrors that with a **bind mount** to a *separate*
+host dir so it never touches prod data.
+
+api-qa → Advanced → Mounts → Add Mount:
+- Mount Type: **Bind Mount**
+- Host Path: `/srv/fantasy-qa`
+- Mount Path (container): `/srv/fantasy-qa`
+
+Then `PARQUET_ROOT=/srv/fantasy-qa` (§2.4) points the app at it. Host path ==
+container path, same as prod, so runbook commands (`ls /srv/fantasy-qa/pbp/…`)
+work identically. Create the dir once over SSH if Dokploy doesn't:
+`sudo mkdir -p /srv/fantasy-qa`.
 
 Starts empty; `ensure_layout()` mkdirs the dataset dirs on boot so `/health`
 goes green before ingest. Fill it in §3.
@@ -112,13 +122,11 @@ done
 `/srv/fantasy-qa/{dataset}/season=$s/`; `aggregate` DuckDB-derives weekly/team/dvp
 parquet from it. Both idempotent — safe to re-run. ~a few min/season.
 
-**Alternative — copy prod's volume** (only if a fresh ingest is too slow). SSH
-the VPS; both are Docker named volumes:
+**Alternative — copy prod's parquet** (only if a fresh ingest is too slow). Both
+are host bind-mount dirs (§2.5), so it's a plain copy over SSH:
 
 ```bash
-docker volume ls | grep fantasy        # confirm prod's volume name first
-sudo cp -a /var/lib/docker/volumes/<prod-fantasy-vol>/_data/. \
-           /var/lib/docker/volumes/fantasy-qa/_data/
+sudo cp -a /srv/fantasy/. /srv/fantasy-qa/
 ```
 
 Re-ingest is preferred: self-contained, touches nothing prod, and exercises the
