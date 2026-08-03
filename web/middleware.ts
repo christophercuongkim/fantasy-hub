@@ -1,14 +1,13 @@
 import { auth, isAdmin } from "@/auth";
 
-// Public: landing, login, the shareable hall of records, the NextAuth endpoints.
-// Everything else requires sign-in (any Google account). /admin/* additionally
-// requires an admin (ADMIN_EMAILS) — non-admins bounce to the landing.
+// Public: only the landing, login, and the NextAuth endpoints. Everything else —
+// including the hall of records — requires sign-in (any Google account). /admin/*
+// additionally requires an admin (ADMIN_EMAILS) — non-admins bounce to the landing.
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isPublic =
     pathname === "/" ||
     pathname === "/login" ||
-    pathname.startsWith("/hall_of_records") ||
     pathname.startsWith("/api/auth");
   if (isPublic) return;
 

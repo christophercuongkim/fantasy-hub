@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { auth, isAdmin } from "@/auth";
 
-// Public landing. The Hall of Records is the shareable page; everything else is
-// admin-only (see middleware).
+// Public landing — the only page you can see signed out. Everything else,
+// including the Hall of Records, requires sign-in; /admin is admin-only (see
+// middleware). So the in-app links show only once there's a session.
 export default async function Home() {
   const session = await auth();
   return (
@@ -12,12 +13,14 @@ export default async function Home() {
         <p className="mt-2 text-neutral-500">Personal NFL fantasy analytics.</p>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Link
-          href="/hall_of_records"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
-        >
-          League Hall of Records →
-        </Link>
+        {session && (
+          <Link
+            href="/hall_of_records"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+          >
+            League Hall of Records →
+          </Link>
+        )}
         {isAdmin(session?.user?.email) && (
           <Link
             href="/admin/crosswalk"
