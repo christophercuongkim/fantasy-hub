@@ -166,15 +166,23 @@ weekly/team/dvp. Both idempotent. Alternatively copy prod's dir once it exists:
 ## 4. Deploying a branch to QA
 
 QA apps build from a fixed branch `qa`. To put branch X on QA, `qa` is
-force-updated to X, then the QA webhooks fire. This is automated by
-`.github/workflows/deploy-qa.yml` (`workflow_dispatch`):
+force-updated to X, then the QA webhooks fire. `.github/workflows/deploy-qa.yml`
+does this on two triggers:
 
-- Inputs: `branch` (default `main`), `service` (`both|web|api`, default `both`).
-- Runnable from **GitHub mobile** → Actions → deploy-qa → Run workflow → pick a
-  branch → Run. Minutes later, test on your phone.
-- Steps: checkout → `drizzle-kit migrate` against QA DB (schema forward first) →
-  force-push chosen branch to `qa` → join tailnet → curl the QA deploy
-  webhook(s).
+- **Auto — on a PR.** Opening or pushing to a PR that touches `web/**` or `api/**`
+  deploys that PR's branch to QA (`pull_request`: opened/synchronize/reopened).
+  Doc-only PRs don't trigger it.
+- **Manual — `workflow_dispatch`.** Inputs `branch` (default `main`) + `service`
+  (`both|web|api`). The override for deploying `main`, a branch with no open PR,
+  or forcing a redeploy. Runnable from **GitHub mobile** → Actions → deploy-qa.
+
+Steps: checkout the branch → `drizzle-kit migrate` against QA DB (schema forward
+first) → force-push it to `qa` → join tailnet → curl the QA webhook(s).
+
+**QA is a single shared slot** (one `qa` pointer + one DB). The `deploy-qa`
+concurrency group serialises deploys, newest wins — so with two PRs open at once,
+whichever deployed last is what's live. Fine for serial, one-PR-at-a-time work;
+if you need two live previews at once, that's a per-PR-subdomain design, not this.
 
 The `qa` branch is a throwaway deploy pointer — force-pushed, never merged,
 never reviewed.
