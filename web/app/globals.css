@@ -2,26 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Chart palette (dataviz skill). Structural colors flip with the theme; the
-   data-color scales are chosen per-theme in JS (see charts.tsx). */
-:root {
-  --sl-surface: #fcfcfb;
-  --sl-ink: #0b0b0b;
-  --sl-muted: #898781;
-  --sl-grid: #e1e0d9;
-  --sl-accent: #2a78d6;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --sl-surface: #1a1a19;
-    --sl-ink: #ffffff;
-    --sl-muted: #898781;
-    --sl-grid: #2c2c2a;
-    --sl-accent: #3987e5;
-  }
-}
-
-/* Chart entrance animations. Respect reduced-motion. */
+/* Chart entrance animations. Respect reduced-motion. The charts' colors now come
+   from the design-system tokens (see charts.tsx); only the motion lives here. */
 @keyframes sl-draw {
   from {
     stroke-dashoffset: var(--sl-len, 1000);
