@@ -1,0 +1,10 @@
+/* Typefaces — all three are Google Fonts (no licensed binaries were supplied).
+   Outfit        display / headings  — wide geometric, high contrast at large sizes
+   Plus Jakarta Sans  UI + body      — geometric skeleton, humanist apertures, reads well at 13px
+   IBM Plex Mono  data / labels      — prices, scores, stat tables, eyebrow labels */
+
+:root {
+  --font-display: "Outfit", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}

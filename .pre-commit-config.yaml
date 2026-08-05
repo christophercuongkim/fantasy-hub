@@ -12,9 +12,9 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: ^(web/pnpm-lock\.yaml|api/uv\.lock|web/drizzle/)
+        exclude: ^(web/pnpm-lock\.yaml|api/uv\.lock|web/drizzle/|web/vendor/)
       - id: end-of-file-fixer
-        exclude: ^(web/pnpm-lock\.yaml|api/uv\.lock|web/drizzle/)
+        exclude: ^(web/pnpm-lock\.yaml|api/uv\.lock|web/drizzle/|web/vendor/)
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: check-yaml

@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@phosphor-icons/web':
+        specifier: ^2.1.2
+        version: 2.1.2
       d3:
         specifier: ^7.9.0
         version: 7.9.0
@@ -830,6 +833,9 @@ packages:
 
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
+
+  '@phosphor-icons/web@2.1.2':
+    resolution: {integrity: sha512-rPAR9o/bEcp4Cw4DEeZHXf+nlGCMNGkNDRizYHM47NLxz9vvEHp/Tt6FMK1NcWadzw/pFDPnRBGi/ofRya958A==}
 
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
@@ -3230,6 +3236,8 @@ snapshots:
   '@nolyfill/is-core-module@1.0.39': {}
 
   '@panva/hkdf@1.2.1': {}
+
+  '@phosphor-icons/web@2.1.2': {}
 
   '@rtsao/scc@1.1.0': {}
 
