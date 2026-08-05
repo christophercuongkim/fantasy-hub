@@ -1,0 +1,28 @@
+<!-- @dsCard group="Colors" viewport="700x190" subtitle="Three text weights, three border intents. Accent text only for links and data highlights." name="Text + border tokens" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Text + border tokens</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div class="row" style="gap:var(--space-11)">
+  <div class="col" style="gap:10px">
+    <div style="font:var(--type-body-sm);color:var(--text-primary)">Primary — headings, values <span class="tok" style="margin-left:8px">--text-primary</span></div><div style="font:var(--type-body-sm);color:var(--text-secondary)">Secondary — labels, supporting <span class="tok" style="margin-left:8px">--text-secondary</span></div><div style="font:var(--type-body-sm);color:var(--text-tertiary)">Tertiary — meta, placeholders <span class="tok" style="margin-left:8px">--text-tertiary</span></div><div style="font:var(--type-body-sm);color:var(--text-accent)">Accent — links, highlights <span class="tok" style="margin-left:8px">--text-accent</span></div>
+  </div>
+  <div class="col" style="gap:10px;min-width:220px">
+    <div class="row" style="align-items:center;gap:10px"><div style="width:90px;height:0;border-top:1px solid var(--border-subtle)"></div><span class="tok">structure</span></div><div class="row" style="align-items:center;gap:10px"><div style="width:90px;height:0;border-top:1px solid var(--border-default)"></div><span class="tok">interactive</span></div><div class="row" style="align-items:center;gap:10px"><div style="width:90px;height:0;border-top:1px solid var(--border-strong)"></div><span class="tok">hover</span></div><div class="row" style="align-items:center;gap:10px"><div style="width:90px;height:0;border-top:1px solid var(--border-accent)"></div><span class="tok">selected</span></div>
+  </div>
+</div>
+</body>
+</html>

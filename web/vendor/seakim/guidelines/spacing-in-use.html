@@ -1,0 +1,33 @@
+<!-- @dsCard group="Spacing" viewport="700x210" subtitle="A real card: 16px pad, 12px stack, 6px label gap, 1px rules. Density 7/10." name="Spacing in use" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spacing in use</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div style="max-width:340px;background:var(--surface-card);border:1px solid var(--border-subtle);padding:var(--space-6)">
+  <div class="col" style="gap:var(--space-5)">
+    <div class="col" style="gap:var(--space-3)">
+      <span style="font:var(--type-eyebrow);letter-spacing:var(--tracking-caps);color:var(--text-tertiary)">NONSTOP · TAP AIR</span>
+      <span style="font:var(--type-heading)">Lisbon → Faro</span>
+    </div>
+    <div style="height:1px;background:var(--border-subtle)"></div>
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <span style="font:var(--type-data);font-variant-numeric:tabular-nums">07:45 → 08:40</span>
+      <span style="font-family:var(--font-mono);font-size:var(--text-lg);font-weight:600">$412</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

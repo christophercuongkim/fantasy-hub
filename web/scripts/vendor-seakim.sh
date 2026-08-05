@@ -21,9 +21,14 @@ if [[ ! -f "$src/package.json" ]]; then
   exit 1
 fi
 
-# The published surface (package.json "files"), minus the parts an app never
-# imports (spec/, conformance.md live in the source repo for reference only).
-surface=(index.js index.d.ts styles.css components tokens ui_kits/shared)
+# What we vendor. The runtime surface (barrel, components, tokens, styles) plus
+# the governance surface — conformance.md, spec/, decisions/ (ADRs), guidelines/.
+# The DS's rules are Law for UI/colour decisions in this repo (see CLAUDE.md), so
+# they ride along version-pinned instead of living only in the source repo.
+surface=(
+  index.js index.d.ts styles.css components tokens ui_kits/shared
+  conformance.md spec decisions guidelines
+)
 
 rm -rf "$dest"
 mkdir -p "$dest/ui_kits"

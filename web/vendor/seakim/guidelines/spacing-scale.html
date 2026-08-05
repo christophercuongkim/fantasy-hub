@@ -1,0 +1,59 @@
+<!-- @dsCard group="Spacing" viewport="700x170" subtitle="4px base. Dense UI composes from 6/8/12/16; sections breathe at 32/48/64." name="Spacing scale" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spacing scale</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div class="row" style="align-items:flex-end;gap:10px">
+
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-1);height:16px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">2</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-2);height:18px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">4</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-3);height:20px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">6</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-4);height:22px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">8</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-5);height:26px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">12</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-6);height:30px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">16</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-7);height:34px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">20</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-8);height:38px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">24</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-9);height:46px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">32</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-10);height:54px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">40</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-11);height:62px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">48</span></div>
+  <div class="col" style="gap:6px;align-items:center">
+    <div style="width:var(--space-12);height:76px;background:var(--fill-accent)"></div>
+    <span class="tok" style="font-size:9px">64</span></div>
+</div>
+</body>
+</html>

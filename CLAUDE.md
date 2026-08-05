@@ -26,6 +26,27 @@ Repo-specific rules. Layers on top of the global `~/CLAUDE.md`.
 - **Config + its CI enforcer land in the same PR.** Don't disable a tool default unless the replacement ships in the same PR.
 - **GitHub Actions writing to PRs** need explicit `permissions: pull-requests: write`.
 
+## Design system (binding)
+
+The UI is the **seakim design system**, vendored at `web/vendor/seakim` (bench
+theme, `data-app="bench"`). Its rules are **Law** for colour/component/layout
+decisions — not taste. Read the vendored source before overriding a default.
+
+- **`web/vendor/seakim/conformance.md` is binding.** One accent hue live at a
+  time; the shared layer is achromatic; **semantic tokens only** — never read raw
+  ramp steps (`--brand-*`).
+- **Charts** follow `web/vendor/seakim/guidelines/data-visualisation.md` *and* the
+  dataviz skill: 1–2 series = accent + `--text-tertiary`; 3–6 = the fixed
+  `--chart-1..6` categorical ramp (never the app accent); **6 is the ceiling**;
+  status colours are never series colours. No sequential ramp exists yet, so
+  magnitude reads as accent-at-opacity (see DS ADR `decisions/0015`, proposed).
+- Component contracts live in `spec/`; the *why* in `decisions/` (ADRs).
+- Import from the barrel `@seakim/design-system`; `var(--…)` tokens for layout.
+  Function-prop components (`Table`/`Slider`/`DatePicker`) need a `"use client"`
+  wrapper. Tailwind is being removed page-by-page (`preflight:false` meanwhile).
+- Re-vendor on a DS version bump with `web/scripts/vendor-seakim.sh` (pulls the
+  governance docs too). Never hand-edit `web/vendor/`.
+
 ## Deploy (see `docs/` + carried tailscale runbook)
 
 Dokploy on VPS, Tailscale-gated webhook, CI joins tailnet and `curl`s the deploy hook. Autodeploy toggle = a *gate* (keep On). Webhook needs both `X-GitHub-Event: push` header and `{"ref":"refs/heads/main"}` body. Concurrency group includes `event_name`.

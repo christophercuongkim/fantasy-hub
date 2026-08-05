@@ -1,0 +1,47 @@
+<!-- @dsCard group="Colors" viewport="700x170" subtitle="Success, warning, danger, info — minted with the same lightness/chroma recipe as accents." name="Semantic colors" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Semantic colors</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-6)">
+
+  <div class="col" style="gap:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border-subtle)">
+      <div style="height:40px;background:var(--success-500)"></div><div style="height:40px;background:var(--success-400)"></div></div>
+    <div style="background:var(--fill-success-subtle);border:1px solid var(--border-subtle);padding:6px 8px;font:var(--type-data);color:var(--text-success)">success</div>
+    <div class="tok">--success-500</div>
+  </div>
+  <div class="col" style="gap:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border-subtle)">
+      <div style="height:40px;background:var(--warning-500)"></div><div style="height:40px;background:var(--warning-400)"></div></div>
+    <div style="background:var(--fill-warning-subtle);border:1px solid var(--border-subtle);padding:6px 8px;font:var(--type-data);color:var(--text-warning)">warning</div>
+    <div class="tok">--warning-500</div>
+  </div>
+  <div class="col" style="gap:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border-subtle)">
+      <div style="height:40px;background:var(--danger-500)"></div><div style="height:40px;background:var(--danger-400)"></div></div>
+    <div style="background:var(--fill-danger-subtle);border:1px solid var(--border-subtle);padding:6px 8px;font:var(--type-data);color:var(--text-danger)">danger</div>
+    <div class="tok">--danger-500</div>
+  </div>
+  <div class="col" style="gap:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border-subtle)">
+      <div style="height:40px;background:var(--info-500)"></div><div style="height:40px;background:var(--info-400)"></div></div>
+    <div style="background:var(--fill-info-subtle);border:1px solid var(--border-subtle);padding:6px 8px;font:var(--type-data);color:var(--text-info)">info</div>
+    <div class="tok">--info-500</div>
+  </div>
+</div>
+</body>
+</html>

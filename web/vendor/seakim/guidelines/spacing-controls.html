@@ -1,0 +1,35 @@
+<!-- @dsCard group="Spacing" viewport="700x170" subtitle="sm 28 · md 34 · lg 42 · touch 44. 44px is the mobile floor regardless of density." name="Control heights" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Control heights</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div class="row" style="align-items:flex-end;gap:var(--space-6)">
+
+  <div class="col" style="gap:8px;align-items:flex-start">
+    <div style="height:var(--control-h-sm);display:flex;align-items:center;padding:0 var(--space-5);background:var(--fill-neutral);border:1px solid var(--border-default);font:var(--type-label);color:var(--text-primary)">Save trip</div>
+    <span class="tok">sm · 28px</span></div>
+  <div class="col" style="gap:8px;align-items:flex-start">
+    <div style="height:var(--control-h-md);display:flex;align-items:center;padding:0 var(--space-5);background:var(--fill-neutral);border:1px solid var(--border-default);font:var(--type-label);color:var(--text-primary)">Save trip</div>
+    <span class="tok">md · 34px</span></div>
+  <div class="col" style="gap:8px;align-items:flex-start">
+    <div style="height:var(--control-h-lg);display:flex;align-items:center;padding:0 var(--space-5);background:var(--fill-neutral);border:1px solid var(--border-default);font:var(--type-label);color:var(--text-primary)">Save trip</div>
+    <span class="tok">lg · 42px</span></div>
+  <div class="col" style="gap:8px;align-items:flex-start">
+    <div style="height:var(--control-h-touch);display:flex;align-items:center;padding:0 var(--space-5);background:var(--fill-neutral);border:1px solid var(--border-default);font:var(--type-label);color:var(--text-primary)">Save trip</div>
+    <span class="tok">touch · 44px</span></div>
+</div>
+</body>
+</html>
