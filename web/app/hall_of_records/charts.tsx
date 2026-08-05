@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { line, scaleLinear, scalePoint } from "d3";
 import { Card } from "@seakim/design-system";
 import type {
@@ -10,58 +10,27 @@ import type {
   ScatterPoint,
 } from "@/lib/hall-of-records";
 
-// Structural ink from DS text/border tokens (theme-aware). Data magnitude uses
-// the bench turf ramp (single-hue sequential) — see the ramp() helper.
-const INK = "var(--text-primary)";
-const INVERSE = "var(--text-inverse)";
-const MUTED = "var(--text-secondary)";
-const GRID = "var(--border-default)";
-const ACCENT = "var(--text-accent)";
+// Colours follow guidelines/data-visualisation.md. The shared layer is
+// achromatic; the one accent hue carries "the primary thing"; a comparison peer
+// is grey (--text-tertiary). We never use the app-accent RAMP for chart data and
+// never exceed the intent of the categorical rules.
+const INK = "var(--text-primary)"; // category (manager) labels
+const INVERSE = "var(--text-inverse)"; // label over a solid accent cell
+const LABEL = "var(--text-tertiary)"; // axis + tick labels
+const GRID = "var(--border-subtle)"; // gridlines (horizontal only)
+const REF = "var(--border-strong)"; // reference / projection line
+const ACCENT = "var(--fill-accent)"; // primary series / magnitude
+// Comparison series (the "them" grey) is also --text-tertiary == LABEL.
 
-// The bench accent ramp (tokens/apps.css, --brand-*). Sequential single hue,
-// dim→bright on a dark surface, light→dark on a light one, so higher magnitude
-// always contrasts more with the page. Picked as discrete steps because d3 can't
-// interpolate the oklch() the tokens are authored in.
-const RAMP_DARK = [
-  "var(--brand-900)",
-  "var(--brand-800)",
-  "var(--brand-600)",
-  "var(--brand-500)",
-  "var(--brand-400)",
-  "var(--brand-300)",
-];
-const RAMP_LIGHT = [
-  "var(--brand-100)",
-  "var(--brand-200)",
-  "var(--brand-300)",
-  "var(--brand-500)",
-  "var(--brand-700)",
-  "var(--brand-800)",
-];
-/** t in [0,1], 1 = strongest. Returns a turf-ramp CSS var for the surface. */
-function ramp(t: number, dark: boolean) {
-  const r = dark ? RAMP_DARK : RAMP_LIGHT;
-  const i = Math.round(Math.max(0, Math.min(1, t)) * (r.length - 1));
-  return r[i];
-}
-/** Readable label ink over a ramp cell: dark ink on a strong (bright) cell. */
-const cellInk = (t: number) => (t > 0.5 ? INVERSE : INK);
-
-function useIsDark() {
-  const [dark, setDark] = useState(true);
-  useEffect(() => {
-    const read = () =>
-      setDark(document.documentElement.getAttribute("data-theme") !== "light");
-    read();
-    const obs = new MutationObserver(read);
-    obs.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
-    return () => obs.disconnect();
-  }, []);
-  return dark;
-}
+// Magnitude via accent-at-opacity. The DS data-viz spec defines categorical and
+// 1–2-series colour but no sequential ramp yet, so a heatmap reads as the single
+// accent hue at varying alpha — the sanctioned "area fill = line colour at N%"
+// pattern, extended. Floor keeps the faint end visible. A shared --chart-seq-*
+// token is proposed upstream (DS decisions/0015) to replace this.
+const MAG_FLOOR = 0.14;
+const magAlpha = (t: number) =>
+  MAG_FLOOR + Math.max(0, Math.min(1, t)) * (1 - MAG_FLOOR);
+const cellInk = (t: number) => (t > 0.55 ? INVERSE : INK);
 
 type Tip = { x: number; y: number; lines: string[] } | null;
 type Ctx = {
@@ -136,12 +105,12 @@ export function Charts({
             zIndex: 50,
             left: tip.x + 14,
             top: tip.y + 14,
-            background: "var(--surface-overlay)",
-            border: "1px solid var(--border-default)",
+            background: "var(--surface-raised)",
+            border: "1px solid var(--border-subtle)",
             borderRadius: "var(--radius-md)",
             padding: "var(--space-2) var(--space-3)",
             font: "var(--text-xs) var(--font-sans)",
-            boxShadow: "var(--shadow-overlay, 0 4px 16px rgba(0,0,0,0.25))",
+            boxShadow: "var(--shadow-popover)",
           }}
         >
           {tip.lines.map((l, i) => (
@@ -149,7 +118,7 @@ export function Charts({
               key={i}
               style={{
                 fontWeight: i === 0 ? 600 : 400,
-                color: i === 0 ? INK : MUTED,
+                color: i === 0 ? INK : LABEL,
               }}
             >
               {l}
@@ -202,7 +171,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
           x={m.l - 6}
           y={y(t) + 4}
           fontSize="10"
-          fill={MUTED}
+          fill={LABEL}
           textAnchor="end"
         >
           {t}
@@ -214,7 +183,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
           x={x(s)}
           y={H - 10}
           fontSize="10"
-          fill={MUTED}
+          fill={LABEL}
           textAnchor="middle"
         >
           {s}
@@ -249,8 +218,10 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
               }}
               d={path(pts)!}
               fill="none"
-              stroke={active ? ACCENT : MUTED}
+              stroke={active ? ACCENT : LABEL}
               strokeWidth={active ? 2.5 : 1.5}
+              strokeLinecap="square"
+              strokeLinejoin="miter"
               opacity={active ? 1 : ctx.hi ? 0.15 : 0.65}
             />
             {pts.map((p) => (
@@ -259,7 +230,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                 cx={x(p.season)}
                 cy={y(p.finalRank)}
                 r={active ? 4 : 2.5}
-                fill={active ? ACCENT : MUTED}
+                fill={active ? ACCENT : LABEL}
                 opacity={active ? 1 : ctx.hi ? 0.15 : 0.65}
               />
             ))}
@@ -267,7 +238,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
               x={x(pts[pts.length - 1].season)! + 8}
               y={y(pts[pts.length - 1].finalRank) + 3}
               fontSize="10"
-              fill={active ? INK : MUTED}
+              fill={active ? INK : LABEL}
               fontWeight={active ? 600 : 400}
               opacity={dim(ctx.hi, mgr)}
             >
@@ -282,7 +253,6 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
 
 // ------------------------------------------------------------ finish heatmap
 function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
-  const dark = useIsDark();
   const seasons = [...new Set(data.map((d) => d.season))].sort((a, b) => a - b);
   const managers = [...new Set(data.map((d) => d.manager))].sort();
   const maxRank = Math.max(...data.map((d) => d.finalRank));
@@ -309,7 +279,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
           x={labelW + ci * cell + cell / 2}
           y={13}
           fontSize="9"
-          fill={MUTED}
+          fill={LABEL}
           textAnchor="middle"
         >
           {`'${String(s).slice(2)}`}
@@ -347,8 +317,9 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                   width={cell - 2}
                   height={cell - 2}
                   rx={2}
-                  fill={d ? ramp(t, dark) : "transparent"}
-                  stroke={champ ? ACCENT : "none"}
+                  fill={ACCENT}
+                  fillOpacity={d ? magAlpha(t) : 0}
+                  stroke={champ ? REF : "none"}
                   strokeWidth={champ ? 2 : 0}
                   onMouseMove={(e) =>
                     d &&
@@ -378,7 +349,6 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
 
 // --------------------------------------------------------------- h2h heatmap
 function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
-  const dark = useIsDark();
   const managers = [...new Set(data.map((d) => d.a))].sort();
   const cell = 26,
     labelW = 96,
@@ -401,7 +371,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
           x={labelW + ci * cell + cell / 2}
           y={top - 6}
           fontSize="9"
-          fill={MUTED}
+          fill={LABEL}
           textAnchor="start"
           opacity={dim(ctx.hi, b)}
           transform={`rotate(-45 ${labelW + ci * cell + cell / 2} ${top - 6})`}
@@ -447,7 +417,8 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
                 width={cell - 2}
                 height={cell - 2}
                 rx={2}
-                fill={rate == null ? "transparent" : ramp(rate, dark)}
+                fill={ACCENT}
+                fillOpacity={rate == null ? 0 : magAlpha(rate)}
                 opacity={highlighted ? 1 : 0.15}
                 onMouseMove={(e) =>
                   g &&
@@ -527,7 +498,7 @@ function LuckSkill({
             x={m.l - 6}
             y={y(t) + 3}
             fontSize="10"
-            fill={MUTED}
+            fill={LABEL}
             textAnchor="end"
           >
             {t}
@@ -538,7 +509,7 @@ function LuckSkill({
         x={(m.l + W - m.r) / 2}
         y={H - 6}
         fontSize="10"
-        fill={MUTED}
+        fill={LABEL}
         textAnchor="middle"
       >
         points for →
@@ -547,7 +518,7 @@ function LuckSkill({
         x={12}
         y={(m.t + H - m.b) / 2}
         fontSize="10"
-        fill={MUTED}
+        fill={LABEL}
         textAnchor="middle"
         transform={`rotate(-90 12 ${(m.t + H - m.b) / 2})`}
       >
@@ -558,8 +529,8 @@ function LuckSkill({
         y1={y(fit(x0))}
         x2={x(x1)}
         y2={y(fit(x1))}
-        stroke={MUTED}
-        strokeWidth={1.5}
+        stroke={REF}
+        strokeWidth={1}
         strokeDasharray="4 3"
       />
       {pts.map((d, i) => {
@@ -572,7 +543,7 @@ function LuckSkill({
             cx={x(d.pointsFor)}
             cy={y(d.wins)}
             r={ctx.hi === d.manager ? 6 : 4}
-            fill={lucky ? ACCENT : MUTED}
+            fill={lucky ? ACCENT : LABEL}
             stroke="var(--surface-card)"
             strokeWidth={1}
             opacity={dim(ctx.hi, d.manager!)}
