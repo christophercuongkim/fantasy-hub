@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { line, scaleLinear, scalePoint } from "d3";
+import { Card } from "@seakim/design-system";
 import type {
   CareerRow,
   H2HCell,
@@ -9,27 +10,59 @@ import type {
   ScatterPoint,
 } from "@/lib/hall-of-records";
 
-// Structural colors from CSS vars (theme-aware). Data-color *scales* need the
-// actual surface, so we read the theme for those.
+// Structural ink from DS text/border tokens (theme-aware). Data magnitude uses
+// the bench turf ramp (single-hue sequential) — see the ramp() helper.
+const INK = "var(--text-primary)";
+const INVERSE = "var(--text-inverse)";
+const MUTED = "var(--text-secondary)";
+const GRID = "var(--border-default)";
+const ACCENT = "var(--text-accent)";
+
+// The bench accent ramp (tokens/apps.css, --brand-*). Sequential single hue,
+// dim→bright on a dark surface, light→dark on a light one, so higher magnitude
+// always contrasts more with the page. Picked as discrete steps because d3 can't
+// interpolate the oklch() the tokens are authored in.
+const RAMP_DARK = [
+  "var(--brand-900)",
+  "var(--brand-800)",
+  "var(--brand-600)",
+  "var(--brand-500)",
+  "var(--brand-400)",
+  "var(--brand-300)",
+];
+const RAMP_LIGHT = [
+  "var(--brand-100)",
+  "var(--brand-200)",
+  "var(--brand-300)",
+  "var(--brand-500)",
+  "var(--brand-700)",
+  "var(--brand-800)",
+];
+/** t in [0,1], 1 = strongest. Returns a turf-ramp CSS var for the surface. */
+function ramp(t: number, dark: boolean) {
+  const r = dark ? RAMP_DARK : RAMP_LIGHT;
+  const i = Math.round(Math.max(0, Math.min(1, t)) * (r.length - 1));
+  return r[i];
+}
+/** Readable label ink over a ramp cell: dark ink on a strong (bright) cell. */
+const cellInk = (t: number) => (t > 0.5 ? INVERSE : INK);
+
 function useIsDark() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(true);
   useEffect(() => {
-    const m = window.matchMedia("(prefers-color-scheme: dark)");
-    const set = () => setDark(m.matches);
-    set();
-    m.addEventListener("change", set);
-    return () => m.removeEventListener("change", set);
+    const read = () =>
+      setDark(document.documentElement.getAttribute("data-theme") !== "light");
+    read();
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => obs.disconnect();
   }, []);
   return dark;
 }
 
-const INK = "var(--sl-ink)";
-const MUTED = "var(--sl-muted)";
-const GRID = "var(--sl-grid)";
-const ACCENT = "var(--sl-accent)";
-
-// Shared interaction context: one highlighted manager across every chart + one
-// cursor-following tooltip.
 type Tip = { x: number; y: number; lines: string[] } | null;
 type Ctx = {
   hi: string | null;
@@ -37,24 +70,6 @@ type Ctx = {
   show: (e: React.MouseEvent, lines: string[], m?: string) => void;
   hide: () => void;
 };
-
-function Panel({
-  title,
-  sub,
-  children,
-}: {
-  title: string;
-  sub: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-      <h3 className="text-base font-semibold">{title}</h3>
-      <p className="mb-3 text-xs text-neutral-400">{sub}</p>
-      {children}
-    </div>
-  );
-}
 
 export function Charts({
   managerSeasons,
@@ -80,38 +95,62 @@ export function Charts({
   };
 
   return (
-    <section className="relative grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Panel
-        title="Finish over time"
-        sub="final placement each season — hover a line"
+    <section
+      style={{
+        position: "relative",
+        display: "grid",
+        gap: "var(--space-4)",
+        gridTemplateColumns: "repeat(auto-fit, minmax(20rem, 1fr))",
+      }}
+    >
+      <Card
+        eyebrow="FINISH OVER TIME"
+        meta="final placement each season — hover a line"
       >
         <BumpChart data={managerSeasons} ctx={ctx} />
-      </Panel>
-      <Panel title="Wall of history" sub="final rank per season · gold = title">
+      </Card>
+      <Card
+        eyebrow="WALL OF HISTORY"
+        meta="final rank per season · ring = title"
+      >
         <FinishHeatmap data={managerSeasons} ctx={ctx} />
-      </Panel>
-      <Panel
-        title="Head-to-head"
-        sub="regular-season win rate vs each opponent"
+      </Card>
+      <Card
+        eyebrow="HEAD-TO-HEAD"
+        meta="regular-season win rate vs each opponent"
       >
         <H2HHeatmap data={headToHead} ctx={ctx} />
-      </Panel>
-      <Panel
-        title="Luck vs. skill"
-        sub="points-for vs wins · line = expected wins"
+      </Card>
+      <Card
+        eyebrow="LUCK VS. SKILL"
+        meta="points-for vs wins · line = expected wins"
       >
         <LuckSkill data={scatter} career={career} ctx={ctx} />
-      </Panel>
+      </Card>
 
       {tip && (
         <div
-          className="pointer-events-none fixed z-50 rounded-md border border-neutral-200 bg-white/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95"
-          style={{ left: tip.x + 14, top: tip.y + 14 }}
+          className="pointer-events-none"
+          style={{
+            position: "fixed",
+            zIndex: 50,
+            left: tip.x + 14,
+            top: tip.y + 14,
+            background: "var(--surface-overlay)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-md)",
+            padding: "var(--space-2) var(--space-3)",
+            font: "var(--text-xs) var(--font-sans)",
+            boxShadow: "var(--shadow-overlay, 0 4px 16px rgba(0,0,0,0.25))",
+          }}
         >
           {tip.lines.map((l, i) => (
             <div
               key={i}
-              className={i === 0 ? "font-semibold" : "text-neutral-500"}
+              style={{
+                fontWeight: i === 0 ? 600 : 400,
+                color: i === 0 ? INK : MUTED,
+              }}
             >
               {l}
             </div>
@@ -153,7 +192,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full"
+      style={{ width: "100%" }}
       role="img"
       aria-label="Finish over time"
     >
@@ -254,14 +293,13 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
     H = top + managers.length * cell;
   const at = (mgr: string, s: number) =>
     data.find((d) => d.manager === mgr && d.season === s);
-  const c = scaleLinear<string>()
-    .domain([1, maxRank])
-    .range(dark ? ["#3987e5", "#12233a"] : ["#0d366b", "#cde2fb"]);
+  // rank 1 (best) = strongest turf, rank maxRank = faintest.
+  const mag = (rank: number) => (maxRank - rank) / (maxRank - 1);
 
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full"
+      style={{ width: "100%" }}
       role="img"
       aria-label="Finish rank per season"
     >
@@ -298,6 +336,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
           {seasons.map((s, ci) => {
             const d = at(mgr, s);
             const champ = d?.finalRank === 1;
+            const t = d ? mag(d.finalRank) : 0;
             return (
               <g key={s}>
                 <rect
@@ -308,8 +347,8 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                   width={cell - 2}
                   height={cell - 2}
                   rx={2}
-                  fill={d ? c(d.finalRank) : "transparent"}
-                  stroke={champ ? "#eda100" : "none"}
+                  fill={d ? ramp(t, dark) : "transparent"}
+                  stroke={champ ? ACCENT : "none"}
                   strokeWidth={champ ? 2 : 0}
                   onMouseMove={(e) =>
                     d &&
@@ -321,7 +360,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                     x={labelW + ci * cell + cell / 2}
                     y={top + r * cell + cell / 2 + 3}
                     fontSize="9"
-                    fill={d.finalRank <= maxRank / 2 ? "#fff" : INK}
+                    fill={cellInk(t)}
                     textAnchor="middle"
                     style={{ pointerEvents: "none" }}
                   >
@@ -339,6 +378,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
 
 // --------------------------------------------------------------- h2h heatmap
 function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
+  const dark = useIsDark();
   const managers = [...new Set(data.map((d) => d.a))].sort();
   const cell = 26,
     labelW = 96,
@@ -347,14 +387,11 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
     H = top + managers.length * cell;
   const get = (a: string, b: string) =>
     data.find((d) => d.a === a && d.b === b);
-  const c = scaleLinear<string>()
-    .domain([0, 0.5, 1])
-    .range(["#d03b3b", "#f0efec", "#2a78d6"]);
 
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full"
+      style={{ width: "100%" }}
       role="img"
       aria-label="Head-to-head win rate"
     >
@@ -395,8 +432,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
                   width={cell - 2}
                   height={cell - 2}
                   rx={2}
-                  fill={GRID}
-                  opacity={0.3}
+                  fill="var(--surface-inset)"
                 />
               );
             const g = get(a, b);
@@ -411,7 +447,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
                 width={cell - 2}
                 height={cell - 2}
                 rx={2}
-                fill={rate == null ? "transparent" : c(rate)}
+                fill={rate == null ? "transparent" : ramp(rate, dark)}
                 opacity={highlighted ? 1 : 0.15}
                 onMouseMove={(e) =>
                   g &&
@@ -473,7 +509,7 @@ function LuckSkill({
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full"
+      style={{ width: "100%" }}
       role="img"
       aria-label="Luck vs skill"
     >
@@ -536,8 +572,8 @@ function LuckSkill({
             cx={x(d.pointsFor)}
             cy={y(d.wins)}
             r={ctx.hi === d.manager ? 6 : 4}
-            fill={lucky ? "#2a78d6" : "#d03b3b"}
-            stroke="var(--sl-surface)"
+            fill={lucky ? ACCENT : MUTED}
+            stroke="var(--surface-card)"
             strokeWidth={1}
             opacity={dim(ctx.hi, d.manager!)}
             onMouseMove={(e) =>

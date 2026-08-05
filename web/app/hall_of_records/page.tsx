@@ -1,3 +1,4 @@
+import { Card } from "@seakim/design-system";
 import {
   careerLeaderboard,
   teamSeasons,
@@ -7,6 +8,7 @@ import {
   scatterPoints,
 } from "@/lib/hall-of-records";
 import { Charts } from "./charts";
+import { CareerTable, ChampionsTable, TopWeeksTable } from "./tables";
 
 export const dynamic = "force-dynamic"; // reads live DB
 
@@ -23,6 +25,12 @@ type Award = {
   who: string;
   detail: string;
   note?: string;
+};
+
+const sectionLabel: React.CSSProperties = {
+  font: "600 var(--text-2xl) var(--font-display)",
+  color: "var(--text-primary)",
+  letterSpacing: "-0.01em",
 };
 
 export default async function HallOfRecords() {
@@ -135,21 +143,56 @@ export default async function HallOfRecords() {
       : []),
   ];
 
-  const championsByYear = [...champs].sort((a, b) => b.season - a.season);
-  const topWeeks = weeks.slice(0, 10);
+  const careerRows = [...career].sort(
+    (a, b) => b.titles - a.titles || b.winPct - a.winPct,
+  );
+  const championRows = [...champs]
+    .sort((a, b) => b.season - a.season)
+    .map((c) => ({
+      season: c.season,
+      who: c.manager ?? c.team,
+      record: `${c.wins}-${c.losses}`,
+      pointsFor: c.pointsFor,
+    }));
+  const topWeekRows = weeks.slice(0, 10).map((w, i) => ({
+    rank: i + 1,
+    season: w.season,
+    week: w.week,
+    team: w.team,
+    score: w.score,
+  }));
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-10">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">Hall of Records</h1>
-        <p className="mt-2 text-neutral-500">
+    <main
+      style={{
+        maxWidth: "72rem",
+        margin: "0 auto",
+        padding: "var(--space-8) var(--space-5)",
+      }}
+    >
+      <header style={{ marginBottom: "var(--space-8)" }}>
+        <h1
+          style={{
+            font: "700 var(--text-4xl) var(--font-display)",
+            color: "var(--text-primary)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Hall of Records
+        </h1>
+        <p
+          style={{
+            marginTop: "var(--space-2)",
+            maxWidth: "44rem",
+            color: "var(--text-secondary)",
+          }}
+        >
           PeopleCanEat · 12 seasons (2014–2025). Career &amp; head-to-head stats
           cover the GUID-identified era (2022–25); single-game records span all
           12 years.
         </p>
       </header>
 
-      {/* charts */}
       <Charts
         managerSeasons={mSeasons}
         headToHead={h2h}
@@ -157,121 +200,72 @@ export default async function HallOfRecords() {
         career={career}
       />
 
-      {/* award cards */}
-      <h2 className="mb-4 mt-12 text-2xl font-semibold">Awards</h2>
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <h2
+        style={{ ...sectionLabel, margin: "var(--space-11) 0 var(--space-5)" }}
+      >
+        Awards
+      </h2>
+      <section
+        style={{
+          display: "grid",
+          gap: "var(--space-4)",
+          gridTemplateColumns: "repeat(auto-fill, minmax(16rem, 1fr))",
+        }}
+      >
         {awards.map((a) => (
-          <div
+          <Card
             key={a.title}
-            className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
-          >
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm font-medium text-neutral-500">
-                {a.title}
-              </span>
-              <span className="text-2xl">{a.emoji}</span>
-            </div>
-            <div className="mt-1 text-lg font-semibold">{a.who}</div>
-            <div className="text-sm text-neutral-600 dark:text-neutral-400">
-              {a.detail}
-            </div>
-            {a.note && (
-              <div className="mt-1 text-xs text-neutral-400">{a.note}</div>
-            )}
-          </div>
+            eyebrow={`${a.emoji} ${a.title}`}
+            title={a.who}
+            meta={a.note ? `${a.detail} · ${a.note}` : a.detail}
+          />
         ))}
       </section>
 
-      {/* tables */}
-      <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-3 text-2xl font-semibold">Career leaderboard</h2>
-          <p className="mb-2 text-xs text-neutral-400">2022–25 (GUID era)</p>
-          <Table
-            head={["Manager", "Titles", "Playoffs", "Record", "Win%", "Points"]}
-            rows={[...career]
-              .sort((a, b) => b.titles - a.titles || b.winPct - a.winPct)
-              .map((r) => [
-                r.manager,
-                r.titles || "—",
-                r.playoffs,
-                `${r.wins}-${r.losses}${r.ties ? `-${r.ties}` : ""}`,
-                `${(r.winPct * 100).toFixed(0)}%`,
-                fmt(r.pointsFor, 0),
-              ])}
-          />
-        </div>
-        <div>
-          <h2 className="mb-3 text-2xl font-semibold">Champions</h2>
-          <p className="mb-2 text-xs text-neutral-400">
-            final placement each season
-          </p>
-          <Table
-            head={["Season", "Champion", "Record", "Points"]}
-            rows={championsByYear.map((c) => [
-              c.season,
-              c.manager ?? `${c.team}`,
-              `${c.wins}-${c.losses}`,
-              fmt(c.pointsFor, 0),
-            ])}
-          />
-        </div>
+      <div
+        style={{
+          display: "grid",
+          gap: "var(--space-8)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(20rem, 1fr))",
+          margin: "var(--space-11) 0 0",
+        }}
+      >
+        <section>
+          <h2 style={{ ...sectionLabel, marginBottom: "var(--space-3)" }}>
+            Career leaderboard
+          </h2>
+          <TableCaption>2022–25 (GUID era)</TableCaption>
+          <CareerTable rows={careerRows} />
+        </section>
+        <section>
+          <h2 style={{ ...sectionLabel, marginBottom: "var(--space-3)" }}>
+            Champions
+          </h2>
+          <TableCaption>final placement each season</TableCaption>
+          <ChampionsTable rows={championRows} />
+        </section>
       </div>
 
-      <div className="mt-10">
-        <h2 className="mb-3 text-2xl font-semibold">Top single-week scores</h2>
-        <Table
-          head={["#", "Season", "Week", "Team", "Score"]}
-          rows={topWeeks.map((w, i) => [
-            i + 1,
-            w.season,
-            w.week,
-            w.team,
-            fmt(w.score),
-          ])}
-        />
-      </div>
+      <section style={{ marginTop: "var(--space-10)" }}>
+        <h2 style={{ ...sectionLabel, marginBottom: "var(--space-3)" }}>
+          Top single-week scores
+        </h2>
+        <TopWeeksTable rows={topWeekRows} />
+      </section>
     </main>
   );
 }
 
-function Table({
-  head,
-  rows,
-}: {
-  head: string[];
-  rows: (string | number)[][];
-}) {
+function TableCaption({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-      <table className="w-full text-sm">
-        <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900">
-          <tr>
-            {head.map((h) => (
-              <th key={h} className="px-3 py-2 font-medium">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr
-              key={i}
-              className="border-t border-neutral-100 dark:border-neutral-800"
-            >
-              {r.map((c, j) => (
-                <td
-                  key={j}
-                  className={`px-3 py-2 ${j === 0 ? "font-medium" : ""}`}
-                >
-                  {c}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <p
+      style={{
+        margin: "0 0 var(--space-2)",
+        font: "var(--text-xs) var(--font-mono)",
+        color: "var(--text-secondary)",
+      }}
+    >
+      {children}
+    </p>
   );
 }
