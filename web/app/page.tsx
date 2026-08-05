@@ -1,43 +1,93 @@
 import Link from "next/link";
+import { Card } from "@seakim/design-system";
 import { auth, isAdmin } from "@/auth";
 
-// Public landing — the only page you can see signed out. Everything else,
-// including the Hall of Records, requires sign-in; /admin is admin-only (see
-// middleware). So the in-app links show only once there's a session.
+// Landing — the only page visible signed out. In-app links appear once there's
+// a session (everything but this page requires sign-in; /admin is admin-only).
 export default async function Home() {
   const session = await auth();
+  const admin = isAdmin(session?.user?.email);
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 px-8">
+    <main
+      style={{
+        maxWidth: "40rem",
+        minHeight: "100vh",
+        margin: "0 auto",
+        padding: "var(--space-8)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: "var(--space-6)",
+      }}
+    >
       <div>
-        <h1 className="text-4xl font-bold tracking-tight">fantasy-hub</h1>
-        <p className="mt-2 text-neutral-500">Personal NFL fantasy analytics.</p>
+        <h1
+          style={{
+            font: "600 var(--text-5xl) var(--font-display)",
+            color: "var(--text-primary)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          fantasy-hub
+        </h1>
+        <p
+          style={{
+            marginTop: "var(--space-2)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          Personal NFL fantasy analytics.
+        </p>
       </div>
-      <div className="flex flex-wrap gap-3">
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
         {session && (
-          <Link
+          <NavCard
             href="/hall_of_records"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
-          >
-            League Hall of Records →
-          </Link>
+            eyebrow="LEAGUE"
+            title="Hall of Records"
+            meta="Records, superlatives, head-to-head"
+          />
         )}
-        {isAdmin(session?.user?.email) && (
-          <Link
+        {admin && (
+          <NavCard
             href="/admin/crosswalk"
-            className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
-          >
-            Admin
-          </Link>
+            eyebrow="ADMIN"
+            title="Player crosswalk"
+            meta="Review Yahoo ↔ nflverse matches"
+          />
         )}
         {!session && (
-          <Link
+          <NavCard
             href="/login"
-            className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
-          >
-            Sign in
-          </Link>
+            eyebrow="ACCESS"
+            title="Sign in"
+            meta="A Google account is required"
+          />
         )}
       </div>
     </main>
+  );
+}
+
+function NavCard({
+  href,
+  eyebrow,
+  title,
+  meta,
+}: {
+  href: string;
+  eyebrow: string;
+  title: string;
+  meta: string;
+}) {
+  return (
+    <Link
+      href={href}
+      style={{ textDecoration: "none", color: "inherit", flex: "1 1 14rem" }}
+    >
+      <Card interactive eyebrow={eyebrow} title={title} meta={meta} />
+    </Link>
   );
 }

@@ -1,0 +1,28 @@
+<!-- @dsCard group="Components" viewport="900x460" name="Table" subtitle="Sortable, two densities, and the sm species swap. Per decision 0003." -->
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-app="bench">
+<head>
+<meta charset="utf-8">
+<title>Table</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../ds-shim.js"></script>
+<script src="../../theme-toggle.js"></script>
+<style>
+  body { padding: 18px 20px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; gap: var(--space-5); }
+  .lbl { font: var(--type-eyebrow); text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--text-tertiary); }
+  code { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="root"><div style="padding:24px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-tertiary)">Loading components…</div></div>
+<script>SeaKimMount('../../', 'components/data/data.demo.jsx', 'root');</script>
+</body>
+</html>

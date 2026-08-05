@@ -1,81 +1,69 @@
-# PR: multi-league Yahoo importer + bootstrap consolidation
+# Integration: seakim design system — "bench" theme
 
-Reshapes the open PR #23 (single-league loader) into a reusable, multi-league
-Yahoo importer. One PR (same in-flight work). Claims **UI** deferred; claims
-**table** lands now so unclaimed teams are representable.
+Adopt `@seakim/design-system` v3.0.1 (the **bench** fantasy-sport theme,
+`data-app="bench"`, turf hue 145) as fantasy-hub's UI. Next 15 App Router /
+React 19 / pnpm — the DS's supported target.
 
 ## Decisions (locked with Chris)
-1. `managers` table keyed on Yahoo **GUID** (global across leagues + sports). ✅
-2. `league_families` grouping = auto `(sport, slug)`. ✅
-3. Positions/roster = **pg enums, one migration per sport** (NFL now; NBA/etc add their own later). ✅
-4. **Redirect PR #23** into this (not merged yet). ✅
-5. **One PR.** ✅
-6. **Consolidate** all bootstrap into a top-level tool (out of `api/app/`). ✅
+1. **Vendor**, don't install. Copy the published surface into `web/vendor/seakim`,
+   alias `@seakim/design-system` → it. Zero private-repo auth in CI/Docker/Dokploy
+   (sidesteps the unverified Dokploy build-secret question). Re-vendor on version
+   bumps via a script. ✅
+2. **Remove Tailwind** (phased). Coexist with `preflight:false` during rollout;
+   convert pages PR-by-PR; delete Tailwind in the last PR. Pure DS components +
+   `var(--…)` for layout — **no Tailwind token bridge.** ✅
+3. **Dark** default theme; no-flash localStorage script wired regardless. ✅
 
-## Target layout (top-level, self-contained local tool)
-```
-bootstrap/
-  pyproject.toml            own uv env (selenium, bs4, pandas, psycopg, pyyaml)
-  config/import.yaml        leagues to import: [{sport, slug, name, seasons}]
-  sports/nfl.py             sport abstraction: URL scheme, scoring label->key, positions
-  importer/
-    scrape.py               browser -> normalized files (draft, teams, settings)  [from scratch/league_scrape.py]
-    identity.py             GUID managers, latest-season display name, remap
-    build_config.py         settings page -> league config  [from scratch/build_league_yaml.py]
-  loader/
-    db.py                   thin psycopg connect (DATABASE_URL)
-    load.py                 files -> Postgres (multi-league, raw SQL)
-  data/                     gitignored scraped output: <slug>/<season>/{draft,teams}.csv
-  tests/
-```
-- DELETE `api/app/bootstrap/` (move loader here; it uses raw SQL, no api coupling).
-- Data files stay gitignored (personal data: emails, GUIDs).
+## PR sequence (each QA-verifiable via deploy-qa before merge)
+- **PR A — plumbing + proof** (this branch, `feat/design-system-bench`)
+  - `web/scripts/vendor-seakim.sh` — copies the DS surface from the sibling repo
+    into `web/vendor/seakim`; strips the Google-fonts `@import` from the vendored
+    `tokens/fonts.css` (we self-host via `next/font`, so no double-fetch).
+  - Vendor the surface: `index.js`, `index.d.ts`, `styles.css`, `components/`,
+    `tokens/`, `ui_kits/shared/`.
+  - `tsconfig.json` path alias `@seakim/design-system` (+ `/*`) → vendor; exclude
+    vendor from our typecheck (upstream, conformance-tested there — Next still
+    compiles it when imported).
+  - eslint/prettier ignore `vendor/`.
+  - `pnpm add @phosphor-icons/web` (public npm, no auth).
+  - `app/fonts.ts` (next/font: Outfit / Plus Jakarta Sans / IBM Plex Mono → the
+    CSS vars the DS reads).
+  - `app/layout.tsx`: DS token CSS + phosphor CSS + font vars + `data-app="bench"`
+    + `data-theme="dark"` + no-flash script + `suppressHydrationWarning`.
+  - `tailwind.config.ts`: `corePlugins: { preflight: false }` so the DS base wins
+    while Tailwind still works during migration.
+  - Convert **landing (`app/page.tsx`)** to DS components — the proof it renders.
+  - Verify: `pnpm build` + `typecheck` + `lint`, then QA deploy.
+- **PR B — `/hall_of_records`** → `Stat`/`Card`/`Table`; restyle the d3 charts to
+  read DS tokens (keep d3, recolor via `var(--…)`).
+- **PR C — `/admin/crosswalk`** → `Table` (client wrapper for its function props),
+  `Field`/`Button`/`Badge`.
+- **PR D — `/login` + sign-out** → DS; then **remove Tailwind** entirely
+  (`tailwind`, `autoprefixer`, `postcss` config, `globals.css`).
 
-## Schema (web/db/schema, drizzle migrations — timestamp filenames)
-- `league_families`: id, sport (enum), yahoo_slug, name, unique(sport, yahoo_slug).
-- `managers`: id, yahoo_guid unique, display_name, email. Canonical person (global).
-- `leagues`: add family_id FK, sport. One row per (family, season). yahoo_league_key unique stays.
-- `league_teams`: add manager_id FK -> managers (NULL = unclaimed). Keep name (vanity). Drop/keep manager_name (superseded by manager_id).
-- `team_claims`: id, league_team_id FK, claimant_manager_id FK, status enum(pending|approved|rejected), reviewed_by, reviewed_at. (UI later.)
-- Per-sport enums: keep existing NFL position/roster enums as the "NFL migration"; future sports add their own.
+## Gotchas handled
+- **Font double-fetch:** strip the `@import` in the vendored `tokens/fonts.css`;
+  `next/font` self-hosts to the same CSS vars.
+- **Client boundary:** import from the barrel (`@seakim/design-system`) — one
+  `"use client"` covers all. Function-prop components (`Table`, `Slider`,
+  `DatePicker`) need a `"use client"` wrapper (PR C).
+- **Vendored code isn't ours:** excluded from lint/format/typecheck; Next compiles
+  it on import.
 
-## Loader behavior (multi-league)
-- For each league in import.yaml: upsert league_family; per season -> upsert leagues row (yahoo_league_key + season).
-- Upsert managers by GUID (display_name = latest season). league_teams.manager_id set when GUID known; NULL for hidden-era (claimable).
-- draft_picks per (league row, overall) -> league_team.
-- Idempotent / re-runnable (annual refresh).
+## Review — PR A implemented
+Branch `feat/design-system-bench`:
+- `web/scripts/vendor-seakim.sh` + vendored surface `web/vendor/seakim` (v3.0.1,
+  524 KB); Google-fonts `@import` stripped from the vendored `fonts.css`.
+- `tsconfig` alias `@seakim/design-system` (+`/*`) → vendor, vendor excluded from
+  typecheck; eslint + prettier ignore `vendor/`.
+- `@phosphor-icons/web` added; `app/fonts.ts` (next/font).
+- `app/layout.tsx`: DS styles + phosphor + fonts + `data-app="bench"` +
+  `data-theme="dark"` + no-flash script; sign-out button re-styled with DS tokens.
+- `tailwind.config.ts`: `corePlugins.preflight = false` (coexist).
+- `app/page.tsx` landing → DS `Card`s in `Link`s.
 
-## Build order (commits on feat/league-bootstrap)
-1. Schema + migrations (families, managers, team_claims, leagues/league_teams cols).
-2. `bootstrap/` scaffold + pyproject + sports/nfl.py abstraction.
-3. Move + productionize scraper (scratch -> importer/scrape.py).
-4. Identity + build_config modules.
-5. Multi-league loader + db.py.
-6. Delete api/app/bootstrap/; move/adapt its tests.
-7. Wire import.yaml for people_can_eat; end-to-end load of scraped data.
-8. Tests; self-review on PR.
-
-## Deferred (not this PR)
-- Claims member UI + admin approve action.
-- Multi-sport (NBA etc.) — layer 3; add sport migration + sports/<sport>.py when needed.
-
-## Review — implemented
-Commits on feat/league-bootstrap (reshapes PR #23):
-- e0fff2f schema: league_families, managers (GUID), team_claims, leagues/league_teams cols
-- dbf20c0 bootstrap tool: sports/nfl, importer/config, loader, packaging + data reorg
-- c52633b remove api/app/bootstrap (35 api tests still pass)
-- dcdccae productionize scraper (browser + scrape) + config tests (5 pass)
-- (idempotency) league_teams unique(league_id,name) + COALESCE upsert; borrow-nearest settings
-
-**Verified end-to-end on ephemeral local Postgres** (all 5→6 migrations apply clean):
-- 1 family / 12 managers / 12 leagues / 136 teams / 2040 picks; 88 unclaimed (hidden era)
-- idempotent: 2nd run identical
-- claim preservation: a simulated approved claim survives a re-scrape (COALESCE)
-- cross-season superlative query works via manager join
-
-### Not browser-verified / follow-ups
-- importer/scrape.py is a faithful port of the working scratch scraper but not
-  re-run against a live browser. Chris should re-scrape (the new scraper dumps
-  settings for EVERY season) to replace borrow-nearest with each season's real
-  scoring/roster for 2014-2021.
-- Deferred: team-claims member UI + admin approve; multi-sport (layer 3).
+**Verified:** `typecheck` ✓, `build` ✓ (Next compiles the vendored `.jsx`; `/`
+= 4.51 kB), `lint` ✓ (vendor ignored), `format` ✓. Dev-server render shows
+`data-app="bench"`, `data-theme="dark"`, the no-flash script, the DS `Card`; built
+CSS contains DS tokens (`--surface-card`, `--space-5`) and the `[data-app=bench]`
+accent block. QA deploy is the visual confirmation.

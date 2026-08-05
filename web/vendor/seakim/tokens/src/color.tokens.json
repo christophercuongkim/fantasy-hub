@@ -1,0 +1,504 @@
+{
+  "$schema": "https://tr.designtokens.org/format/",
+  "$description": "SeaKim colour — SOURCE OF TRUTH. Hand-edited. tokens/colors.css and flutter/lib/src/tokens/palette.g.dart are generated from this file; see decisions/0007.",
+  "hue": {
+    "$type": "number",
+    "$description": "One accent hue per app. The shared layer is achromatic, so this is the only thing that rotates between products.",
+    "brick": {
+      "$value": 8,
+      "$description": "SeaKim house — decks, cross-product surfaces"
+    },
+    "sea": {
+      "$value": 245,
+      "$description": "Voyage — travel planning and booking"
+    },
+    "turf": {
+      "$value": 145,
+      "$description": "Bench — fantasy sport"
+    },
+    "plum": {
+      "$value": 320,
+      "$description": "Reserved for app three"
+    }
+  },
+  "brandRamp": {
+    "100": {
+      "l": {
+        "$value": 0.91
+      },
+      "c": {
+        "$value": 0.045
+      }
+    },
+    "200": {
+      "l": {
+        "$value": 0.84
+      },
+      "c": {
+        "$value": 0.075
+      }
+    },
+    "300": {
+      "l": {
+        "$value": 0.8
+      },
+      "c": {
+        "$value": 0.1
+      }
+    },
+    "400": {
+      "l": {
+        "$value": 0.72
+      },
+      "c": {
+        "$value": 0.13
+      }
+    },
+    "500": {
+      "l": {
+        "$value": 0.64
+      },
+      "c": {
+        "$value": 0.14
+      }
+    },
+    "600": {
+      "l": {
+        "$value": 0.56
+      },
+      "c": {
+        "$value": 0.14
+      }
+    },
+    "700": {
+      "l": {
+        "$value": 0.46
+      },
+      "c": {
+        "$value": 0.12
+      }
+    },
+    "800": {
+      "l": {
+        "$value": 0.36
+      },
+      "c": {
+        "$value": 0.095
+      }
+    },
+    "900": {
+      "l": {
+        "$value": 0.26
+      },
+      "c": {
+        "$value": 0.07
+      }
+    },
+    "$type": "number",
+    "$description": "Lightness and chroma per ramp step, in oklch. Hue comes from `hue` above, which is what makes every app's ramp identical except for H — and therefore keeps contrast ratios holding across products. Emitters resolve these: CSS writes oklch() and lets the browser do it; Dart and Swift bake to sRGB with chroma-reduction gamut mapping.",
+    "050": {
+      "l": {
+        "$value": 0.96
+      },
+      "c": {
+        "$value": 0.022
+      }
+    },
+    "wash": {
+      "l": {
+        "$value": 0.24
+      },
+      "c": {
+        "$value": 0.045
+      }
+    }
+  },
+  "stone": {
+    "0": {
+      "$value": "#ffffff"
+    },
+    "50": {
+      "$value": "#faf9f7"
+    },
+    "100": {
+      "$value": "#f0efec"
+    },
+    "200": {
+      "$value": "#e0deda"
+    },
+    "300": {
+      "$value": "#c6c3bd"
+    },
+    "400": {
+      "$value": "#a09c95"
+    },
+    "500": {
+      "$value": "#7c7873"
+    },
+    "600": {
+      "$value": "#5c5955"
+    },
+    "700": {
+      "$value": "#413f3c"
+    },
+    "800": {
+      "$value": "#2b2a27"
+    },
+    "850": {
+      "$value": "#211f1d"
+    },
+    "900": {
+      "$value": "#181614"
+    },
+    "950": {
+      "$value": "#0f0e0d"
+    },
+    "$type": "color",
+    "$description": "The warm achromatic spine. Never per-app. Warm on purpose — near-blacks keep a trace of yellow so the system reads as paper and graphite, never blue-grey."
+  },
+  "status": {
+    "$description": "Status ramps in oklch. `400` is tuned for dark surfaces, `500` for light — separately, not derived. Status colours are not accents and may coexist with one.",
+    "success": {
+      "400": {
+        "l": {
+          "$value": 0.78
+        },
+        "c": {
+          "$value": 0.145
+        },
+        "h": {
+          "$value": 150
+        }
+      },
+      "500": {
+        "l": {
+          "$value": 0.62
+        },
+        "c": {
+          "$value": 0.15
+        },
+        "h": {
+          "$value": 150
+        }
+      }
+    },
+    "warning": {
+      "400": {
+        "l": {
+          "$value": 0.82
+        },
+        "c": {
+          "$value": 0.14
+        },
+        "h": {
+          "$value": 85
+        }
+      },
+      "500": {
+        "l": {
+          "$value": 0.68
+        },
+        "c": {
+          "$value": 0.145
+        },
+        "h": {
+          "$value": 75
+        }
+      }
+    },
+    "danger": {
+      "400": {
+        "l": {
+          "$value": 0.72
+        },
+        "c": {
+          "$value": 0.155
+        },
+        "h": {
+          "$value": 25
+        }
+      },
+      "500": {
+        "l": {
+          "$value": 0.6
+        },
+        "c": {
+          "$value": 0.185
+        },
+        "h": {
+          "$value": 25
+        }
+      }
+    },
+    "info": {
+      "400": {
+        "l": {
+          "$value": 0.76
+        },
+        "c": {
+          "$value": 0.12
+        },
+        "h": {
+          "$value": 240
+        }
+      },
+      "500": {
+        "l": {
+          "$value": 0.58
+        },
+        "c": {
+          "$value": 0.155
+        },
+        "h": {
+          "$value": 250
+        }
+      }
+    },
+    "subtleDark": {
+      "$description": "Quiet status fills for dark surfaces.",
+      "success": {
+        "l": {
+          "$value": 0.3
+        },
+        "c": {
+          "$value": 0.055
+        },
+        "h": {
+          "$value": 150
+        }
+      },
+      "warning": {
+        "l": {
+          "$value": 0.3
+        },
+        "c": {
+          "$value": 0.055
+        },
+        "h": {
+          "$value": 80
+        }
+      },
+      "danger": {
+        "l": {
+          "$value": 0.3
+        },
+        "c": {
+          "$value": 0.065
+        },
+        "h": {
+          "$value": 25
+        }
+      },
+      "info": {
+        "l": {
+          "$value": 0.3
+        },
+        "c": {
+          "$value": 0.055
+        },
+        "h": {
+          "$value": 245
+        }
+      }
+    },
+    "textLight": {
+      "$description": "Status text on light surfaces. Darker than the 500 fills so it clears 4.5:1 on white.",
+      "success": {
+        "l": {
+          "$value": 0.48
+        },
+        "c": {
+          "$value": 0.13
+        },
+        "h": {
+          "$value": 150
+        }
+      },
+      "warning": {
+        "l": {
+          "$value": 0.52
+        },
+        "c": {
+          "$value": 0.13
+        },
+        "h": {
+          "$value": 85
+        }
+      },
+      "danger": {
+        "l": {
+          "$value": 0.52
+        },
+        "c": {
+          "$value": 0.16
+        },
+        "h": {
+          "$value": 25
+        }
+      },
+      "info": {
+        "l": {
+          "$value": 0.5
+        },
+        "c": {
+          "$value": 0.14
+        },
+        "h": {
+          "$value": 240
+        }
+      }
+    },
+    "subtleLight": {
+      "$description": "Quiet status fills for light surfaces.",
+      "success": {
+        "l": {
+          "$value": 0.96
+        },
+        "c": {
+          "$value": 0.03
+        },
+        "h": {
+          "$value": 150
+        }
+      },
+      "warning": {
+        "l": {
+          "$value": 0.96
+        },
+        "c": {
+          "$value": 0.04
+        },
+        "h": {
+          "$value": 85
+        }
+      },
+      "danger": {
+        "l": {
+          "$value": 0.96
+        },
+        "c": {
+          "$value": 0.03
+        },
+        "h": {
+          "$value": 25
+        }
+      },
+      "info": {
+        "l": {
+          "$value": 0.96
+        },
+        "c": {
+          "$value": 0.03
+        },
+        "h": {
+          "$value": 240
+        }
+      }
+    }
+  },
+  "chart": {
+    "1": {
+      "l": {
+        "$value": 0.7
+      },
+      "c": {
+        "$value": 0.13
+      },
+      "h": {
+        "$value": 245
+      }
+    },
+    "2": {
+      "l": {
+        "$value": 0.7
+      },
+      "c": {
+        "$value": 0.13
+      },
+      "h": {
+        "$value": 145
+      }
+    },
+    "3": {
+      "l": {
+        "$value": 0.7
+      },
+      "c": {
+        "$value": 0.13
+      },
+      "h": {
+        "$value": 55
+      }
+    },
+    "4": {
+      "l": {
+        "$value": 0.7
+      },
+      "c": {
+        "$value": 0.13
+      },
+      "h": {
+        "$value": 320
+      }
+    },
+    "5": {
+      "l": {
+        "$value": 0.7
+      },
+      "c": {
+        "$value": 0.13
+      },
+      "h": {
+        "$value": 195
+      }
+    },
+    "6": {
+      "l": {
+        "$value": 0.7
+      },
+      "c": {
+        "$value": 0.13
+      },
+      "h": {
+        "$value": 25
+      }
+    },
+    "$description": "Categorical series colours. Six hues at fixed lightness and chroma, so no series shouts louder than another. Deliberately NOT derived from the app accent — a chart must read the same whichever product it is in. One and two series use the accent plus tertiary text instead; see guidelines/data-visualisation.md."
+  },
+  "raw": {
+    "$type": "color",
+    "$description": "Values that are neither stone nor a ramp step: theme-specific near-blacks and text colours that were tuned by eye rather than derived.",
+    "surfaceSunkenDark": {
+      "$value": "#0a0908",
+      "$description": "Below the page in dark. Deliberately not stone-950."
+    },
+    "textPrimaryDark": {
+      "$value": "#f5f3f0",
+      "$description": "Warm off-white. Not stone-50, which is too cool against the warm blacks."
+    },
+    "borderSubtleDark": {
+      "$value": "#2a2724"
+    },
+    "borderDefaultDark": {
+      "$value": "#383431"
+    },
+    "borderStrongDark": {
+      "$value": "#4c4844"
+    },
+    "borderDisabledDark": {
+      "$value": "#2e2b28"
+    },
+    "onDangerDark": {
+      "$value": "#fdf6f4"
+    },
+    "scrimDark": {
+      "$value": "#000000",
+      "alpha": 0.68,
+      "$description": "Warm black at 68%. The one place a translucent fill is allowed."
+    },
+    "scrimLight": {
+      "$value": "#2b2a27",
+      "alpha": 0.4
+    }
+  }
+}
