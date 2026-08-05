@@ -1,10 +1,24 @@
 name: deploy-qa
 
-# Deploy any branch to the stable QA environment (qa.chriskim.cloud). The QA
+# Deploy a branch to the stable QA environment (qa.chriskim.cloud). The QA
 # Dokploy apps build from the `qa` branch, so "deploy branch X" = force-point
-# `qa` at X, then trigger the QA webhooks. Manual only — run it from the Actions
-# tab (or GitHub mobile). See docs/11-qa-environment.md.
+# `qa` at X, then trigger the QA webhooks. See docs/11-qa-environment.md.
+#
+# Two triggers:
+#   - pull_request (opened/synchronize/reopened, code paths only) auto-deploys the
+#     PR's branch — open a PR or push to it and it lands on QA a few minutes later.
+#   - workflow_dispatch is the manual override (deploy `main`, or a branch with no
+#     open PR, or force a redeploy) — also runnable from GitHub mobile.
+#
+# QA is a SINGLE shared slot (one `qa` pointer + one DB). The concurrency group
+# serialises deploys so the newest wins; with two PRs open at once, the last one
+# deployed is what's live. Fine for serial, one-PR-at-a-time work.
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "web/**"
+      - "api/**"
   workflow_dispatch:
     inputs:
       branch:
@@ -34,7 +48,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.branch }}
+          # workflow_dispatch → inputs.branch; pull_request → the PR's head branch.
+          ref: ${{ inputs.branch || github.head_ref }}
           fetch-depth: 0 # full history so the force-push to `qa` isn't shallow
 
       - uses: pnpm/action-setup@v4
@@ -54,7 +69,7 @@ jobs:
         run: pnpm db:migrate
         working-directory: web
 
-      - name: Point `qa` at ${{ inputs.branch }}
+      - name: Point `qa` at the deployed branch
         run: git push --force origin HEAD:refs/heads/qa
 
   # Trigger the QA Dokploy webhooks (same shape as the prod deploy: push event +
@@ -62,7 +77,8 @@ jobs:
   # can deploy just one.
   deploy-web:
     needs: prepare
-    if: inputs.service == 'both' || inputs.service == 'web'
+    # inputs.service is null on pull_request → default to both.
+    if: (inputs.service || 'both') == 'both' || (inputs.service || 'both') == 'web'
     runs-on: ubuntu-latest
     steps:
       - name: Join tailnet
@@ -81,7 +97,7 @@ jobs:
 
   deploy-api:
     needs: prepare
-    if: inputs.service == 'both' || inputs.service == 'api'
+    if: (inputs.service || 'both') == 'both' || (inputs.service || 'both') == 'api'
     runs-on: ubuntu-latest
     steps:
       - name: Join tailnet
