@@ -1,0 +1,28 @@
+<!-- @dsCard group="Type" viewport="700x230" subtitle="Outfit display · Plus Jakarta Sans text · IBM Plex Mono data. Three families, no more." name="Type families" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Type families</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div class="col" style="gap:var(--space-6)">
+  <div class="col" style="gap:4px"><span class="tok">--font-display · Outfit</span>
+    <span style="font-family:var(--font-display);font-size:34px;font-weight:600;letter-spacing:var(--tracking-tighter)">Where to next, and when</span></div>
+  <div class="col" style="gap:4px"><span class="tok">--font-sans · Plus Jakarta Sans</span>
+    <span style="font:var(--type-body);max-width:60ch">Nonstop from Lisbon, arriving 14 August. We hold the fare for 24 hours while you decide.</span></div>
+  <div class="col" style="gap:4px"><span class="tok">--font-mono · IBM Plex Mono</span>
+    <span style="font-family:var(--font-mono);font-size:15px;font-weight:500">$412.60 · 07:45 → 11:20 · +18.4 PTS</span></div>
+</div>
+</body>
+</html>

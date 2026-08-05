@@ -1,0 +1,31 @@
+<!-- @dsCard group="Brand" viewport="700x220" subtitle="Borders at rest. Shadow only for things that overlay other content." name="Depth model" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Depth model</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div class="row" style="gap:var(--space-8);align-items:stretch">
+  <div class="col" style="gap:8px;flex:1">
+    <div style="flex:1;background:var(--surface-card);border:1px solid var(--border-subtle);padding:var(--space-6);font:var(--type-body-sm);color:var(--text-secondary)">Card at rest — border only, casts nothing.</div>
+    <span class="tok">--shadow-none</span></div>
+  <div class="col" style="gap:8px;flex:1">
+    <div style="flex:1;background:var(--surface-overlay);border:1px solid var(--border-subtle);box-shadow:var(--shadow-popover);padding:var(--space-6);font:var(--type-body-sm);color:var(--text-secondary)">Popover / menu — border plus lift.</div>
+    <span class="tok">--shadow-popover</span></div>
+  <div class="col" style="gap:8px;flex:1">
+    <div style="flex:1;background:var(--surface-overlay);border:1px solid var(--border-subtle);box-shadow:var(--shadow-dialog);padding:var(--space-6);font:var(--type-body-sm);color:var(--text-secondary)">Dialog — deepest, over a blurred scrim.</div>
+    <span class="tok">--shadow-dialog</span></div>
+</div>
+</body>
+</html>

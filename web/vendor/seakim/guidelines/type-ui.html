@@ -1,0 +1,35 @@
+<!-- @dsCard group="Type" viewport="700x240" subtitle="xl–2xs, Plus Jakarta Sans. 13px is the floor for dense web; 15px on mobile." name="UI + body scale" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UI + body scale</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div class="col" style="gap:9px">
+
+  <div class="row" style="align-items:baseline;gap:16px"><span class="tok" style="width:70px">xl 20px</span>
+  <span style="font-family:var(--font-sans);font-size:var(--text-xl)">Section heading</span></div>
+  <div class="row" style="align-items:baseline;gap:16px"><span class="tok" style="width:70px">lg 17px</span>
+  <span style="font-family:var(--font-sans);font-size:var(--text-lg)">Card title</span></div>
+  <div class="row" style="align-items:baseline;gap:16px"><span class="tok" style="width:70px">md 15px</span>
+  <span style="font-family:var(--font-sans);font-size:var(--text-md)">Body — the default for reading</span></div>
+  <div class="row" style="align-items:baseline;gap:16px"><span class="tok" style="width:70px">sm 13px</span>
+  <span style="font-family:var(--font-sans);font-size:var(--text-sm)">Dense UI, table cells, labels</span></div>
+  <div class="row" style="align-items:baseline;gap:16px"><span class="tok" style="width:70px">xs 11px</span>
+  <span style="font-family:var(--font-sans);font-size:var(--text-xs)">Meta, captions, helper text</span></div>
+  <div class="row" style="align-items:baseline;gap:16px"><span class="tok" style="width:70px">2xs 10px</span>
+  <span style="font-family:var(--font-sans);font-size:var(--text-2xs)">Eyebrow only</span></div>
+</div>
+</body>
+</html>

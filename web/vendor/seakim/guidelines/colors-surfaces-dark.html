@@ -1,0 +1,55 @@
+<!-- @dsCard group="Colors" viewport="700x190" subtitle="Default theme. Two background values per screen is the working limit." name="Surfaces — dark" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Surfaces — dark</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-5)">
+
+  <div class="col" style="gap:6px">
+    <div style="height:52px;background:var(--surface-page);border:1px solid var(--border-subtle)"></div>
+    <div class="tok">page</div>
+  </div>
+  <div class="col" style="gap:6px">
+    <div style="height:52px;background:var(--surface-card);border:1px solid var(--border-subtle)"></div>
+    <div class="tok">card</div>
+  </div>
+  <div class="col" style="gap:6px">
+    <div style="height:52px;background:var(--surface-raised);border:1px solid var(--border-subtle)"></div>
+    <div class="tok">raised</div>
+  </div>
+  <div class="col" style="gap:6px">
+    <div style="height:52px;background:var(--surface-inset);border:1px solid var(--border-subtle)"></div>
+    <div class="tok">inset</div>
+  </div>
+  <div class="col" style="gap:6px">
+    <div style="height:52px;background:var(--surface-hover);border:1px solid var(--border-subtle)"></div>
+    <div class="tok">hover</div>
+  </div>
+  <div class="col" style="gap:6px">
+    <div style="height:52px;background:var(--surface-active);border:1px solid var(--border-subtle)"></div>
+    <div class="tok">active</div>
+  </div>
+  <div class="col" style="gap:6px">
+    <div style="height:52px;background:var(--surface-selected);border:1px solid var(--border-subtle)"></div>
+    <div class="tok">selected</div>
+  </div>
+  <div class="col" style="gap:6px">
+    <div style="height:52px;background:var(--surface-sunken);border:1px solid var(--border-subtle)"></div>
+    <div class="tok">sunken</div>
+  </div>
+</div>
+</body>
+</html>

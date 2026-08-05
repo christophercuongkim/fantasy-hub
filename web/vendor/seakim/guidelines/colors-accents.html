@@ -1,0 +1,42 @@
+<!-- @dsCard group="Colors" viewport="700x260" subtitle="One accent live at a time, rotated per app via data-app. Same L and C — only hue moves." name="App accent hues" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>App accent hues</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6)">
+  <div class="col" style="gap:6px">
+  <div class="tok">brand / clay · hue 55</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--border-subtle)">
+    <div style="height:44px;background:oklch(0.80 0.10 55)"></div><div style="height:44px;background:oklch(0.72 0.13 55)"></div><div style="height:44px;background:oklch(0.64 0.14 55)"></div><div style="height:44px;background:oklch(0.56 0.14 55)"></div><div style="height:44px;background:oklch(0.46 0.12 55)"></div>
+  </div></div>
+  <div class="col" style="gap:6px">
+  <div class="tok">sea · Voyage · hue 245</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--border-subtle)">
+    <div style="height:44px;background:oklch(0.80 0.10 245)"></div><div style="height:44px;background:oklch(0.72 0.13 245)"></div><div style="height:44px;background:oklch(0.64 0.14 245)"></div><div style="height:44px;background:oklch(0.56 0.14 245)"></div><div style="height:44px;background:oklch(0.46 0.12 245)"></div>
+  </div></div>
+  <div class="col" style="gap:6px">
+  <div class="tok">turf · Bench · hue 145</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--border-subtle)">
+    <div style="height:44px;background:oklch(0.80 0.10 145)"></div><div style="height:44px;background:oklch(0.72 0.13 145)"></div><div style="height:44px;background:oklch(0.64 0.14 145)"></div><div style="height:44px;background:oklch(0.56 0.14 145)"></div><div style="height:44px;background:oklch(0.46 0.12 145)"></div>
+  </div></div>
+  <div class="col" style="gap:6px">
+  <div class="tok">plum · reserved · hue 320</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--border-subtle)">
+    <div style="height:44px;background:oklch(0.80 0.10 320)"></div><div style="height:44px;background:oklch(0.72 0.13 320)"></div><div style="height:44px;background:oklch(0.64 0.14 320)"></div><div style="height:44px;background:oklch(0.56 0.14 320)"></div><div style="height:44px;background:oklch(0.46 0.12 320)"></div>
+  </div></div>
+</div>
+</body>
+</html>

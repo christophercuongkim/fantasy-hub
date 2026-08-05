@@ -1,0 +1,35 @@
+<!-- @dsCard group="Brand" viewport="700x160" subtitle="0px is the system. 2px for checkboxes, full for avatars and knobs. Nothing else rounds." name="Corner radius" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Corner radius</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 20px 22px; background: var(--surface-page); }
+  .row { display: flex; align-items: flex-start; gap: var(--space-5); }
+  .col { display: flex; flex-direction: column; }
+  .tok { font: var(--type-eyebrow); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); white-space: nowrap; }
+  .val { font: var(--type-eyebrow); color: var(--text-secondary); }
+  
+</style>
+<script src="../theme-toggle.js"></script>
+</head>
+<body>
+<div class="row" style="gap:var(--space-9);align-items:flex-end">
+
+  <div class="col" style="gap:8px;align-items:flex-start">
+    <div style="width:64px;height:64px;background:var(--fill-neutral);border:1px solid var(--border-default);border-radius:var(--radius-none)"></div>
+    <span class="tok">none · 0px</span><span class="tok" style="color:var(--text-tertiary);opacity:.7">everything</span></div>
+  <div class="col" style="gap:8px;align-items:flex-start">
+    <div style="width:64px;height:64px;background:var(--fill-neutral);border:1px solid var(--border-default);border-radius:var(--radius-xs)"></div>
+    <span class="tok">xs · 2px</span><span class="tok" style="color:var(--text-tertiary);opacity:.7">checkbox, micro-chip</span></div>
+  <div class="col" style="gap:8px;align-items:flex-start">
+    <div style="width:64px;height:64px;background:var(--fill-neutral);border:1px solid var(--border-default);border-radius:var(--radius-sm)"></div>
+    <span class="tok">sm · 3px</span><span class="tok" style="color:var(--text-tertiary);opacity:.7">rare exception</span></div>
+  <div class="col" style="gap:8px;align-items:flex-start">
+    <div style="width:64px;height:64px;background:var(--fill-neutral);border:1px solid var(--border-default);border-radius:var(--radius-full)"></div>
+    <span class="tok">full · 999px</span><span class="tok" style="color:var(--text-tertiary);opacity:.7">avatar, knob, dot</span></div>
+</div>
+</body>
+</html>
