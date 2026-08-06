@@ -110,13 +110,22 @@ export function Charts({
         gridTemplateColumns: "repeat(auto-fit, minmax(28rem, 1fr))",
       }}
     >
-      {/* title (primary ink) is the heading that pops; meta (secondary) is the
-          description. eyebrow alone would leave the card header all-grey. */}
+      {/* Grouped by shape: the two wide plots share the top row (shorter), the
+          two near-square heatmaps share the bottom row (taller, fill the card).
+          Even row heights, and the bump chart stays directly above its finish
+          heatmap — the mandatory adjacent grid (ADR 0016). title = primary ink
+          heading; meta = secondary description. */}
       <Card
         title="Finish over time"
         meta="final placement each season — hover a line"
       >
         <BumpChart data={managerSeasons} ctx={ctx} />
+      </Card>
+      <Card
+        title="Luck vs. skill"
+        meta="points-for vs wins · line = expected wins"
+      >
+        <LuckSkill data={scatter} career={career} ctx={ctx} />
       </Card>
       <Card title="Wall of history" meta="final rank per season · ring = title">
         <FinishHeatmap data={managerSeasons} ctx={ctx} />
@@ -126,12 +135,6 @@ export function Charts({
         meta="regular-season win rate vs each opponent"
       >
         <H2HHeatmap data={headToHead} ctx={ctx} />
-      </Card>
-      <Card
-        title="Luck vs. skill"
-        meta="points-for vs wins · line = expected wins"
-      >
-        <LuckSkill data={scatter} career={career} ctx={ctx} />
       </Card>
 
       {tip && (
@@ -198,7 +201,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", maxWidth: W, display: "block", margin: "0 auto" }}
+      style={{ width: "100%", display: "block" }}
       role="img"
       aria-label="Finish over time"
     >
@@ -322,7 +325,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", maxWidth: W, display: "block", margin: "0 auto" }}
+      style={{ width: "100%", display: "block" }}
       role="img"
       aria-label="Finish rank per season"
     >
@@ -419,7 +422,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", maxWidth: W, display: "block", margin: "0 auto" }}
+      style={{ width: "100%", display: "block" }}
       role="img"
       aria-label="Head-to-head win rate"
     >
@@ -546,7 +549,7 @@ function LuckSkill({
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", maxWidth: W, display: "block", margin: "0 auto" }}
+      style={{ width: "100%", display: "block" }}
       role="img"
       aria-label="Luck vs skill"
     >
