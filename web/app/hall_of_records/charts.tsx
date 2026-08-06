@@ -19,8 +19,8 @@ const INVERSE = "var(--text-inverse)"; // label over a dark seq cell
 const LABEL = "var(--text-tertiary)"; // axis + tick labels + comparison series
 const GRID = "var(--border-subtle)"; // gridlines (horizontal only)
 const HAIRLINE = "var(--border-subtle)"; // required border on every seq cell
-const REF = "var(--border-strong)"; // reference line + champion ring
-const ACCENT = "var(--fill-accent)"; // primary series (the "you")
+const REF = "var(--border-strong)"; // neutral reference / projection line
+const ACCENT = "var(--fill-accent)"; // the accent — primary series + emphasis
 
 // Magnitude uses the DS sequential ramp (decision 0015): fixed indigo
 // --chart-seq-1..4, theme-aware (the tokens invert per theme, so no JS theme
@@ -94,7 +94,9 @@ export function Charts({
         position: "relative",
         display: "grid",
         gap: "var(--space-4)",
-        gridTemplateColumns: "repeat(auto-fit, minmax(20rem, 1fr))",
+        // Cap at 2 columns — a 28rem floor keeps a wide laptop from packing 3
+        // narrow charts (which shrank the bump chart). Drops to 1 on mobile.
+        gridTemplateColumns: "repeat(auto-fit, minmax(28rem, 1fr))",
       }}
     >
       <Card
@@ -352,7 +354,11 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                   height={cell - 2}
                   rx={2}
                   fill={d ? seqFill(t) : "transparent"}
-                  stroke={champ ? REF : d ? HAIRLINE : "none"}
+                  // Champion = the one thing to pick out → the accent (turf).
+                  // "One accent hue live at a time"; the indigo seq cells aren't
+                  // the accent, so this is the single accent on the chart. Grey
+                  // --border-strong is for neutral reference lines, not emphasis.
+                  stroke={champ ? ACCENT : d ? HAIRLINE : "none"}
                   strokeWidth={champ ? 2 : d ? 1 : 0}
                   onMouseMove={(e) =>
                     d &&
