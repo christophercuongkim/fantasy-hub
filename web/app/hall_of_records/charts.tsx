@@ -59,8 +59,10 @@ function useInkFlip() {
 
 type Tip = { x: number; y: number; lines: string[] } | null;
 type Ctx = {
-  hi: string | null;
-  setHi: (m: string | null) => void;
+  active: string | null;
+  hover: (m: string | null) => void;
+  clearHover: () => void;
+  toggle: (m: string) => void;
   show: (e: React.MouseEvent, lines: string[], m?: string) => void;
   hide: () => void;
 };
@@ -76,14 +78,23 @@ export function Charts({
   scatter: ScatterPoint[];
   career: CareerRow[];
 }) {
-  const [hi, setHi] = useState<string | null>(null);
+  // A manager is highlighted by hover, or *pinned* by click. Hover alone clears
+  // on mouse-out, so on desktop there was no persistent filter (it only looked
+  // like one on touch, where no mouseleave fires). A pin wins over hover;
+  // clicking the pinned manager clears it, clicking another switches.
+  const [hover, setHover] = useState<string | null>(null);
+  const [pinned, setPinned] = useState<string | null>(null);
   const [tip, setTip] = useState<Tip>(null);
+  // Hover previews; when nothing is hovered it falls back to the pinned filter.
+  const active = hover ?? pinned;
   const ctx: Ctx = {
-    hi,
-    setHi,
+    active,
+    hover: setHover,
+    clearHover: () => setHover(null),
+    toggle: (m) => setPinned((p) => (p === m ? null : m)),
     show: (e, lines, m) => {
       setTip({ x: e.clientX, y: e.clientY, lines });
-      if (m !== undefined) setHi(m);
+      if (m !== undefined) setHover(m);
     },
     hide: () => setTip(null),
   };
@@ -216,7 +227,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
         </text>
       ))}
       {byMgr.map(({ mgr, pts }, i) => {
-        const active = ctx.hi === mgr;
+        const active = ctx.active === mgr;
         return (
           <g
             key={mgr}
@@ -237,11 +248,18 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
               )
             }
             onMouseLeave={() => {
-              ctx.setHi(null);
+              ctx.clearHover();
               ctx.hide();
             }}
-            onFocus={() => ctx.setHi(mgr)}
-            onBlur={() => ctx.setHi(null)}
+            onFocus={() => ctx.hover(mgr)}
+            onBlur={() => ctx.clearHover()}
+            onClick={() => ctx.toggle(mgr)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                ctx.toggle(mgr);
+              }
+            }}
             style={{ cursor: "pointer" }}
           >
             <path
@@ -256,7 +274,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
               strokeWidth={active ? 2.5 : 1.5}
               strokeLinecap="square"
               strokeLinejoin="miter"
-              opacity={active ? 1 : ctx.hi ? 0.15 : 0.65}
+              opacity={active ? 1 : ctx.active ? 0.15 : 0.65}
             />
             {pts.map((p) => (
               <circle
@@ -265,7 +283,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                 cy={y(p.finalRank)}
                 r={active ? 4 : 2.5}
                 fill={active ? ACCENT : LABEL}
-                opacity={active ? 1 : ctx.hi ? 0.15 : 0.65}
+                opacity={active ? 1 : ctx.active ? 0.15 : 0.65}
               />
             ))}
             <text
@@ -274,7 +292,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
               fontSize="10"
               fill={active ? INK : LABEL}
               fontWeight={active ? 600 : 400}
-              opacity={dim(ctx.hi, mgr)}
+              opacity={dim(ctx.active, mgr)}
             >
               {mgr}
             </text>
@@ -323,11 +341,13 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
       {managers.map((mgr, r) => (
         <g
           key={mgr}
-          opacity={dim(ctx.hi, mgr)}
+          opacity={dim(ctx.active, mgr)}
           onMouseLeave={() => {
-            ctx.setHi(null);
+            ctx.clearHover();
             ctx.hide();
           }}
+          onClick={() => ctx.toggle(mgr)}
+          style={{ cursor: "pointer" }}
         >
           <text
             x={labelW - 6}
@@ -411,7 +431,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
           fontSize="9"
           fill={LABEL}
           textAnchor="start"
-          opacity={dim(ctx.hi, b)}
+          opacity={dim(ctx.active, b)}
           transform={`rotate(-45 ${labelW + ci * cell + cell / 2} ${top - 6})`}
         >
           {b}
@@ -425,12 +445,13 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
             fontSize="10"
             fill={INK}
             textAnchor="end"
-            opacity={dim(ctx.hi, a)}
+            opacity={dim(ctx.active, a)}
           >
             {a}
           </text>
           {managers.map((b, ci) => {
-            const highlighted = !ctx.hi || ctx.hi === a || ctx.hi === b;
+            const highlighted =
+              !ctx.active || ctx.active === a || ctx.active === b;
             if (a === b)
               return (
                 <rect
@@ -451,7 +472,10 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
               <rect
                 key={b}
                 className="sl-fade"
-                style={{ animationDelay: `${(r + ci) * 20}ms` }}
+                style={{
+                  animationDelay: `${(r + ci) * 20}ms`,
+                  cursor: "pointer",
+                }}
                 x={labelW + ci * cell + 1}
                 y={top + r * cell + 1}
                 width={cell - 2}
@@ -473,9 +497,10 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
                   )
                 }
                 onMouseLeave={() => {
-                  ctx.setHi(null);
+                  ctx.clearHover();
                   ctx.hide();
                 }}
+                onClick={() => ctx.toggle(a)}
               />
             );
           })}
@@ -580,14 +605,14 @@ function LuckSkill({
           <circle
             key={i}
             className="sl-pop"
-            style={{ animationDelay: `${i * 20}ms` }}
+            style={{ animationDelay: `${i * 20}ms`, cursor: "pointer" }}
             cx={x(d.pointsFor)}
             cy={y(d.wins)}
-            r={ctx.hi === d.manager ? 6 : 4}
+            r={ctx.active === d.manager ? 6 : 4}
             fill={lucky ? ACCENT : LABEL}
             stroke="var(--surface-card)"
             strokeWidth={1}
-            opacity={dim(ctx.hi, d.manager!)}
+            opacity={dim(ctx.active, d.manager!)}
             onMouseMove={(e) =>
               ctx.show(
                 e,
@@ -599,9 +624,10 @@ function LuckSkill({
               )
             }
             onMouseLeave={() => {
-              ctx.setHi(null);
+              ctx.clearHover();
               ctx.hide();
             }}
+            onClick={() => d.manager && ctx.toggle(d.manager)}
           />
         );
       })}
