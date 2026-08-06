@@ -22,6 +22,14 @@ const HAIRLINE = "var(--border-subtle)"; // required border on every seq cell
 const REF = "var(--border-strong)"; // neutral reference / projection line
 const ACCENT = "var(--fill-accent)"; // the accent — primary series + emphasis
 
+// Numeric SVG labels are figures → mono + tabular (type-data rule). Applied via
+// style so it composes with per-text fill/anchor. Non-numeric labels (names,
+// axis titles) stay in the inherited sans.
+const FIG = {
+  fontFamily: "var(--font-mono)",
+  fontVariantNumeric: "tabular-nums",
+} as const;
+
 // Magnitude uses the DS sequential ramp (decision 0015): fixed indigo
 // --chart-seq-1..4, theme-aware (the tokens invert per theme, so no JS theme
 // read for the fill) and never the app accent — a scale must read the same in
@@ -213,6 +221,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
           fontSize="10"
           fill={LABEL}
           textAnchor="end"
+          style={FIG}
         >
           {t}
         </text>
@@ -225,6 +234,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
           fontSize="10"
           fill={LABEL}
           textAnchor="middle"
+          style={FIG}
         >
           {s}
         </text>
@@ -334,22 +344,36 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
           key={s}
           x={labelW + ci * cell + cell / 2}
           y={13}
-          fontSize="9"
+          fontSize="10"
           fill={LABEL}
           textAnchor="middle"
+          style={FIG}
         >
           {`'${String(s).slice(2)}`}
         </text>
       ))}
       {managers.map((mgr, r) => (
+        // Row is the keyboard unit (one tab stop per manager, like a bump line):
+        // focus highlights + Enter/Space pins. Cell values are visible text.
         <g
           key={mgr}
+          tabIndex={0}
+          role="button"
+          aria-label={`${mgr} — finish rank by season`}
           opacity={dim(ctx.active, mgr)}
           onMouseLeave={() => {
             ctx.clearHover();
             ctx.hide();
           }}
+          onFocus={() => ctx.hover(mgr)}
+          onBlur={() => ctx.clearHover()}
           onClick={() => ctx.toggle(mgr)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              ctx.toggle(mgr);
+            }
+          }}
           style={{ cursor: "pointer" }}
         >
           <text
@@ -391,10 +415,10 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                   <text
                     x={labelW + ci * cell + cell / 2}
                     y={top + r * cell + cell / 2 + 3}
-                    fontSize="9"
+                    fontSize="10"
                     fill={cellInk(t, flip)}
                     textAnchor="middle"
-                    style={{ pointerEvents: "none" }}
+                    style={{ ...FIG, pointerEvents: "none" }}
                   >
                     {d.finalRank}
                   </text>
@@ -410,6 +434,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
 
 // --------------------------------------------------------------- h2h heatmap
 function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
+  const flip = useInkFlip();
   const managers = [...new Set(data.map((d) => d.a))].sort();
   const cell = 26,
     labelW = 96,
@@ -431,7 +456,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
           key={b}
           x={labelW + ci * cell + cell / 2}
           y={top - 6}
-          fontSize="9"
+          fontSize="10"
           fill={LABEL}
           textAnchor="start"
           opacity={dim(ctx.active, b)}
@@ -441,7 +466,25 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
         </text>
       ))}
       {managers.map((a, r) => (
-        <g key={a}>
+        // Row is the keyboard unit: focus highlights, Enter/Space pins. Win-rate
+        // is rendered in-cell (not tooltip-only), so the value is reachable
+        // without a pointer.
+        <g
+          key={a}
+          tabIndex={0}
+          role="button"
+          aria-label={`${a} — head-to-head win rate vs each opponent`}
+          onFocus={() => ctx.hover(a)}
+          onBlur={() => ctx.clearHover()}
+          onClick={() => ctx.toggle(a)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              ctx.toggle(a);
+            }
+          }}
+          style={{ cursor: "pointer" }}
+        >
           <text
             x={labelW - 6}
             y={top + r * cell + cell / 2 + 3}
@@ -471,40 +514,51 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
               );
             const g = get(a, b);
             const rate = g && g.games ? g.wins / g.games : null;
+            const pct = rate == null ? null : Math.round(rate * 100);
             return (
-              <rect
-                key={b}
-                className="sl-fade"
-                style={{
-                  animationDelay: `${(r + ci) * 20}ms`,
-                  cursor: "pointer",
-                }}
-                x={labelW + ci * cell + 1}
-                y={top + r * cell + 1}
-                width={cell - 2}
-                height={cell - 2}
-                rx={0}
-                fill={rate == null ? "transparent" : seqFill(rate)}
-                stroke={rate == null ? "none" : HAIRLINE}
-                strokeWidth={rate == null ? 0 : 1}
-                opacity={highlighted ? 1 : 0.15}
-                onMouseMove={(e) =>
-                  g &&
-                  ctx.show(
-                    e,
-                    [
-                      `${a} vs ${b}`,
-                      `${g.wins}-${g.games - g.wins} (${Math.round((g.wins / g.games) * 100)}%)`,
-                    ],
-                    a,
-                  )
-                }
-                onMouseLeave={() => {
-                  ctx.clearHover();
-                  ctx.hide();
-                }}
-                onClick={() => ctx.toggle(a)}
-              />
+              <g key={b}>
+                <rect
+                  className="sl-fade"
+                  style={{ animationDelay: `${(r + ci) * 20}ms` }}
+                  x={labelW + ci * cell + 1}
+                  y={top + r * cell + 1}
+                  width={cell - 2}
+                  height={cell - 2}
+                  rx={0}
+                  fill={rate == null ? "transparent" : seqFill(rate)}
+                  stroke={rate == null ? "none" : HAIRLINE}
+                  strokeWidth={rate == null ? 0 : 1}
+                  opacity={highlighted ? 1 : 0.15}
+                  onMouseMove={(e) =>
+                    g &&
+                    ctx.show(
+                      e,
+                      [
+                        `${a} vs ${b}`,
+                        `${g.wins}-${g.games - g.wins} (${pct}%)`,
+                      ],
+                      a,
+                    )
+                  }
+                  onMouseLeave={() => {
+                    ctx.clearHover();
+                    ctx.hide();
+                  }}
+                />
+                {pct != null && (
+                  <text
+                    x={labelW + ci * cell + cell / 2}
+                    y={top + r * cell + cell / 2 + 3}
+                    fontSize="10"
+                    fill={cellInk(rate!, flip)}
+                    textAnchor="middle"
+                    opacity={highlighted ? 1 : 0.15}
+                    style={{ ...FIG, pointerEvents: "none" }}
+                  >
+                    {pct}
+                  </text>
+                )}
+              </g>
             );
           })}
         </g>
@@ -569,6 +623,7 @@ function LuckSkill({
             fontSize="10"
             fill={LABEL}
             textAnchor="end"
+            style={FIG}
           >
             {t}
           </text>
@@ -616,6 +671,9 @@ function LuckSkill({
             stroke="var(--surface-card)"
             strokeWidth={1}
             opacity={dim(ctx.active, d.manager!)}
+            tabIndex={0}
+            role="button"
+            aria-label={`${d.manager}, ${d.season}: ${d.wins} wins, ${d.pointsFor.toFixed(0)} points — ${lucky ? "lucky" : "unlucky"}`}
             onMouseMove={(e) =>
               ctx.show(
                 e,
@@ -630,7 +688,15 @@ function LuckSkill({
               ctx.clearHover();
               ctx.hide();
             }}
+            onFocus={() => d.manager && ctx.hover(d.manager)}
+            onBlur={() => ctx.clearHover()}
             onClick={() => d.manager && ctx.toggle(d.manager)}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && d.manager) {
+                e.preventDefault();
+                ctx.toggle(d.manager);
+              }
+            }}
           />
         );
       })}

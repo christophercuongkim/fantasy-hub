@@ -27,10 +27,10 @@ type Award = {
   note?: string;
 };
 
+// Composed DS type role, not a bespoke size ramp.
 const sectionLabel: React.CSSProperties = {
-  font: "600 var(--text-2xl) var(--font-display)",
+  font: "var(--type-heading)",
   color: "var(--text-primary)",
-  letterSpacing: "-0.01em",
 };
 
 export default async function HallOfRecords() {
@@ -173,9 +173,8 @@ export default async function HallOfRecords() {
       <header style={{ marginBottom: "var(--space-8)" }}>
         <h1
           style={{
-            font: "700 var(--text-4xl) var(--font-display)",
+            font: "var(--type-display)",
             color: "var(--text-primary)",
-            letterSpacing: "-0.02em",
           }}
         >
           Hall of Records
@@ -287,7 +286,7 @@ function TableCaption({ children }: { children: React.ReactNode }) {
     <p
       style={{
         margin: "0 0 var(--space-2)",
-        font: "var(--text-xs) var(--font-mono)",
+        font: "var(--type-caption)",
         color: "var(--text-secondary)",
       }}
     >
