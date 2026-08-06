@@ -83,7 +83,8 @@ export function ChampionsTable({ rows }: { rows: ChampionRow[] }) {
         caption="League champion each season"
         columns={[
           { key: "season", label: "Season", identifying: true },
-          { key: "who", label: "Champion", priority: 2 },
+          // secondary → the champion's name is the sm subtitle under the season.
+          { key: "who", label: "Champion", secondary: true },
           { key: "record", label: "Record" },
           {
             key: "pointsFor",
@@ -117,9 +118,11 @@ export function TopWeeksTable({ rows }: { rows: TopWeekRow[] }) {
         caption="Top single-week scores, all seasons"
         columns={[
           { key: "rank", label: "#", identifying: true },
-          { key: "team", label: "Team", priority: 2 },
-          { key: "season", label: "Season", numeric: true, secondary: true },
-          { key: "week", label: "Week", numeric: true, secondary: true },
+          // secondary → who scored is the sm subtitle; season/week stay columns
+          // at md+ but drop off the phone (the score + who is what matters there).
+          { key: "team", label: "Team", secondary: true },
+          { key: "season", label: "Season", numeric: true },
+          { key: "week", label: "Week", numeric: true },
           {
             key: "score",
             label: "Score",
