@@ -217,7 +217,29 @@ export default async function HallOfRecords() {
             key={a.title}
             eyebrow={`${a.emoji} ${a.title}`}
             title={a.who}
-            meta={a.note ? `${a.detail} · ${a.note}` : a.detail}
+            meta={
+              <>
+                {/* The figure reads as a measured stat: mono, tabular, primary
+                    ink (per the DS type-data rule / Stat). The context note
+                    stays secondary. */}
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontVariantNumeric: "tabular-nums",
+                    color: "var(--text-primary)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {a.detail}
+                </span>
+                {a.note ? (
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {" · "}
+                    {a.note}
+                  </span>
+                ) : null}
+              </>
+            }
           />
         ))}
       </section>
