@@ -101,6 +101,35 @@ Two-app deploy (web + api as separate Dokploy applications): the web container r
 
 **How to apply:** any cross-app call in a multi-app Dokploy deploy goes to the other app's service name on `dokploy-network`, never `localhost`. Keep a `localhost` default only for local dev.
 
+## Design system (seakim DS) + UI
+
+### Read the DS guideline BEFORE writing UI — and vendor the rules in-repo
+Twice this cost a redo: recoloured the charts (turf accent-at-opacity) before reading `guidelines/data-visualisation.md`, then again before finding the accepted `--chart-seq` ramp. **Why:** the rule existed, just not *here*. **How to apply:** the DS is Law (`CLAUDE.md` "Design system (binding)"); consult `web/vendor/seakim/{conformance.md,guidelines/data-visualisation.md,decisions/}` first, and run the dataviz skill for charts. If a rule seems missing, it's probably in a doc you haven't opened.
+
+### Vendor the governance docs too, and re-vendor with the governance-aware script
+`vendor-seakim.sh` must copy `conformance.md` + `spec/` + `decisions/` + `guidelines/`, not just the runtime surface — else the rules aren't in-repo to check against (and an agent can't cite them). **Trap:** re-vendoring a branch that has an *older, runtime-only* script silently **deletes** the governance docs from the vendor dir; merging it regresses them off `main`. After any re-vendor, verify `web/vendor/seakim/` still has `conformance.md`/`guidelines/`/`decisions/`.
+
+### DS `Table` (and `useMeasuredBreakpoint`) branch on CONTAINER width, not the viewport
+A table in a 2-col grid column (~560px) reflows to the compact `sm` list-row species **on a laptop**, because it measures its container, not the window. Symptom: "everything's compact on desktop." **How to apply:** give data tables the full page width (stack them); only put things in narrow columns if you want their narrow layout. Function-prop DS components (`Table`/`Slider`/`DatePicker`: `render`/`rowKey`/`format`) also need a `"use client"` wrapper — a Server Component can't pass functions across the boundary.
+
+### A DS `Card` with only `eyebrow` + `meta` reads all-grey — it needs a `title`
+`eyebrow`=`--text-tertiary`, `meta`=`--text-secondary` (both grey); `title`=`--text-primary` is the only high-contrast element (`#f5f3f0` on dark — *not* grey). **Rule:** text is achromatic — primary (headings/values) / secondary / tertiary; `--text-accent` is for **links + highlights only**, and "one accent hue live at a time." So never colour card titles or table headers; make a card stand out via its border/surface (`Card selected`), not coloured text.
+
+### Charts: magnitude ≠ the app accent; emphasis = the accent
+Heatmaps/rank grids use the fixed indigo sequential ramp `--chart-seq-1..4` (product-independent — a scale must read the same in every app), **not** `--brand-*` and never raw ramp steps. Every seq cell needs a hairline border (`--chart-seq-1` is ~1.2:1 from the card). Label ink flips at the **theme-dependent** `--chart-seq-ink-flip` token — read it with `getComputedStyle` + a `MutationObserver` on `data-theme`; d3 can't interpolate the oklch tokens, so map to discrete `var(--chart-seq-N)` steps. Series identity: 1–2 = accent + `--text-tertiary`; 3–6 = the fixed `--chart-1..6`; >6 over time = achromatic trajectories + one highlighted. The **one accent** is emphasis (champ ring, pinned line) — grey `--border-strong` is for neutral reference lines, not "pick this out." Content corners are square (`rx={0}`).
+
+### Hover-only highlighting fakes a filter on touch but dies on desktop
+A tap fires no `mouseleave`, so a hover highlight *sticks* on mobile and looks like a click-to-filter; on desktop it clears the instant the pointer leaves. **How to apply:** for a real filter add an explicit **pinned-on-click** state (hover previews, falls back to the pin) **and keyboard focus** (`tabIndex`/`onFocus`/Enter-Space) — ADR 0016 says pointer-only is non-conformant, and touch/SR need a non-pointer equivalent (the adjacent grid, or in-cell text — not tooltip-only values).
+
+### Chart *layout* is an app concern; propose an ADR when the DS actually lacks a rule
+Arranging/sizing multiple charts (grid, grouping, relative heights) breaks no DS rule — only each chart's internal anatomy/colour is governed (keep ADR 0016's bump-chart-above-its-grid). Group charts by aspect for even rows; a fixed height + default `preserveAspectRatio="meet"` matches near-square heatmaps' heights without distorting cells. When the DS genuinely punts (no sequential ramp; the >6-series case), **write an ADR upstream** rather than improvising per-app — 0015/0016 went from proposed → accepted and shipped `--chart-seq-*`.
+
+### Fonts: strip the Google `@import` from the vendored `fonts.css`
+`next/font` self-hosts the three families to the same `--font-*` vars; leaving the token file's `@import` in double-fetches from Google. The vendor script strips it.
+
+### Iterating UI on QA while GitHub Actions is down
+Auto-deploy (a workflow) can't run, but git push can: `git push --force origin <branch>:refs/heads/qa`, then **Dokploy → web-qa → Deploy** (builds from `qa`). No migration step means nothing else the workflow would've done is skipped. Single shared QA slot, so force-pushing `qa` is how you point it at your branch fast.
+
 ---
 
 ## Carried over from triptogether (stack-agnostic)
