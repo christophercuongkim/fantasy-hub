@@ -110,3 +110,10 @@ export const skStatus = {
   'subtleLight.danger': '#ffedeb',
   'subtleLight.info': '#e6f4ff',
 } as const;
+
+
+/** Sequential ramp for magnitude. Validated per theme, never flipped. */
+export const skChartSeq = {
+  light: { '1': '#dde8ff', '2': '#a8c4ff', '3': '#6f95eb', '4': '#3d63be', inkFlip: 4 },
+  dark: { '1': '#26365c', '2': '#3c5898', '3': '#567cd3', '4': '#82a8fd', inkFlip: 3 },
+} as const;

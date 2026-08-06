@@ -128,5 +128,14 @@
   --chart-5: oklch(0.70 0.130 195);
   --chart-6: oklch(0.70 0.130 25);
 
+  /* Sequential ramp for magnitude — heatmaps, rank grids, choropleths. Fixed hue,
+     product-independent, per decision 0015. Dark ascends into lightness from just
+     above --surface-card. Label ink flips to --text-inverse at step 3 in dark. */
+  --chart-seq-1: oklch(0.34 0.070 265);
+  --chart-seq-2: oklch(0.47 0.110 265);
+  --chart-seq-3: oklch(0.60 0.140 265);
+  --chart-seq-4: oklch(0.74 0.130 265);
+  --chart-seq-ink-flip: 3;
+
   --accent: var(--fill-accent);
 }

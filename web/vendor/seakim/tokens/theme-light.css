@@ -59,6 +59,16 @@
   --on-warning:   var(--stone-950);
   --on-info:      var(--stone-950);
 
+
+  /* Sequential ramp, light. Ascends into darkness from just below
+     --surface-card; ink flips to --text-inverse at step 4. Validated per
+     theme rather than flipped, per decision 0015. */
+  --chart-seq-1: oklch(0.93 0.045 265);
+  --chart-seq-2: oklch(0.82 0.090 265);
+  --chart-seq-3: oklch(0.68 0.135 265);
+  --chart-seq-4: oklch(0.52 0.150 265);
+  --chart-seq-ink-flip: 4;
+
   --fill-disabled:   var(--stone-100);
   --text-disabled:   var(--stone-400);
   --border-disabled: var(--stone-200);

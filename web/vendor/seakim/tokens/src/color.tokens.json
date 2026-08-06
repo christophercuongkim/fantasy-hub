@@ -463,7 +463,83 @@
         "$value": 25
       }
     },
-    "$description": "Categorical series colours. Six hues at fixed lightness and chroma, so no series shouts louder than another. Deliberately NOT derived from the app accent — a chart must read the same whichever product it is in. One and two series use the accent plus tertiary text instead; see guidelines/data-visualisation.md."
+    "seq": {
+      "$description": "Single-hue sequential ramp for magnitude: heatmaps, choropleths, rank grids. Hue 265 (indigo) is clear of every app accent and every status hue. Four steps, not five: at five, adjacent contrast drops below what a cell boundary can carry without a border. Light ascends into darkness; dark ascends into lightness. Validated per theme, never flipped.",
+      "hue": {
+        "$value": 265
+      },
+      "light": {
+        "$description": "On --surface-card (#ffffff). Text ink flips to --text-inverse at step 4.",
+        "1": {
+          "l": {
+            "$value": 0.93
+          },
+          "c": {
+            "$value": 0.045
+          }
+        },
+        "2": {
+          "l": {
+            "$value": 0.82
+          },
+          "c": {
+            "$value": 0.09
+          }
+        },
+        "3": {
+          "l": {
+            "$value": 0.68
+          },
+          "c": {
+            "$value": 0.135
+          }
+        },
+        "4": {
+          "l": {
+            "$value": 0.52
+          },
+          "c": {
+            "$value": 0.15
+          }
+        }
+      },
+      "dark": {
+        "$description": "On --surface-card (#181614). Text ink flips to --text-inverse at step 3.",
+        "1": {
+          "l": {
+            "$value": 0.34
+          },
+          "c": {
+            "$value": 0.07
+          }
+        },
+        "2": {
+          "l": {
+            "$value": 0.47
+          },
+          "c": {
+            "$value": 0.11
+          }
+        },
+        "3": {
+          "l": {
+            "$value": 0.6
+          },
+          "c": {
+            "$value": 0.14
+          }
+        },
+        "4": {
+          "l": {
+            "$value": 0.74
+          },
+          "c": {
+            "$value": 0.13
+          }
+        }
+      }
+    },
+    "$description": "Chart colour. Categorical (--chart-1..6) is fixed and product-independent; so is the sequential ramp below, per decision 0015 — a sequential ramp is read as a scale, so it must mean the same thing in every product."
   },
   "raw": {
     "$type": "color",

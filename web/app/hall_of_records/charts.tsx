@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { line, scaleLinear, scalePoint } from "d3";
 import { Card } from "@seakim/design-system";
 import type {
@@ -15,22 +15,47 @@ import type {
 // is grey (--text-tertiary). We never use the app-accent RAMP for chart data and
 // never exceed the intent of the categorical rules.
 const INK = "var(--text-primary)"; // category (manager) labels
-const INVERSE = "var(--text-inverse)"; // label over a solid accent cell
-const LABEL = "var(--text-tertiary)"; // axis + tick labels
+const INVERSE = "var(--text-inverse)"; // label over a dark seq cell
+const LABEL = "var(--text-tertiary)"; // axis + tick labels + comparison series
 const GRID = "var(--border-subtle)"; // gridlines (horizontal only)
-const REF = "var(--border-strong)"; // reference / projection line
-const ACCENT = "var(--fill-accent)"; // primary series / magnitude
-// Comparison series (the "them" grey) is also --text-tertiary == LABEL.
+const HAIRLINE = "var(--border-subtle)"; // required border on every seq cell
+const REF = "var(--border-strong)"; // reference line + champion ring
+const ACCENT = "var(--fill-accent)"; // primary series (the "you")
 
-// Magnitude via accent-at-opacity. The DS data-viz spec defines categorical and
-// 1–2-series colour but no sequential ramp yet, so a heatmap reads as the single
-// accent hue at varying alpha — the sanctioned "area fill = line colour at N%"
-// pattern, extended. Floor keeps the faint end visible. A shared --chart-seq-*
-// token is proposed upstream (DS decisions/0015) to replace this.
-const MAG_FLOOR = 0.14;
-const magAlpha = (t: number) =>
-  MAG_FLOOR + Math.max(0, Math.min(1, t)) * (1 - MAG_FLOOR);
-const cellInk = (t: number) => (t > 0.55 ? INVERSE : INK);
+// Magnitude uses the DS sequential ramp (decision 0015): fixed indigo
+// --chart-seq-1..4, theme-aware (the tokens invert per theme, so no JS theme
+// read for the fill) and never the app accent — a scale must read the same in
+// every product. Cells REQUIRE a hairline border: --chart-seq-1 sits ~1.2:1 from
+// the card, so the grid is what tells a floor cell from an empty one. Label ink
+// flips at --chart-seq-ink-flip (step 4 light / 3 dark), read from the token.
+const SEQ_N = 4;
+const seqStep = (t: number) =>
+  Math.min(SEQ_N, Math.max(1, Math.ceil(Math.max(0, Math.min(1, t)) * SEQ_N)));
+const seqFill = (t: number) => `var(--chart-seq-${seqStep(t)})`;
+const cellInk = (t: number, flip: number) =>
+  seqStep(t) >= flip ? INVERSE : INK;
+
+/** Theme-dependent label-flip step, read from the --chart-seq-ink-flip token. */
+function useInkFlip() {
+  const [flip, setFlip] = useState(3);
+  useEffect(() => {
+    const read = () => {
+      const v = getComputedStyle(document.documentElement)
+        .getPropertyValue("--chart-seq-ink-flip")
+        .trim();
+      const n = parseInt(v, 10);
+      if (!Number.isNaN(n)) setFlip(n);
+    };
+    read();
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => obs.disconnect();
+  }, []);
+  return flip;
+}
 
 type Tip = { x: number; y: number; lines: string[] } | null;
 type Ctx = {
@@ -194,6 +219,12 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
         return (
           <g
             key={mgr}
+            // 0016: identity on hover OR keyboard focus — pointer-only is
+            // non-conformant. Focus promotes the line + end-label; the tooltip
+            // (needs cursor coords) is the hover extra.
+            tabIndex={0}
+            role="button"
+            aria-label={`${mgr}, finished #${pts[pts.length - 1].finalRank} in ${pts[pts.length - 1].season}`}
             onMouseMove={(e) =>
               ctx.show(
                 e,
@@ -208,6 +239,8 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
               ctx.setHi(null);
               ctx.hide();
             }}
+            onFocus={() => ctx.setHi(mgr)}
+            onBlur={() => ctx.setHi(null)}
             style={{ cursor: "pointer" }}
           >
             <path
@@ -253,6 +286,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
 
 // ------------------------------------------------------------ finish heatmap
 function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
+  const flip = useInkFlip();
   const seasons = [...new Set(data.map((d) => d.season))].sort((a, b) => a - b);
   const managers = [...new Set(data.map((d) => d.manager))].sort();
   const maxRank = Math.max(...data.map((d) => d.finalRank));
@@ -317,10 +351,9 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                   width={cell - 2}
                   height={cell - 2}
                   rx={2}
-                  fill={ACCENT}
-                  fillOpacity={d ? magAlpha(t) : 0}
-                  stroke={champ ? REF : "none"}
-                  strokeWidth={champ ? 2 : 0}
+                  fill={d ? seqFill(t) : "transparent"}
+                  stroke={champ ? REF : d ? HAIRLINE : "none"}
+                  strokeWidth={champ ? 2 : d ? 1 : 0}
                   onMouseMove={(e) =>
                     d &&
                     ctx.show(e, [mgr, `${s}: finished #${d.finalRank}`], mgr)
@@ -331,7 +364,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                     x={labelW + ci * cell + cell / 2}
                     y={top + r * cell + cell / 2 + 3}
                     fontSize="9"
-                    fill={cellInk(t)}
+                    fill={cellInk(t, flip)}
                     textAnchor="middle"
                     style={{ pointerEvents: "none" }}
                   >
@@ -403,6 +436,8 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
                   height={cell - 2}
                   rx={2}
                   fill="var(--surface-inset)"
+                  stroke={HAIRLINE}
+                  strokeWidth={1}
                 />
               );
             const g = get(a, b);
@@ -417,8 +452,9 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
                 width={cell - 2}
                 height={cell - 2}
                 rx={2}
-                fill={ACCENT}
-                fillOpacity={rate == null ? 0 : magAlpha(rate)}
+                fill={rate == null ? "transparent" : seqFill(rate)}
+                stroke={rate == null ? "none" : HAIRLINE}
+                strokeWidth={rate == null ? 0 : 1}
                 opacity={highlighted ? 1 : 0.15}
                 onMouseMove={(e) =>
                   g &&
