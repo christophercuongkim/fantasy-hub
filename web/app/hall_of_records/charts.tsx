@@ -325,7 +325,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", display: "block" }}
+      style={{ width: "100%", height: "24rem", display: "block" }}
       role="img"
       aria-label="Finish rank per season"
     >
@@ -422,7 +422,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", display: "block" }}
+      style={{ width: "100%", height: "24rem", display: "block" }}
       role="img"
       aria-label="Head-to-head win rate"
     >
