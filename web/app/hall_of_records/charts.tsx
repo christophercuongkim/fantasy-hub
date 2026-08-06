@@ -99,26 +99,25 @@ export function Charts({
         gridTemplateColumns: "repeat(auto-fit, minmax(28rem, 1fr))",
       }}
     >
+      {/* title (primary ink) is the heading that pops; meta (secondary) is the
+          description. eyebrow alone would leave the card header all-grey. */}
       <Card
-        eyebrow="FINISH OVER TIME"
+        title="Finish over time"
         meta="final placement each season — hover a line"
       >
         <BumpChart data={managerSeasons} ctx={ctx} />
       </Card>
-      <Card
-        eyebrow="WALL OF HISTORY"
-        meta="final rank per season · ring = title"
-      >
+      <Card title="Wall of history" meta="final rank per season · ring = title">
         <FinishHeatmap data={managerSeasons} ctx={ctx} />
       </Card>
       <Card
-        eyebrow="HEAD-TO-HEAD"
+        title="Head-to-head"
         meta="regular-season win rate vs each opponent"
       >
         <H2HHeatmap data={headToHead} ctx={ctx} />
       </Card>
       <Card
-        eyebrow="LUCK VS. SKILL"
+        title="Luck vs. skill"
         meta="points-for vs wins · line = expected wins"
       >
         <LuckSkill data={scatter} career={career} ctx={ctx} />
