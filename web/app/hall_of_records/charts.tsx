@@ -661,61 +661,63 @@ function LuckSkill({
         const lucky = d.wins > fit(d.pointsFor);
         const on = ctx.active === d.manager;
         return (
-          <g key={i}>
-            <circle
-              className="sl-pop"
-              style={{ animationDelay: `${i * 20}ms`, cursor: "pointer" }}
-              cx={x(d.pointsFor)}
-              cy={y(d.wins)}
-              r={on ? 6 : 4}
-              fill={lucky ? ACCENT : LABEL}
-              stroke="var(--surface-card)"
-              strokeWidth={1}
-              opacity={dim(ctx.active, d.manager!)}
-              tabIndex={0}
-              role="button"
-              aria-label={`${d.manager}, ${d.season}: ${d.wins} wins, ${d.pointsFor.toFixed(0)} points — ${lucky ? "lucky" : "unlucky"}`}
-              onMouseMove={(e) =>
-                ctx.show(
-                  e,
-                  [
-                    `${d.manager} · ${d.season}`,
-                    `${d.wins} wins, ${d.pointsFor.toFixed(0)} pts — ${lucky ? "lucky" : "unlucky"}`,
-                  ],
-                  d.manager!,
-                )
+          <circle
+            key={i}
+            className="sl-pop"
+            style={{ animationDelay: `${i * 20}ms`, cursor: "pointer" }}
+            cx={x(d.pointsFor)}
+            cy={y(d.wins)}
+            r={on ? 6 : 4}
+            fill={lucky ? ACCENT : LABEL}
+            stroke="var(--surface-card)"
+            strokeWidth={1}
+            opacity={dim(ctx.active, d.manager!)}
+            tabIndex={0}
+            role="button"
+            aria-label={`${d.manager}, ${d.season}: ${d.wins} wins, ${d.pointsFor.toFixed(0)} points — ${lucky ? "lucky" : "unlucky"}`}
+            onMouseMove={(e) =>
+              ctx.show(
+                e,
+                [
+                  `${d.manager} · ${d.season}`,
+                  `${d.wins} wins, ${d.pointsFor.toFixed(0)} pts — ${lucky ? "lucky" : "unlucky"}`,
+                ],
+                d.manager!,
+              )
+            }
+            onMouseLeave={() => {
+              ctx.clearHover();
+              ctx.hide();
+            }}
+            onFocus={() => d.manager && ctx.hover(d.manager)}
+            onBlur={() => ctx.clearHover()}
+            onClick={() => d.manager && ctx.toggle(d.manager)}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && d.manager) {
+                e.preventDefault();
+                ctx.toggle(d.manager);
               }
-              onMouseLeave={() => {
-                ctx.clearHover();
-                ctx.hide();
-              }}
-              onFocus={() => d.manager && ctx.hover(d.manager)}
-              onBlur={() => ctx.clearHover()}
-              onClick={() => d.manager && ctx.toggle(d.manager)}
-              onKeyDown={(e) => {
-                if ((e.key === "Enter" || e.key === " ") && d.manager) {
-                  e.preventDefault();
-                  ctx.toggle(d.manager);
-                }
-              }}
-            />
-            {/* When a manager is active, label each of their dots with its
-                season — makes "each dot = a season" concrete (and readable at ~4
-                dots, vs labelling all 48). */}
-            {on && (
-              <text
-                x={x(d.pointsFor) + 8}
-                y={y(d.wins) + 3}
-                fontSize="10"
-                fill={INK}
-                style={{ ...FIG, pointerEvents: "none" }}
-              >
-                {`'${String(d.season).slice(2)}`}
-              </text>
-            )}
-          </g>
+            }}
+          />
         );
       })}
+      {/* Season labels for the active manager, drawn AFTER every dot so they sit
+          on top of any dot they overlap (makes "each dot = a season" concrete;
+          readable at ~4 dots vs labelling all 48). */}
+      {pts.map((d, i) =>
+        ctx.active === d.manager ? (
+          <text
+            key={`lbl-${i}`}
+            x={x(d.pointsFor) + 8}
+            y={y(d.wins) + 3}
+            fontSize="10"
+            fill={INK}
+            style={{ ...FIG, pointerEvents: "none" }}
+          >
+            {`'${String(d.season).slice(2)}`}
+          </text>
+        ) : null,
+      )}
     </svg>
   );
 }
