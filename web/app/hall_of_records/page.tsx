@@ -226,7 +226,11 @@ export default async function HallOfRecords() {
         style={{
           display: "grid",
           gap: "var(--space-8)",
-          gridTemplateColumns: "repeat(auto-fit, minmax(20rem, 1fr))",
+          // Stack full-width. Side-by-side (~560px each) would put both tables'
+          // containers under the DS 640px threshold and force the compact
+          // list-row species on a laptop; full width keeps them real tables and
+          // still reflows to list rows on a phone.
+          gridTemplateColumns: "1fr",
           margin: "var(--space-11) 0 0",
         }}
       >
