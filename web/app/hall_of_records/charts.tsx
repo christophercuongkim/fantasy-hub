@@ -188,7 +188,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%" }}
+      style={{ width: "100%", height: "22rem" }}
       role="img"
       aria-label="Finish over time"
     >
@@ -305,7 +305,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%" }}
+      style={{ width: "100%", height: "22rem" }}
       role="img"
       aria-label="Finish rank per season"
     >
@@ -400,7 +400,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%" }}
+      style={{ width: "100%", height: "22rem" }}
       role="img"
       aria-label="Head-to-head win rate"
     >
@@ -522,7 +522,7 @@ function LuckSkill({
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%" }}
+      style={{ width: "100%", height: "22rem" }}
       role="img"
       aria-label="Luck vs skill"
     >
