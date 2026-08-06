@@ -198,7 +198,7 @@ function BumpChart({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", height: "22rem" }}
+      style={{ width: "100%", maxWidth: W, display: "block", margin: "0 auto" }}
       role="img"
       aria-label="Finish over time"
     >
@@ -322,7 +322,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", height: "22rem" }}
+      style={{ width: "100%", maxWidth: W, display: "block", margin: "0 auto" }}
       role="img"
       aria-label="Finish rank per season"
     >
@@ -371,7 +371,7 @@ function FinishHeatmap({ data, ctx }: { data: ManagerSeason[]; ctx: Ctx }) {
                   y={top + r * cell + 1}
                   width={cell - 2}
                   height={cell - 2}
-                  rx={2}
+                  rx={0}
                   fill={d ? seqFill(t) : "transparent"}
                   // Champion = the one thing to pick out → the accent (turf).
                   // "One accent hue live at a time"; the indigo seq cells aren't
@@ -419,7 +419,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", height: "22rem" }}
+      style={{ width: "100%", maxWidth: W, display: "block", margin: "0 auto" }}
       role="img"
       aria-label="Head-to-head win rate"
     >
@@ -460,7 +460,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
                   y={top + r * cell + 1}
                   width={cell - 2}
                   height={cell - 2}
-                  rx={2}
+                  rx={0}
                   fill="var(--surface-inset)"
                   stroke={HAIRLINE}
                   strokeWidth={1}
@@ -480,7 +480,7 @@ function H2HHeatmap({ data, ctx }: { data: H2HCell[]; ctx: Ctx }) {
                 y={top + r * cell + 1}
                 width={cell - 2}
                 height={cell - 2}
-                rx={2}
+                rx={0}
                 fill={rate == null ? "transparent" : seqFill(rate)}
                 stroke={rate == null ? "none" : HAIRLINE}
                 strokeWidth={rate == null ? 0 : 1}
@@ -546,7 +546,7 @@ function LuckSkill({
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      style={{ width: "100%", height: "22rem" }}
+      style={{ width: "100%", maxWidth: W, display: "block", margin: "0 auto" }}
       role="img"
       aria-label="Luck vs skill"
     >
