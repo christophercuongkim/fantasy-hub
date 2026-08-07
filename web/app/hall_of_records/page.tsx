@@ -1,4 +1,4 @@
-import { Card, Icon } from "@seakim/design-system";
+import { Card, EmptyState, Icon } from "@seakim/design-system";
 import {
   careerLeaderboard,
   teamSeasons,
@@ -6,9 +6,17 @@ import {
   headToHead,
   managerSeasons,
   scatterPoints,
+  type SeasonRow,
+  type WeekScore,
 } from "@/lib/hall-of-records";
+import { SeasonFilter } from "@/components/SeasonFilter";
 import { Charts } from "./charts";
-import { CareerTable, ChampionsTable, TopWeeksTable } from "./tables";
+import {
+  CareerTable,
+  ChampionsTable,
+  StandingsTable,
+  TopWeeksTable,
+} from "./tables";
 
 export const dynamic = "force-dynamic"; // reads live DB
 
@@ -33,11 +41,304 @@ const sectionLabel: React.CSSProperties = {
   color: "var(--text-primary)",
 };
 
-export default async function HallOfRecords() {
-  const [career, seasons, weeks, h2h, mSeasons, scatter] = await Promise.all([
+function AwardCard({ a }: { a: Award }) {
+  return (
+    <Card eyebrow={a.title} title={a.who}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-1)",
+          marginTop: "var(--space-2)",
+        }}
+      >
+        {/* phosphor icon (the DS way; emoji is the Tier-0 violation) + the
+            measured figure: mono, tabular, primary ink. */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-2)",
+          }}
+        >
+          <span style={{ display: "flex", color: "var(--text-tertiary)" }}>
+            <Icon name={a.icon} size={24} />
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontVariantNumeric: "tabular-nums",
+              color: "var(--text-primary)",
+              fontWeight: 600,
+            }}
+          >
+            {a.detail}
+          </span>
+        </div>
+        {a.note ? (
+          <span
+            style={{
+              font: "var(--type-caption)",
+              color: "var(--text-tertiary)",
+            }}
+          >
+            {a.note}
+          </span>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function AwardsGrid({ awards }: { awards: Award[] }) {
+  return (
+    <section
+      style={{
+        display: "grid",
+        gap: "var(--space-4)",
+        gridTemplateColumns: "repeat(auto-fill, minmax(16rem, 1fr))",
+      }}
+    >
+      {awards.map((a) => (
+        <AwardCard key={a.title} a={a} />
+      ))}
+    </section>
+  );
+}
+
+function PageHeader({
+  seasonList,
+  season,
+  subtitle,
+}: {
+  seasonList: number[];
+  season?: number;
+  subtitle: string;
+}) {
+  return (
+    <header
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: "var(--space-4)",
+        flexWrap: "wrap",
+        marginBottom: "var(--space-8)",
+      }}
+    >
+      <div>
+        <h1
+          style={{ font: "var(--type-display)", color: "var(--text-primary)" }}
+        >
+          Hall of Records
+        </h1>
+        <p
+          style={{
+            marginTop: "var(--space-2)",
+            maxWidth: "44rem",
+            color: "var(--text-secondary)",
+          }}
+        >
+          {subtitle}
+        </p>
+      </div>
+      <SeasonFilter
+        basePath="/hall_of_records"
+        seasons={seasonList}
+        value={season}
+        allLabel="All-time"
+      />
+    </header>
+  );
+}
+
+function TableCaption({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      style={{
+        margin: "0 0 var(--space-2)",
+        font: "var(--type-caption)",
+        color: "var(--text-secondary)",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+// One season's story — champion, standings, its single-game records + top weeks.
+// The all-time sections (career, the bump chart, head-to-head) don't apply to a
+// single year, so they're absent here.
+function SeasonInReview({
+  season,
+  seasons,
+  weeks,
+  seasonList,
+}: {
+  season: number;
+  seasons: SeasonRow[];
+  weeks: WeekScore[];
+  seasonList: number[];
+}) {
+  const standings = seasons
+    .filter((s) => s.season === season)
+    .sort((a, b) => a.finalRank - b.finalRank);
+  const wk = weeks.filter((w) => w.season === season);
+  const champ = standings.find((s) => s.finalRank === 1);
+  const topWeek = [...wk].sort((a, b) => b.score - a.score)[0];
+  const played = wk.filter((w) => w.margin > 0);
+  const blowout = [...played].sort((a, b) => b.margin - a.margin)[0];
+  const nailBiter = [...played].sort((a, b) => a.margin - b.margin)[0];
+  const highLoss = [...wk.filter((w) => !w.won)].sort(
+    (a, b) => b.score - a.score,
+  )[0];
+
+  const awards: Award[] = [
+    ...(champ
+      ? [
+          {
+            icon: "trophy",
+            title: "Champion",
+            who: champ.manager ?? champ.team,
+            detail: `${champ.wins}-${champ.losses}`,
+            note: `${fmt(champ.pointsFor, 0)} pts`,
+          },
+        ]
+      : []),
+    ...(topWeek
+      ? [
+          {
+            icon: "lightning",
+            title: "Highest Week",
+            who: topWeek.team,
+            detail: `${fmt(topWeek.score)} pts`,
+            note: `wk ${topWeek.week}`,
+          },
+        ]
+      : []),
+    ...(blowout
+      ? [
+          {
+            icon: "bomb",
+            title: "Biggest Blowout",
+            who: blowout.team,
+            detail: `won by ${fmt(blowout.margin)}`,
+            note: `wk ${blowout.week}`,
+          },
+        ]
+      : []),
+    ...(nailBiter
+      ? [
+          {
+            icon: "heartbeat",
+            title: "Nail-Biter",
+            who: nailBiter.team,
+            detail: `won by ${fmt(nailBiter.margin, 2)}`,
+            note: `wk ${nailBiter.week}`,
+          },
+        ]
+      : []),
+    ...(highLoss
+      ? [
+          {
+            icon: "smiley-sad",
+            title: "Highest-Scoring Loss",
+            who: highLoss.team,
+            detail: `${fmt(highLoss.score)} and still lost`,
+            note: `wk ${highLoss.week}`,
+          },
+        ]
+      : []),
+  ];
+
+  const standingRows = standings.map((s) => ({
+    rank: s.finalRank,
+    team: s.manager ?? s.team,
+    record: `${s.wins}-${s.losses}${s.ties ? `-${s.ties}` : ""}`,
+    pointsFor: s.pointsFor,
+  }));
+  const topWeekRows = [...wk]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+    .map((w, i) => ({
+      rank: i + 1,
+      season: w.season,
+      week: w.week,
+      team: w.team,
+      score: w.score,
+    }));
+
+  return (
+    <main
+      style={{
+        maxWidth: "72rem",
+        margin: "0 auto",
+        padding: "var(--space-8) var(--space-5)",
+      }}
+    >
+      <PageHeader
+        seasonList={seasonList}
+        season={season}
+        subtitle={`${season} season in review — champion, single-game records, and the final standings.`}
+      />
+      {standings.length === 0 ? (
+        <EmptyState
+          icon="trophy"
+          title={`No data for ${season}`}
+          description="Pick another season, or switch back to All-time."
+        />
+      ) : (
+        <>
+          <h2 style={{ ...sectionLabel, margin: "0 0 var(--space-5)" }}>
+            Season awards
+          </h2>
+          <AwardsGrid awards={awards} />
+          <section style={{ marginTop: "var(--space-11)" }}>
+            <h2 style={{ ...sectionLabel, marginBottom: "var(--space-3)" }}>
+              Final standings
+            </h2>
+            <StandingsTable rows={standingRows} />
+          </section>
+          <section style={{ marginTop: "var(--space-10)" }}>
+            <h2 style={{ ...sectionLabel, marginBottom: "var(--space-3)" }}>
+              Top weeks
+            </h2>
+            <TopWeeksTable rows={topWeekRows} />
+          </section>
+        </>
+      )}
+    </main>
+  );
+}
+
+export default async function HallOfRecords({
+  searchParams,
+}: {
+  searchParams: Promise<{ season?: string }>;
+}) {
+  const sp = await searchParams;
+  const season =
+    sp.season && /^\d{4}$/.test(sp.season) ? Number(sp.season) : undefined;
+
+  const [seasons, weeks] = await Promise.all([teamSeasons(), weekScores()]);
+  const seasonList = [...new Set(seasons.map((s) => s.season))].sort(
+    (a, b) => b - a,
+  );
+
+  if (season != null) {
+    return (
+      <SeasonInReview
+        season={season}
+        seasons={seasons}
+        weeks={weeks}
+        seasonList={seasonList}
+      />
+    );
+  }
+
+  // All-time hall: the cross-season data.
+  const [career, h2h, mSeasons, scatter] = await Promise.all([
     careerLeaderboard(),
-    teamSeasons(),
-    weekScores(),
     headToHead(),
     managerSeasons(),
     scatterPoints(),
@@ -170,27 +471,10 @@ export default async function HallOfRecords() {
         padding: "var(--space-8) var(--space-5)",
       }}
     >
-      <header style={{ marginBottom: "var(--space-8)" }}>
-        <h1
-          style={{
-            font: "var(--type-display)",
-            color: "var(--text-primary)",
-          }}
-        >
-          Hall of Records
-        </h1>
-        <p
-          style={{
-            marginTop: "var(--space-2)",
-            maxWidth: "44rem",
-            color: "var(--text-secondary)",
-          }}
-        >
-          PeopleCanEat · 12 seasons (2014–2025). Career &amp; head-to-head stats
-          cover the GUID-identified era (2022–25); single-game records span all
-          12 years.
-        </p>
-      </header>
+      <PageHeader
+        seasonList={seasonList}
+        subtitle="PeopleCanEat · 12 seasons (2014–2025). Career & head-to-head stats cover the GUID-identified era (2022–25); single-game records span all 12 years."
+      />
 
       <Charts
         managerSeasons={mSeasons}
@@ -204,62 +488,7 @@ export default async function HallOfRecords() {
       >
         Awards
       </h2>
-      <section
-        style={{
-          display: "grid",
-          gap: "var(--space-4)",
-          gridTemplateColumns: "repeat(auto-fill, minmax(16rem, 1fr))",
-        }}
-      >
-        {awards.map((a) => (
-          <Card key={a.title} eyebrow={a.title} title={a.who}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "var(--space-1)",
-                marginTop: "var(--space-2)",
-              }}
-            >
-              {/* phosphor icon (the DS way; emoji is the Tier-0 violation) +
-                  the measured figure: mono, tabular, primary ink. */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "var(--space-2)",
-                }}
-              >
-                <span
-                  style={{ display: "flex", color: "var(--text-tertiary)" }}
-                >
-                  <Icon name={a.icon} size={24} />
-                </span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontVariantNumeric: "tabular-nums",
-                    color: "var(--text-primary)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {a.detail}
-                </span>
-              </div>
-              {a.note ? (
-                <span
-                  style={{
-                    font: "var(--type-caption)",
-                    color: "var(--text-tertiary)",
-                  }}
-                >
-                  {a.note}
-                </span>
-              ) : null}
-            </div>
-          </Card>
-        ))}
-      </section>
+      <AwardsGrid awards={awards} />
 
       <div
         style={{
@@ -296,19 +525,5 @@ export default async function HallOfRecords() {
         <TopWeeksTable rows={topWeekRows} />
       </section>
     </main>
-  );
-}
-
-function TableCaption({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      style={{
-        margin: "0 0 var(--space-2)",
-        font: "var(--type-caption)",
-        color: "var(--text-secondary)",
-      }}
-    >
-      {children}
-    </p>
   );
 }

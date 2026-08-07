@@ -140,3 +140,37 @@ export function TopWeeksTable({ rows }: { rows: TopWeekRow[] }) {
     </div>
   );
 }
+
+export type StandingRow = {
+  rank: number;
+  team: string;
+  record: string;
+  pointsFor: number;
+};
+
+// Final standings for a single season (season-in-review view).
+export function StandingsTable({ rows }: { rows: StandingRow[] }) {
+  const { ref, bp } = useBp();
+  return (
+    <div ref={ref}>
+      <Table<StandingRow>
+        bp={bp}
+        rowKey={(r) => r.rank}
+        caption="Final standings"
+        columns={[
+          { key: "rank", label: "#", identifying: true },
+          { key: "team", label: "Team", secondary: true },
+          { key: "record", label: "Record" },
+          {
+            key: "pointsFor",
+            label: "Points",
+            numeric: true,
+            survives: true,
+            render: (r) => fmt(r.pointsFor, 0),
+          },
+        ]}
+        rows={rows}
+      />
+    </div>
+  );
+}

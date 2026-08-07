@@ -4,15 +4,20 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Select } from "@seakim/design-system";
 
-// Season filter → the URL (`/draft?season=2024`), the shareable source of truth.
-// Local state updates the control instantly; useTransition drives the pending
-// state while the server re-renders (no blocking flash).
-export function YearFilter({
+// Season filter → the URL (`${basePath}?season=2024`), the shareable source of
+// truth. Local state updates the control instantly; useTransition drives the
+// pending state while the server re-renders (no blocking flash). Shared by
+// /draft and /hall_of_records via basePath.
+export function SeasonFilter({
+  basePath,
   seasons,
   value,
+  allLabel = "All seasons",
 }: {
+  basePath: string;
   seasons: number[];
   value?: number;
+  allLabel?: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -24,7 +29,7 @@ export function YearFilter({
   }, [value]);
 
   const options = [
-    { value: "all", label: "All seasons" },
+    { value: "all", label: allLabel },
     ...seasons.map((s) => ({ value: String(s), label: String(s) })),
   ];
 
@@ -39,7 +44,7 @@ export function YearFilter({
         const v = e.target.value;
         setVal(v);
         start(() =>
-          router.push(v === "all" ? "/draft" : `/draft?season=${v}`, {
+          router.push(v === "all" ? basePath : `${basePath}?season=${v}`, {
             scroll: false,
           }),
         );
