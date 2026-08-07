@@ -1,4 +1,4 @@
-import { Card } from "@seakim/design-system";
+import { Card, Icon } from "@seakim/design-system";
 import {
   careerLeaderboard,
   teamSeasons,
@@ -20,7 +20,7 @@ function fmt(n: number, d = 1) {
 }
 
 type Award = {
-  emoji: string;
+  icon: string;
   title: string;
   who: string;
   detail: string;
@@ -69,63 +69,63 @@ export default async function HallOfRecords() {
 
   const awards: Award[] = [
     {
-      emoji: "🏆",
+      icon: "trophy",
       title: "Most Titles",
       who: byTitles[0].manager,
       detail: `${byTitles[0].titles} championship${byTitles[0].titles === 1 ? "" : "s"}`,
       note: "2022–25",
     },
     {
-      emoji: "💩",
+      icon: "toilet-paper",
       title: "The Sacko",
       who: bySackos[0].manager,
       detail: `${bySackos[0].sackos} last-place finish${bySackos[0].sackos === 1 ? "" : "es"}`,
       note: "2022–25",
     },
     {
-      emoji: "📈",
+      icon: "crown-simple",
       title: "Points King",
       who: byPoints[0].manager,
       detail: `${fmt(byPoints[0].pointsFor, 0)} career points`,
       note: "2022–25",
     },
     {
-      emoji: "⚡",
+      icon: "lightning",
       title: "Highest Week Ever",
       who: topWeek.team,
       detail: `${fmt(topWeek.score)} pts`,
       note: `${topWeek.season} · wk ${topWeek.week}`,
     },
     {
-      emoji: "💥",
+      icon: "bomb",
       title: "Biggest Blowout",
       who: blowout.team,
       detail: `won by ${fmt(blowout.margin)}`,
       note: `${blowout.season} · wk ${blowout.week}`,
     },
     {
-      emoji: "😬",
+      icon: "heartbeat",
       title: "Nail-Biter",
       who: nailBiter.team,
       detail: `won by ${fmt(nailBiter.margin, 2)}`,
       note: `${nailBiter.season} · wk ${nailBiter.week}`,
     },
     {
-      emoji: "💔",
+      icon: "heart-break",
       title: "Best Record, No Ring",
       who: noRing.manager ?? noRing.team,
       detail: `${noRing.wins}-${noRing.losses}, finished #${noRing.finalRank}`,
       note: `${noRing.season}`,
     },
     {
-      emoji: "🍀",
+      icon: "sparkle",
       title: "Cinderella Champ",
       who: cinderella.manager ?? cinderella.team,
       detail: `won it at ${cinderella.wins}-${cinderella.losses}`,
       note: `${cinderella.season}`,
     },
     {
-      emoji: "😭",
+      icon: "smiley-sad",
       title: "Highest-Scoring Loss",
       who: highLoss.team,
       detail: `${fmt(highLoss.score)} and still lost`,
@@ -134,7 +134,7 @@ export default async function HallOfRecords() {
     ...(rivalry && rivalryBack
       ? [
           {
-            emoji: "🤼",
+            icon: "boxing-glove",
             title: "Biggest Rivalry",
             who: `${rivalry.a} vs ${rivalry.b}`,
             detail: `${rivalry.wins}–${rivalryBack.wins} over ${rivalry.games} games`,
@@ -212,15 +212,29 @@ export default async function HallOfRecords() {
         }}
       >
         {awards.map((a) => (
-          <Card
-            key={a.title}
-            eyebrow={`${a.emoji} ${a.title}`}
-            title={a.who}
-            meta={
-              <>
-                {/* The figure reads as a measured stat: mono, tabular, primary
-                    ink (per the DS type-data rule / Stat). The context note
-                    stays secondary. */}
+          <Card key={a.title} eyebrow={a.title} title={a.who}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--space-1)",
+                marginTop: "var(--space-2)",
+              }}
+            >
+              {/* phosphor icon (the DS way; emoji is the Tier-0 violation) +
+                  the measured figure: mono, tabular, primary ink. */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-2)",
+                }}
+              >
+                <span
+                  style={{ display: "flex", color: "var(--text-tertiary)" }}
+                >
+                  <Icon name={a.icon} size={24} />
+                </span>
                 <span
                   style={{
                     fontFamily: "var(--font-mono)",
@@ -231,15 +245,19 @@ export default async function HallOfRecords() {
                 >
                   {a.detail}
                 </span>
-                {a.note ? (
-                  <span style={{ color: "var(--text-secondary)" }}>
-                    {" · "}
-                    {a.note}
-                  </span>
-                ) : null}
-              </>
-            }
-          />
+              </div>
+              {a.note ? (
+                <span
+                  style={{
+                    font: "var(--type-caption)",
+                    color: "var(--text-tertiary)",
+                  }}
+                >
+                  {a.note}
+                </span>
+              ) : null}
+            </div>
+          </Card>
         ))}
       </section>
 
