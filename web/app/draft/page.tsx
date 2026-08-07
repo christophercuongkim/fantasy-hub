@@ -1,11 +1,13 @@
 import { Badge, Card, EmptyState, Icon } from "@seakim/design-system";
 import { auth, isAdmin } from "@/auth";
 import {
+  draftSeasons,
   earliestKicker,
   positionByRound,
   valueBoard,
 } from "@/lib/draft-superlatives";
 import { PositionalHeatmap, ScatterCard, ValueHistogram } from "./charts";
+import { YearFilter } from "./YearFilter";
 import {
   ReachTable,
   TendencyTable,
@@ -94,15 +96,27 @@ function AwardCard({
   );
 }
 
-export default async function Draft() {
+export default async function Draft({
+  searchParams,
+}: {
+  searchParams: Promise<{ season?: string }>;
+}) {
   const session = await auth();
   const admin = isAdmin(session?.user?.email);
 
-  const [board, posRows, kicker] = await Promise.all([
-    valueBoard(),
-    positionByRound(),
-    earliestKicker(),
+  const sp = await searchParams;
+  const season =
+    sp.season && /^\d{4}$/.test(sp.season) ? Number(sp.season) : undefined;
+
+  const [board, posRows, kicker, seasons] = await Promise.all([
+    valueBoard(season),
+    positionByRound(season),
+    earliestKicker(season),
+    draftSeasons(),
   ]);
+  // A single season is one draft per manager (~15 picks), so the all-time
+  // MIN_PICKS gate would empty the tendency table — relax it when filtered.
+  const minPicks = season != null ? 5 : MIN_PICKS;
 
   // board is desc by value: head = biggest steals, tail = biggest reaches.
   const values = board.filter((r) => r.value > 0).slice(0, TOP);
@@ -180,7 +194,7 @@ export default async function Draft() {
   }
   const tendency: TendencyRow[] = [...acc]
     .map(([who, { sum, n }]) => ({ who, avg: sum / n, picks: n }))
-    .filter((t) => t.picks >= MIN_PICKS)
+    .filter((t) => t.picks >= minPicks)
     .sort((a, b) => b.avg - a.avg);
 
   const adminAwards: {
@@ -245,20 +259,33 @@ export default async function Draft() {
         gap: "var(--space-8)",
       }}
     >
-      <header>
-        <h1 style={{ font: "var(--type-title)", color: "var(--text-primary)" }}>
-          Draft
-        </h1>
-        <p
-          style={{
-            marginTop: "var(--space-1)",
-            font: "var(--type-body-sm)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          Every pick measured against consensus ADP — reach = drafted earlier
-          than the board.
-        </p>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "var(--space-4)",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h1
+            style={{ font: "var(--type-title)", color: "var(--text-primary)" }}
+          >
+            Draft
+          </h1>
+          <p
+            style={{
+              marginTop: "var(--space-1)",
+              font: "var(--type-body-sm)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Every pick measured against consensus ADP — reach = drafted earlier
+            than the board.
+          </p>
+        </div>
+        <YearFilter seasons={seasons} value={season} />
       </header>
 
       {board.length === 0 ? (
