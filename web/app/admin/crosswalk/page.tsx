@@ -65,16 +65,26 @@ export default async function CrosswalkAdmin() {
           name: draftPicks.playerName,
           season: draftPicks.season,
           round: draftPicks.round,
+          cost: draftPicks.cost,
+          adp: draftPicks.adpAtTime,
         })
         .from(draftPicks)
         .where(inArray(draftPicks.playerName, names))
     : [];
-  const draftedBy = new Map<string, { season: number; round: number }[]>();
+  type Pick = {
+    season: number;
+    round: number;
+    cost: number | null;
+    adp: string | null;
+  };
+  const draftedBy = new Map<string, Pick[]>();
   for (const c of ctxRows) {
     if (!c.name) continue;
     (draftedBy.get(c.name) ?? draftedBy.set(c.name, []).get(c.name)!).push({
       season: c.season,
       round: c.round,
+      cost: c.cost,
+      adp: c.adp,
     });
   }
 
@@ -97,15 +107,30 @@ export default async function CrosswalkAdmin() {
       : rounds.length > 1
         ? `R${rounds[0]}–${rounds[rounds.length - 1]}`
         : `R${rounds[0]}`;
+    // Identifying signals for the name we're linking (draft_picks has no
+    // position — only the candidate nflverse players do). ADP = best (lowest)
+    // consensus rank seen; cost = top auction price. Both narrow who it is.
+    const adps = picks
+      .map((p) => (p.adp == null ? NaN : Number(p.adp)))
+      .filter((n) => !Number.isNaN(n));
+    const adp = adps.length ? Math.min(...adps) : null;
+    const costs = picks
+      .map((p) => p.cost)
+      .filter((c): c is number => c != null);
+    const cost = costs.length ? Math.max(...costs) : null;
+    const meta = [
+      seasons.length ? `drafted ${seasons.join(", ")}` : null,
+      rd || null,
+      adp != null ? `ADP ${adp}` : null,
+      cost != null ? `$${cost}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
     return (
       <li key={r.source_id}>
         <Card
           title={r.source_id}
-          meta={
-            seasons.length > 0
-              ? `drafted ${seasons.join(", ")} · ${rd}`
-              : undefined
-          }
+          meta={meta || undefined}
           footer={
             <form action={dismiss.bind(null, r.source_id)}>
               <Button variant="ghost" size="sm" type="submit">
