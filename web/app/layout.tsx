@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Button } from "@seakim/design-system";
 import { auth, signOut } from "@/auth";
 
 // Global CSS is only legal in the root layout. The design system's token +
@@ -67,20 +68,14 @@ export default async function RootLayout({
                 await signOut({ redirectTo: "/" });
               }}
             >
-              <button
+              <Button
                 type="submit"
-                style={{
-                  font: "var(--text-xs) var(--font-mono)",
-                  color: "var(--text-secondary)",
-                  background: "var(--surface-card)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: "var(--radius-md)",
-                  padding: "var(--space-1) var(--space-3)",
-                  cursor: "pointer",
-                }}
+                variant="ghost"
+                size="sm"
+                iconLeft="sign-out"
               >
                 Sign out
-              </button>
+              </Button>
             </form>
           </div>
         )}

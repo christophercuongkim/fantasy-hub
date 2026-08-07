@@ -147,8 +147,8 @@ export function Charts({
 
       {tip && (
         <div
-          className="pointer-events-none"
           style={{
+            pointerEvents: "none",
             position: "fixed",
             zIndex: 50,
             left: tip.x + 14,
@@ -157,7 +157,7 @@ export function Charts({
             border: "1px solid var(--border-subtle)",
             borderRadius: "var(--radius-md)",
             padding: "var(--space-2) var(--space-3)",
-            font: "var(--text-xs) var(--font-sans)",
+            font: "var(--type-caption)",
             boxShadow: "var(--shadow-popover)",
           }}
         >
