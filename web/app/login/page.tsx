@@ -21,13 +21,7 @@ export default function Login() {
       }}
     >
       <div style={{ textAlign: "center" }}>
-        <h1
-          style={{
-            font: "600 var(--text-3xl) var(--font-display)",
-            color: "var(--text-primary)",
-            letterSpacing: "-0.02em",
-          }}
-        >
+        <h1 style={{ font: "var(--type-title)", color: "var(--text-primary)" }}>
           fantasy-hub
         </h1>
         <p
@@ -55,10 +49,7 @@ export default function Login() {
         }}
       >
         Sign in with your Google account. The{" "}
-        <a href="/hall_of_records" style={{ color: "var(--text-accent)" }}>
-          Hall of Records
-        </a>{" "}
-        is public.
+        <a href="/hall_of_records">Hall of Records</a> is public.
       </p>
     </main>
   );
