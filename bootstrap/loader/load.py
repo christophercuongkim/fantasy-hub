@@ -161,22 +161,44 @@ def _load_season(cur, family_id, slug, season, owner_guid, guid_to_mid, s, data_
     if missing:
         raise ValueError(f"{season}: draft teams not in teams.csv: {missing}")
 
+    # Consensus ADP (make adp) → adp_at_time + reach_delta. Matched on the same
+    # normalized name; unmatched picks (defenses, deep sleepers below the ~top-200
+    # board) keep NULL adp. reach = adp - overall; positive = drafted early.
+    adp_by_name = {
+        _norm(a["name"]): float(a["adp"])
+        for a in _read_csv(data_dir / f"adp-{season}.csv")
+        if (a.get("adp") or "").strip()
+    }
+
+    def _adp_reach(d):
+        adp = adp_by_name.get(_norm(d.get("player_name") or ""))
+        return (None, None) if adp is None else (adp, round(adp - int(d["overall"]), 1))
+
+    picks, matched = [], 0
+    for d in draft:
+        adp, reach = _adp_reach(d)
+        matched += adp is not None
+        picks.append((league_id, season, int(d["overall"]), int(d["round"]),
+                      int(d["pick_in_round"]), team_to_id[_norm(d["manager"])],
+                      d["player_name"], d.get("player_key") or None,
+                      _int_or_none(d.get("cost")), adp, reach))
+
     cur.executemany(
         """
         INSERT INTO draft_picks (league_id, season, overall, round, pick_in_round,
-            league_team_id, player_name, player_key, cost)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            league_team_id, player_name, player_key, cost, adp_at_time, reach_delta)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (league_id, season, overall) DO UPDATE SET
             round = EXCLUDED.round, pick_in_round = EXCLUDED.pick_in_round,
             league_team_id = EXCLUDED.league_team_id,
-            player_name = EXCLUDED.player_name, cost = EXCLUDED.cost
+            player_name = EXCLUDED.player_name, cost = EXCLUDED.cost,
+            adp_at_time = EXCLUDED.adp_at_time, reach_delta = EXCLUDED.reach_delta
         """,
-        [(league_id, season, int(d["overall"]), int(d["round"]), int(d["pick_in_round"]),
-          team_to_id[_norm(d["manager"])], d["player_name"], d.get("player_key") or None,
-          _int_or_none(d.get("cost"))) for d in draft],
+        picks,
     )
     counts = {"season": season, "teams": len(teams),
-              "claimed": sum(1 for t in teams if t.get("guid")), "picks": len(draft)}
+              "claimed": sum(1 for t in teams if t.get("guid")), "picks": len(draft),
+              "adp": f"{matched}/{len(draft)}"}
     _load_standings(cur, league_id, team_to_id, data_dir, season, counts)
     _load_matchups(cur, league_id, team_to_id, data_dir, season,
                    s.playoff_start_week, counts)

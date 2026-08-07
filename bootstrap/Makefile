@@ -19,7 +19,7 @@ PORT ?= 9222
 PROFILE ?= $$HOME/.yahoo-scrape-profile
 ARGS ?=
 
-.PHONY: help scrape scrape-auto chrome scrape-attach dump dump-attach load
+.PHONY: help scrape scrape-auto chrome scrape-attach dump dump-attach load adp
 
 help:
 	@echo "At a display (recommended):"
@@ -34,6 +34,7 @@ help:
 	@echo "Explore / load:"
 	@echo "  make dump URL='https://...'         # save a page's html to data/_dumps/"
 	@echo "  make dump-attach URL='https://...'  # same, via the attached Chrome"
+	@echo "  make adp  [ARGS='--only 2025']      # fetch FantasyPros ADP → data/ (before load)"
 	@echo "  make load [ARGS='--only 2025']      # load data/ into \$$DATABASE_URL"
 
 # --- at a display: one command (real Chrome + login gate + attach scrape) ---
@@ -63,3 +64,9 @@ dump-attach:
 # --- load scraped data into Postgres (DATABASE_URL from env) ---
 load:
 	$(DEV_SHELL) $(PY) loader.load $(ARGS)
+
+# --- fetch FantasyPros ADP per season → data/<slug>/adp-{season}.csv ---
+# No browser needed (plain GET + JSON). Run before `make load` to fill
+# draft_picks.adp_at_time / reach_delta. Board format is per-season scoring.
+adp:
+	$(DEV_SHELL) $(PY) importer.adp $(ARGS)
