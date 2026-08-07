@@ -11,7 +11,8 @@ export type RefreshStatus = {
   seasonsDone: number;
   weeksDone: number;
   finishedAt: string | null;
-  error: string | null;
+  error: string | null; // top-level failure that aborted the run
+  errors: string[]; // per-week failures (sample)
 };
 
 const apiUrl = () => process.env.API_URL ?? "http://localhost:4001";
@@ -59,6 +60,7 @@ export async function refreshStatus(): Promise<RefreshStatus> {
       weeksDone: Number(s.weeks_done ?? 0),
       finishedAt: s.finished_at ?? null,
       error: s.error ?? null,
+      errors: Array.isArray(s.errors) ? s.errors.map(String) : [],
     };
   } catch {
     return {
@@ -67,6 +69,7 @@ export async function refreshStatus(): Promise<RefreshStatus> {
       weeksDone: 0,
       finishedAt: null,
       error: null,
+      errors: [],
     };
   }
 }
