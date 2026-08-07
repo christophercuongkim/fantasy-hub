@@ -305,13 +305,19 @@ def _league_seasons() -> list[int]:
         return [int(r[0]) for r in cur.fetchall()]
 
 
+# Regular season only — fantasy doesn't project the NFL playoffs (weeks 19-22),
+# and projecting them makes the "latest week" default the Super Bowl.
+REG_SEASON_MAX_WEEK = 18
+
+
 def _weeks_with_data(season: int) -> list[int]:
     g = _season_glob(season)
     if not g:
         return []
     with duck.connect() as con:
         rows = con.execute(
-            f"SELECT DISTINCT week FROM read_parquet('{g}') ORDER BY week"
+            f"SELECT DISTINCT week FROM read_parquet('{g}') "
+            f"WHERE week <= {REG_SEASON_MAX_WEEK} ORDER BY week"
         ).fetchall()
     return [int(r[0]) for r in rows]
 
