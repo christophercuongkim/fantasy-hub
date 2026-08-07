@@ -1,5 +1,5 @@
 import { inArray, sql } from "drizzle-orm";
-import { Badge, Button, Card, EmptyState } from "@seakim/design-system";
+import { Button, Card, EmptyState } from "@seakim/design-system";
 import { getDb } from "@/db";
 import { draftPicks, players as playersTable } from "@/db/schema";
 import { confirmMatch, dismiss, runCrosswalk } from "./actions";
@@ -140,27 +140,26 @@ export default async function CrosswalkAdmin() {
                   key={c.player_id}
                   action={confirmMatch.bind(null, r.source_id, c.player_id)}
                 >
-                  <Button variant="secondary" size="sm" type="submit">
+                  <Button variant="secondary" size="md" type="submit">
                     <span style={{ fontWeight: 600 }}>
                       {p?.full_name ?? c.name}
                     </span>
-                    {detail && (
+                    <span
+                      style={{
+                        marginLeft: "var(--space-2)",
+                        color: "var(--text-tertiary)",
+                      }}
+                    >
+                      {detail ? `${detail} · ` : ""}
                       <span
                         style={{
-                          marginLeft: "var(--space-2)",
-                          color: "var(--text-tertiary)",
+                          fontFamily: "var(--font-mono)",
+                          fontVariantNumeric: "tabular-nums",
                         }}
                       >
-                        {detail}
+                        {c.score}%
                       </span>
-                    )}
-                    <Badge
-                      tone="neutral"
-                      mono
-                      style={{ marginLeft: "var(--space-2)" }}
-                    >
-                      {c.score}%
-                    </Badge>
+                    </span>
                   </Button>
                 </form>
               );

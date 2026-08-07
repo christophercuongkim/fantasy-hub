@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Input } from "@seakim/design-system";
 import { confirmMatch, searchPlayers, type PlayerHit } from "./actions";
 
-// Free-text "assign any player" box for a review entry — used when the
-// suggested candidates are wrong or there are none.
+// Free-text "assign any player" combobox for a review entry — used when the
+// suggested candidates are wrong or there are none. Follows the ARIA combobox
+// pattern: focus stays in the input, arrows move the active option, Enter
+// selects, Escape closes (the option `<button>`s are tabIndex=-1 and driven by
+// aria-activedescendant, not the Tab order).
 export function AssignSearch({ sourceId }: { sourceId: string }) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<PlayerHit[]>([]);
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
   const [pending, start] = useTransition();
   const box = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const showing = open && hits.length > 0;
 
   useEffect(() => {
     if (q.trim().length < 2) {
@@ -20,6 +26,7 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
     }
     const t = setTimeout(async () => {
       setHits(await searchPlayers(q));
+      setActive(0);
       setOpen(true);
     }, 200);
     return () => clearTimeout(t);
@@ -34,6 +41,27 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  const choose = (p: PlayerHit) => {
+    setOpen(false);
+    start(() => confirmMatch(sourceId, p.id));
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!showing) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => Math.min(i + 1, hits.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (hits[active]) choose(hits[active]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
   return (
     <div
       ref={box}
@@ -47,13 +75,21 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
         size="sm"
         fullWidth
         iconLeft="magnifying-glass"
+        role="combobox"
+        aria-expanded={showing}
+        aria-controls={listId}
+        aria-activedescendant={showing ? `${listId}-${active}` : undefined}
+        aria-autocomplete="list"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => hits.length && setOpen(true)}
+        onKeyDown={onKeyDown}
         placeholder="or search any player…"
       />
-      {open && hits.length > 0 && (
+      {showing && (
         <ul
+          id={listId}
+          role="listbox"
           style={{
             position: "absolute",
             zIndex: 10,
@@ -68,12 +104,19 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
             boxShadow: "var(--shadow-popover)",
           }}
         >
-          {hits.map((p) => (
-            <li key={p.id}>
+          {hits.map((p, i) => (
+            <li
+              key={p.id}
+              role="option"
+              id={`${listId}-${i}`}
+              aria-selected={i === active}
+            >
               <button
                 type="button"
+                tabIndex={-1}
                 disabled={pending}
-                onClick={() => start(() => confirmMatch(sourceId, p.id))}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => choose(p)}
                 style={{
                   display: "flex",
                   width: "100%",
@@ -82,18 +125,15 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
                   gap: "var(--space-3)",
                   padding: "var(--space-2) var(--space-3)",
                   textAlign: "left",
-                  background: "transparent",
                   border: "none",
                   cursor: pending ? "default" : "pointer",
                   opacity: pending ? 0.5 : 1,
                   font: "var(--type-body-sm)",
                   color: "var(--text-primary)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--surface-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
+                  // Active option (arrow or hover) is the highlight — no
+                  // imperative :hover, the state drives it.
+                  background:
+                    i === active ? "var(--surface-hover)" : "transparent",
                 }}
               >
                 <span style={{ fontWeight: 600 }}>{p.full_name}</span>
