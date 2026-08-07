@@ -178,6 +178,24 @@ def refresh_week(body: RefreshWeekRequest) -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
 
 
+class BacktestRequest(BaseModel):
+    seasons: list[int] | None = None
+
+
+# Held-out backtest: MAE/RMSE of Layer 0 vs naive baselines (last-week,
+# trailing-mean) over historical player-weeks. Synchronous (a few seconds).
+@app.post("/jobs/backtest")
+def run_backtest(body: BacktestRequest) -> JSONResponse:
+    from app.projection import backtest
+
+    try:
+        return JSONResponse(backtest.backtest(body.seasons))
+    except (FileNotFoundError, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — DuckDB / Postgres / parquet failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 def _run_backfill_all() -> None:
     import logging
 
