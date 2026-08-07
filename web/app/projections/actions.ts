@@ -1,40 +1,26 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+export type RefreshState = { started?: boolean; error?: string };
 
-export type RefreshState = { error?: string; ok?: boolean };
-
-// One-click refresh: fire the api pipeline (ingest player_stats + schedules →
-// project) for a week, then revalidate so the page shows the fresh numbers.
-// Returns a state object — never throws — so a bad input or api error shows an
-// inline message instead of 500-ing the page. Admin-only via the page gate.
-export async function refreshWeek(
-  _prev: RefreshState,
-  formData: FormData,
-): Promise<RefreshState> {
-  const season = Number(formData.get("season"));
-  const week = Number(formData.get("week"));
-  if (
-    !Number.isInteger(season) ||
-    season < 2019 ||
-    !Number.isInteger(week) ||
-    week < 1
-  ) {
-    return { error: "Enter a season (2019+) and a week." };
-  }
-
+// One-click, fire-and-forget: kick off the api backfill (ingest every season +
+// project every week) and return immediately. The api runs it in the background
+// (minutes), so there's no live progress — reload later to see the fresh data.
+// Returns a state object (never throws) so a failure shows inline, not a 500.
+export async function refreshAll(): Promise<RefreshState> {
   const apiUrl = process.env.API_URL ?? "http://localhost:4001";
   try {
-    const res = await fetch(`${apiUrl}/jobs/refresh-week`, {
+    const res = await fetch(`${apiUrl}/jobs/refresh-all`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ season, week }),
       cache: "no-store",
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
       return {
-        error: `Refresh failed (HTTP ${res.status}). ${detail}`.slice(0, 240),
+        error:
+          `Couldn't start the refresh (HTTP ${res.status}). ${detail}`.slice(
+            0,
+            240,
+          ),
       };
     }
   } catch (e) {
@@ -42,7 +28,5 @@ export async function refreshWeek(
       error: e instanceof Error ? e.message : "Could not reach the api.",
     };
   }
-
-  revalidatePath("/projections");
-  return { ok: true };
+  return { started: true };
 }

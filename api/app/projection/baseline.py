@@ -35,6 +35,7 @@ MIN_GAMES = 3
 PRIOR_SEASON_DISCOUNT = 0.7
 MODEL_VERSION = "baseline-ewma-1"
 FANTASY_POS = ("QB", "RB", "WR", "TE")
+SEASON_FLOOR = 2019  # nflverse data floor (mirrors ingest.nflverse.MIN_SEASON)
 
 # league scoring_json key -> raw player_stats column expression (nflverse weekly).
 # The `weekly` derived table drops fumbles/2pt, so we score the raw box score.
@@ -281,3 +282,43 @@ def project_week(season: int, week: int) -> dict:
         "model_version": MODEL_VERSION,
         "path": str(dst),
     }
+
+
+def _league_seasons() -> list[int]:
+    """Distinct league seasons we can project (>= the nflverse data floor)."""
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT season FROM leagues WHERE season >= %s ORDER BY season",
+            (SEASON_FLOOR,),
+        )
+        return [int(r[0]) for r in cur.fetchall()]
+
+
+def _weeks_with_data(season: int) -> list[int]:
+    g = _season_glob(season)
+    if not g:
+        return []
+    with duck.connect() as con:
+        rows = con.execute(
+            f"SELECT DISTINCT week FROM read_parquet('{g}') ORDER BY week"
+        ).fetchall()
+    return [int(r[0]) for r in rows]
+
+
+def backfill_all() -> dict:
+    """Ingest every league season (player_stats + schedules) then project every
+    week that has data. Long-running — intended to run in the background. A
+    failing week is recorded and skipped so one bad week can't abort the run."""
+    from app.ingest import nflverse
+
+    done: dict = {"seasons": [], "weeks": 0, "errors": []}
+    for s in _league_seasons():
+        nflverse.ingest_season(s, ["player_stats", "schedules"], force=True)
+        for w in _weeks_with_data(s):
+            try:
+                project_week(s, w)
+                done["weeks"] += 1
+            except Exception as e:  # noqa: BLE001 — keep going past a bad week
+                done["errors"].append(f"{s}w{w}: {e}")
+        done["seasons"].append(s)
+    return done

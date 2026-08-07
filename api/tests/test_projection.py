@@ -148,3 +148,23 @@ def test_refresh_week_endpoint(monkeypatch):
     body = res.json()
     assert body["ingested"]["datasets"] == ["player_stats", "schedules"]
     assert body["projected"]["players"] == 42
+
+
+def test_refresh_all_endpoint(monkeypatch):
+    """Fire-and-forget: 202 immediately, backfill runs as a background task."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    calls = {"n": 0}
+
+    def fake_backfill():
+        calls["n"] += 1
+        return {}
+
+    monkeypatch.setattr(baseline, "backfill_all", fake_backfill)
+
+    res = TestClient(app).post("/jobs/refresh-all")
+    assert res.status_code == 202
+    assert res.json()["status"] == "started"
+    assert calls["n"] == 1  # TestClient runs background tasks after the response
