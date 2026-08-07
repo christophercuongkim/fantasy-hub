@@ -34,10 +34,14 @@ export function CareerTable({ rows }: { rows: CareerRow[] }) {
         columns={[
           { key: "manager", label: "Manager", identifying: true },
           {
+            // Titles is the sort key, so it's the sm surviving figure (Win% as
+            // the sm figure looked unsorted). subLabel names the bare number.
             key: "titles",
             label: "Titles",
             numeric: true,
+            survives: true,
             render: (r) => r.titles || "—",
+            subLabel: (r) => (r.titles === 1 ? "title" : "titles"),
           },
           { key: "playoffs", label: "Playoffs", numeric: true, priority: 3 },
           {
@@ -50,7 +54,7 @@ export function CareerTable({ rows }: { rows: CareerRow[] }) {
             key: "winPct",
             label: "Win%",
             numeric: true,
-            survives: true,
+            secondary: true,
             render: (r) => `${(r.winPct * 100).toFixed(0)}%`,
           },
           {
