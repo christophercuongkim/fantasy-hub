@@ -19,8 +19,6 @@ const POS_ORDER = ["QB", "RB", "WR", "TE", "K", "DEF", "DST"];
 const TOP = 10;
 const MIN_PICKS = 15; // enough matched picks for a stable per-manager average
 
-const signed = (n: number) => (n > 0 ? "+" : "") + n.toFixed(1);
-
 const sectionLabel: React.CSSProperties = {
   font: "var(--type-heading)",
   color: "var(--text-primary)",
@@ -102,32 +100,34 @@ export default async function Draft() {
     figure: string;
     detail: string;
   }[] = [];
+  // Reaches and values show positive magnitudes (spots earlier / later than
+  // ADP); the label carries the direction, so no minus signs.
   if (reaches[0])
     awards.push({
       label: "Biggest reach",
       headline: reaches[0].player,
-      figure: signed(reaches[0].reach),
+      figure: reaches[0].reach.toFixed(1),
       detail: `${reaches[0].who} · pick ${reaches[0].overall} · ${reaches[0].season}`,
     });
   if (values[0])
     awards.push({
       label: "Biggest steal",
       headline: values[0].player,
-      figure: signed(values[0].reach),
+      figure: (-values[0].reach).toFixed(1),
       detail: `${values[0].who} · pick ${values[0].overall} · ${values[0].season}`,
     });
   if (faller)
     awards.push({
-      label: "First-round faller",
+      label: "Round 1 steal",
       headline: faller.player,
-      figure: signed(faller.reach),
+      figure: (-faller.reach).toFixed(1),
       detail: `${faller.who} · pick ${faller.overall} · ${faller.season}`,
     });
   if (byBook)
     awards.push({
       label: "By the book",
       headline: byBook.player,
-      figure: signed(byBook.reach),
+      figure: Math.abs(byBook.reach).toFixed(1),
       detail: `drafted right on ADP · ${byBook.who} · ${byBook.season}`,
     });
   if (kicker)
@@ -167,19 +167,19 @@ export default async function Draft() {
       {
         label: "Biggest gambler",
         headline: gambler.who,
-        figure: signed(gambler.avg),
+        figure: Math.abs(gambler.avg).toFixed(1),
         detail: `mean reach · ${gambler.picks} picks`,
       },
       {
         label: "Sharpest value",
         headline: value.who,
-        figure: signed(value.avg),
-        detail: `mean reach · ${value.picks} picks`,
+        figure: Math.abs(value.avg).toFixed(1),
+        detail: `mean value · ${value.picks} picks`,
       },
       {
         label: "Most on-script",
         headline: onScript.who,
-        figure: signed(onScript.avg),
+        figure: Math.abs(onScript.avg).toFixed(1),
         detail: `closest to ADP · ${onScript.picks} picks`,
       },
     );
