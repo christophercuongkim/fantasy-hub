@@ -1,11 +1,12 @@
 import { inArray, sql } from "drizzle-orm";
+import { Badge, Button, Card, EmptyState } from "@seakim/design-system";
 import { getDb } from "@/db";
 import { draftPicks, players as playersTable } from "@/db/schema";
 import { confirmMatch, dismiss, runCrosswalk } from "./actions";
 import { AssignSearch } from "./AssignSearch";
 import { RunButton } from "./RunButton";
 
-// Personal app, no multi-user auth yet — this route just isn't linked publicly.
+// Admin-gated by the middleware (/admin → admins only).
 export const dynamic = "force-dynamic";
 
 type Cand = { player_id: string; name: string; score: number };
@@ -17,6 +18,15 @@ type Player = {
   team: string | null;
   draft_year: number | null;
   status: string | null;
+};
+
+const listStyle: React.CSSProperties = {
+  listStyle: "none",
+  padding: 0,
+  margin: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--space-3)",
 };
 
 export default async function CrosswalkAdmin() {
@@ -88,94 +98,146 @@ export default async function CrosswalkAdmin() {
         ? `R${rounds[0]}–${rounds[rounds.length - 1]}`
         : `R${rounds[0]}`;
     return (
-      <li
-        key={r.source_id}
-        className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
-      >
-        <div className="mb-2 flex items-start justify-between">
-          <div>
-            <span className="font-semibold">{r.source_id}</span>
-            {seasons.length > 0 && (
-              <span className="ml-2 text-xs text-neutral-400">
-                drafted {seasons.join(", ")} · {rd}
-              </span>
-            )}
+      <li key={r.source_id}>
+        <Card
+          title={r.source_id}
+          meta={
+            seasons.length > 0
+              ? `drafted ${seasons.join(", ")} · ${rd}`
+              : undefined
+          }
+          footer={
+            <form action={dismiss.bind(null, r.source_id)}>
+              <Button variant="ghost" size="sm" type="submit">
+                No match
+              </Button>
+            </form>
+          }
+        >
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "var(--space-2)",
+            }}
+          >
+            {(r.candidates_json ?? []).map((c) => {
+              const p = pById.get(c.player_id);
+              const detail = p
+                ? [
+                    p.position,
+                    p.team ?? undefined,
+                    p.draft_year
+                      ? `NFL '${String(p.draft_year).slice(2)}`
+                      : undefined,
+                    p.status && p.status !== "ACT" ? p.status : undefined,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : "";
+              return (
+                <form
+                  key={c.player_id}
+                  action={confirmMatch.bind(null, r.source_id, c.player_id)}
+                >
+                  <Button variant="secondary" size="sm" type="submit">
+                    <span style={{ fontWeight: 600 }}>
+                      {p?.full_name ?? c.name}
+                    </span>
+                    {detail && (
+                      <span
+                        style={{
+                          marginLeft: "var(--space-2)",
+                          color: "var(--text-tertiary)",
+                        }}
+                      >
+                        {detail}
+                      </span>
+                    )}
+                    <Badge
+                      tone="neutral"
+                      mono
+                      style={{ marginLeft: "var(--space-2)" }}
+                    >
+                      {c.score}%
+                    </Badge>
+                  </Button>
+                </form>
+              );
+            })}
           </div>
-          <form action={dismiss.bind(null, r.source_id)}>
-            <button className="text-xs text-neutral-400 hover:text-neutral-600 hover:underline">
-              no match
-            </button>
-          </form>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(r.candidates_json ?? []).map((c) => {
-            const p = pById.get(c.player_id);
-            return (
-              <form
-                key={c.player_id}
-                action={confirmMatch.bind(null, r.source_id, c.player_id)}
-              >
-                <button className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:border-blue-500 hover:bg-blue-50 dark:border-neutral-700 dark:hover:border-blue-400 dark:hover:bg-blue-950">
-                  <span className="font-medium">{p?.full_name ?? c.name}</span>{" "}
-                  <span className="text-neutral-500">
-                    {p
-                      ? [
-                          p.position,
-                          p.team ?? undefined,
-                          p.draft_year
-                            ? `NFL '${String(p.draft_year).slice(2)}`
-                            : undefined,
-                          p.status && p.status !== "ACT" ? p.status : undefined,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")
-                      : ""}{" "}
-                    · {c.score}%
-                  </span>
-                </button>
-              </form>
-            );
-          })}
-        </div>
-        <AssignSearch sourceId={r.source_id} />
+          <AssignSearch sourceId={r.source_id} />
+        </Card>
       </li>
     );
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-10">
-      <header className="mb-6 flex items-start justify-between gap-4">
+    <main
+      style={{
+        maxWidth: "48rem",
+        margin: "0 auto",
+        padding: "var(--space-8) var(--space-5)",
+      }}
+    >
+      <header
+        style={{
+          marginBottom: "var(--space-6)",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "var(--space-4)",
+        }}
+      >
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1
+            style={{ font: "var(--type-title)", color: "var(--text-primary)" }}
+          >
             Crosswalk review
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p
+            style={{
+              marginTop: "var(--space-1)",
+              font: "var(--type-body-sm)",
+              color: "var(--text-secondary)",
+            }}
+          >
             {Number(counts.resolved).toLocaleString()} /{" "}
             {Number(counts.total).toLocaleString()} draft picks linked to a
             player · {withCand.length} to review
           </p>
         </div>
-        <form action={runCrosswalk} className="shrink-0">
+        <form action={runCrosswalk} style={{ flexShrink: 0 }}>
           <RunButton />
         </form>
       </header>
 
       {queue.length === 0 ? (
-        <p className="rounded-lg border border-neutral-200 bg-white p-6 text-center text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
-          Nothing to review — every resolvable name is matched. 🎉
-        </p>
+        <EmptyState
+          icon="confetti"
+          title="Nothing to review"
+          description="Every resolvable name is matched."
+        />
       ) : (
         <>
           {withCand.length > 0 && (
-            <ul className="space-y-3">{withCand.map(card)}</ul>
+            <ul style={listStyle}>{withCand.map(card)}</ul>
           )}
           {noCand.length > 0 && (
-            <details className="mt-8">
-              <summary className="cursor-pointer text-sm font-medium text-neutral-500 hover:text-neutral-700">
+            <details style={{ marginTop: "var(--space-8)" }}>
+              <summary
+                style={{
+                  cursor: "pointer",
+                  font: "var(--type-label)",
+                  color: "var(--text-secondary)",
+                }}
+              >
                 Unmatched — {noCand.length} name{noCand.length === 1 ? "" : "s"}{" "}
                 with no suggestion (optional — search to assign)
               </summary>
-              <ul className="mt-3 space-y-3">{noCand.map(card)}</ul>
+              <ul style={{ ...listStyle, marginTop: "var(--space-3)" }}>
+                {noCand.map(card)}
+              </ul>
             </details>
           )}
         </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { Input } from "@seakim/design-system";
 import { confirmMatch, searchPlayers, type PlayerHit } from "./actions";
 
 // Free-text "assign any player" box for a review entry — used when the
@@ -34,25 +35,74 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
   }, []);
 
   return (
-    <div ref={box} className="relative mt-2 w-full max-w-xs">
-      <input
+    <div
+      ref={box}
+      style={{
+        position: "relative",
+        marginTop: "var(--space-2)",
+        maxWidth: "20rem",
+      }}
+    >
+      <Input
+        size="sm"
+        fullWidth
+        iconLeft="magnifying-glass"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => hits.length && setOpen(true)}
         placeholder="or search any player…"
-        className="w-full rounded-md border border-neutral-300 bg-transparent px-2.5 py-1 text-sm outline-none focus:border-blue-500 dark:border-neutral-700"
       />
       {open && hits.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+        <ul
+          style={{
+            position: "absolute",
+            zIndex: 10,
+            marginTop: "var(--space-1)",
+            width: "100%",
+            overflow: "hidden",
+            listStyle: "none",
+            padding: 0,
+            background: "var(--surface-raised)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-md)",
+            boxShadow: "var(--shadow-popover)",
+          }}
+        >
           {hits.map((p) => (
             <li key={p.id}>
               <button
+                type="button"
                 disabled={pending}
                 onClick={() => start(() => confirmMatch(sourceId, p.id))}
-                className="flex w-full items-baseline justify-between px-2.5 py-1.5 text-left text-sm hover:bg-blue-50 disabled:opacity-50 dark:hover:bg-blue-950"
+                style={{
+                  display: "flex",
+                  width: "100%",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  gap: "var(--space-3)",
+                  padding: "var(--space-2) var(--space-3)",
+                  textAlign: "left",
+                  background: "transparent",
+                  border: "none",
+                  cursor: pending ? "default" : "pointer",
+                  opacity: pending ? 0.5 : 1,
+                  font: "var(--type-body-sm)",
+                  color: "var(--text-primary)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--surface-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
               >
-                <span className="font-medium">{p.full_name}</span>
-                <span className="text-xs text-neutral-500">
+                <span style={{ fontWeight: 600 }}>{p.full_name}</span>
+                <span
+                  style={{
+                    font: "var(--type-caption)",
+                    color: "var(--text-tertiary)",
+                  }}
+                >
                   {[
                     p.position,
                     p.team ?? undefined,
