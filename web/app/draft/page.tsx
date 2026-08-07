@@ -1,4 +1,4 @@
-import { Card } from "@seakim/design-system";
+import { Badge, Card, EmptyState } from "@seakim/design-system";
 import { auth, isAdmin } from "@/auth";
 import { positionByRound, valueBoard } from "@/lib/draft-superlatives";
 import {
@@ -92,9 +92,10 @@ export default async function Draft() {
       </header>
 
       {board.length === 0 ? (
-        <Card
-          title="No ADP data yet"
-          meta="Run `make adp` then reload the league to fill reaches and values."
+        <EmptyState
+          icon="list-numbers"
+          title="No draft ADP yet"
+          description="Reaches and values appear once the draft board is loaded with consensus ADP."
         />
       ) : (
         <>
@@ -124,17 +125,16 @@ export default async function Draft() {
                 gap: "var(--space-4)",
               }}
             >
-              <h2 style={sectionLabel}>
-                Manager tendency{" "}
-                <span
-                  style={{
-                    font: "var(--type-caption)",
-                    color: "var(--text-tertiary)",
-                  }}
-                >
-                  · admin only
-                </span>
-              </h2>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-2)",
+                }}
+              >
+                <h2 style={sectionLabel}>Manager tendency</h2>
+                <Badge tone="neutral">Admin only</Badge>
+              </div>
               <Card
                 title="Draft discipline"
                 meta="mean reach vs ADP per manager"
