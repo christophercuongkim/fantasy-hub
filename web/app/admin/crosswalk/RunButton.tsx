@@ -1,17 +1,22 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { Button } from "@seakim/design-system";
 
 // Submit button that shows the job running (the parent <form> action is the
-// server action that POSTs to the api and revalidates).
+// server action that POSTs to the api and revalidates). type="submit" is
+// explicit — the DS Button defaults to type="button".
 export function RunButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      disabled={pending}
-      className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+    <Button
+      type="submit"
+      variant="primary"
+      iconLeft="arrows-clockwise"
+      loading={pending}
+      loadingLabel="Running…"
     >
-      {pending ? "Running…" : "Rebuild & resolve"}
-    </button>
+      Rebuild & resolve
+    </Button>
   );
 }
