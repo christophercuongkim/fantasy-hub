@@ -46,6 +46,14 @@ export default async function Home() {
             meta="Records, superlatives, head-to-head"
           />
         )}
+        {session && (
+          <NavCard
+            href="/draft"
+            eyebrow="LEAGUE"
+            title="Draft"
+            meta="Reaches, values vs ADP"
+          />
+        )}
         {admin && (
           <NavCard
             href="/admin/crosswalk"
