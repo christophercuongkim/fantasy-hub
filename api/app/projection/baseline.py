@@ -305,20 +305,55 @@ def _weeks_with_data(season: int) -> list[int]:
     return [int(r[0]) for r in rows]
 
 
+# Live status for the fire-and-forget backfill so the UI can show progress +
+# auto-refresh when it finishes. Module-level = one uvicorn worker (the deploy
+# runs a single worker); across workers this would need shared state.
+_STATUS: dict = {
+    "running": False,
+    "started_at": None,
+    "finished_at": None,
+    "seasons_done": 0,
+    "weeks_done": 0,
+    "error": None,
+}
+
+
+def backfill_status() -> dict:
+    return dict(_STATUS)
+
+
 def backfill_all() -> dict:
     """Ingest every league season (player_stats + schedules) then project every
     week that has data. Long-running — intended to run in the background. A
-    failing week is recorded and skipped so one bad week can't abort the run."""
+    failing week is recorded and skipped so one bad week can't abort the run.
+    Updates _STATUS as it goes for the progress poll."""
     from app.ingest import nflverse
 
-    done: dict = {"seasons": [], "weeks": 0, "errors": []}
-    for s in _league_seasons():
-        nflverse.ingest_season(s, ["player_stats", "schedules"], force=True)
-        for w in _weeks_with_data(s):
-            try:
-                project_week(s, w)
-                done["weeks"] += 1
-            except Exception as e:  # noqa: BLE001 — keep going past a bad week
-                done["errors"].append(f"{s}w{w}: {e}")
-        done["seasons"].append(s)
-    return done
+    _STATUS.update(
+        running=True,
+        started_at=datetime.now(UTC).isoformat(),
+        finished_at=None,
+        seasons_done=0,
+        weeks_done=0,
+        error=None,
+    )
+    errors: list[str] = []
+    try:
+        for s in _league_seasons():
+            nflverse.ingest_season(s, ["player_stats", "schedules"], force=True)
+            for w in _weeks_with_data(s):
+                try:
+                    project_week(s, w)
+                    _STATUS["weeks_done"] += 1
+                except Exception as e:  # noqa: BLE001 — skip a bad week
+                    errors.append(f"{s}w{w}: {e}")
+            _STATUS["seasons_done"] += 1
+    except Exception as e:  # noqa: BLE001 — ingest / league lookup failure
+        _STATUS["error"] = str(e)
+    finally:
+        _STATUS.update(running=False, finished_at=datetime.now(UTC).isoformat())
+    return {
+        "seasons": _STATUS["seasons_done"],
+        "weeks": _STATUS["weeks_done"],
+        "errors": errors,
+    }

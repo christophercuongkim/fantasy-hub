@@ -194,8 +194,21 @@ def _run_backfill_all() -> None:
 # The one-click "Refresh all" button on /projections calls this.
 @app.post("/jobs/refresh-all")
 def refresh_all(background: BackgroundTasks) -> JSONResponse:
+    from app.projection import baseline
+
+    if baseline.backfill_status()["running"]:
+        return JSONResponse(status_code=409, content={"status": "already_running"})
     background.add_task(_run_backfill_all)
     return JSONResponse(status_code=202, content={"status": "started"})
+
+
+# Progress for the running/last backfill — the /projections button polls this to
+# show progress and auto-refresh the page when it finishes.
+@app.get("/jobs/refresh-status")
+def refresh_status() -> JSONResponse:
+    from app.projection import baseline
+
+    return JSONResponse(baseline.backfill_status())
 
 
 # Build the player registry from nflverse ids + resolve draft_picks.player_id
