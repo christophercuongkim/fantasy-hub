@@ -305,6 +305,18 @@ def _weeks_with_data(season: int) -> list[int]:
     return [int(r[0]) for r in rows]
 
 
+def _projected_weeks(league_id: str, season: int) -> set[int]:
+    """Weeks already stored for the CURRENT model — skipped on re-runs. A model
+    bump changes MODEL_VERSION, so nothing matches and everything re-projects."""
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT week FROM projections "
+            "WHERE league_id = %s AND season = %s AND model_version = %s",
+            (league_id, season, MODEL_VERSION),
+        )
+        return {int(r[0]) for r in cur.fetchall()}
+
+
 # Live status for the fire-and-forget backfill so the UI can show progress +
 # auto-refresh when it finishes. Module-level = one uvicorn worker (the deploy
 # runs a single worker); across workers this would need shared state.
@@ -339,9 +351,21 @@ def backfill_all() -> dict:
     )
     errors: list[str] = []
     try:
-        for s in _league_seasons():
-            nflverse.ingest_season(s, ["player_stats", "schedules"], force=True)
+        seasons = _league_seasons()
+        # Only the latest season still gains weeks → force-re-pull it; older
+        # seasons skip ingest if their Parquet is already present. And skip any
+        # week already projected for this model, so completed seasons fall
+        # through and the current season only projects its new week.
+        latest = max(seasons) if seasons else None
+        for s in seasons:
+            nflverse.ingest_season(
+                s, ["player_stats", "schedules"], force=(s == latest)
+            )
+            league_id, _ = league(s)
+            done = _projected_weeks(league_id, s)
             for w in _weeks_with_data(s):
+                if w in done:
+                    continue
                 try:
                     project_week(s, w)
                     _STATUS["weeks_done"] += 1
