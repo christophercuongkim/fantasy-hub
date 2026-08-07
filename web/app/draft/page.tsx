@@ -5,7 +5,7 @@ import {
   positionByRound,
   valueBoard,
 } from "@/lib/draft-superlatives";
-import { ADPScatter, PositionalHeatmap, ReachHistogram } from "./charts";
+import { ADPScatter, PositionalHeatmap, ValueHistogram } from "./charts";
 import {
   ReachTable,
   TendencyTable,
@@ -18,6 +18,9 @@ export const dynamic = "force-dynamic"; // reads live DB
 const POS_ORDER = ["QB", "RB", "WR", "TE", "K", "DEF", "DST"];
 const TOP = 10;
 const MIN_PICKS = 15; // enough matched picks for a stable per-manager average
+
+// value is one signed scale: + = steal (fell past ADP), − = reach (taken early).
+const signed = (n: number) => (n > 0 ? "+" : "") + n.toFixed(1);
 
 const sectionLabel: React.CSSProperties = {
   font: "var(--type-heading)",
@@ -79,55 +82,54 @@ export default async function Draft() {
     earliestKicker(),
   ]);
 
-  // board is desc by reach: head = biggest reaches, tail = biggest values.
-  const reaches = board.filter((r) => r.reach > 0).slice(0, TOP);
-  const values = [...board]
+  // board is desc by value: head = biggest steals, tail = biggest reaches.
+  const values = board.filter((r) => r.value > 0).slice(0, TOP);
+  const reaches = [...board]
     .reverse()
-    .filter((r) => r.reach < 0)
+    .filter((r) => r.value < 0)
     .slice(0, TOP);
   const byBook = board.length
-    ? board.reduce((a, b) => (Math.abs(b.reach) < Math.abs(a.reach) ? b : a))
+    ? board.reduce((a, b) => (Math.abs(b.value) < Math.abs(a.value) ? b : a))
     : null;
   const r1 = board.filter((r) => r.round === 1);
-  const faller = r1.length
-    ? r1.reduce((a, b) => (b.reach < a.reach ? b : a))
+  const round1Steal = r1.length
+    ? r1.reduce((a, b) => (b.value > a.value ? b : a))
     : null;
 
-  // Public award cards, all single-pick (no per-manager aggregate).
+  // Public award cards, all single-pick. Figures are signed value (+ steal,
+  // − reach) on the one scale.
   const awards: {
     label: string;
     headline: string;
     figure: string;
     detail: string;
   }[] = [];
-  // Reaches and values show positive magnitudes (spots earlier / later than
-  // ADP); the label carries the direction, so no minus signs.
-  if (reaches[0])
-    awards.push({
-      label: "Biggest reach",
-      headline: reaches[0].player,
-      figure: reaches[0].reach.toFixed(1),
-      detail: `${reaches[0].who} · pick ${reaches[0].overall} · ${reaches[0].season}`,
-    });
   if (values[0])
     awards.push({
       label: "Biggest steal",
       headline: values[0].player,
-      figure: (-values[0].reach).toFixed(1),
+      figure: signed(values[0].value),
       detail: `${values[0].who} · pick ${values[0].overall} · ${values[0].season}`,
     });
-  if (faller)
+  if (reaches[0])
+    awards.push({
+      label: "Biggest reach",
+      headline: reaches[0].player,
+      figure: signed(reaches[0].value),
+      detail: `${reaches[0].who} · pick ${reaches[0].overall} · ${reaches[0].season}`,
+    });
+  if (round1Steal)
     awards.push({
       label: "Round 1 steal",
-      headline: faller.player,
-      figure: (-faller.reach).toFixed(1),
-      detail: `${faller.who} · pick ${faller.overall} · ${faller.season}`,
+      headline: round1Steal.player,
+      figure: signed(round1Steal.value),
+      detail: `${round1Steal.who} · pick ${round1Steal.overall} · ${round1Steal.season}`,
     });
   if (byBook)
     awards.push({
       label: "By the book",
       headline: byBook.player,
-      figure: Math.abs(byBook.reach).toFixed(1),
+      figure: signed(byBook.value),
       detail: `drafted right on ADP · ${byBook.who} · ${byBook.season}`,
     });
   if (kicker)
@@ -138,11 +140,11 @@ export default async function Draft() {
       detail: `${kicker.who} · ${kicker.season}`,
     });
 
-  // Per-manager mean reach (admin): reaches high, waits-for-value low.
+  // Per-manager mean value (admin): steals positive, reaches negative.
   const acc = new Map<string, { sum: number; n: number }>();
   for (const r of board) {
     const a = acc.get(r.who) ?? { sum: 0, n: 0 };
-    a.sum += r.reach;
+    a.sum += r.value;
     a.n += 1;
     acc.set(r.who, a);
   }
@@ -158,28 +160,28 @@ export default async function Draft() {
     detail: string;
   }[] = [];
   if (tendency.length) {
-    const gambler = tendency[0];
-    const value = tendency[tendency.length - 1];
+    const sharp = tendency[0]; // highest mean value
+    const gambler = tendency[tendency.length - 1]; // lowest (most negative)
     const onScript = tendency.reduce((a, b) =>
       Math.abs(b.avg) < Math.abs(a.avg) ? b : a,
     );
     adminAwards.push(
       {
-        label: "Biggest gambler",
-        headline: gambler.who,
-        figure: Math.abs(gambler.avg).toFixed(1),
-        detail: `mean reach · ${gambler.picks} picks`,
+        label: "Sharpest value",
+        headline: sharp.who,
+        figure: signed(sharp.avg),
+        detail: `mean value · ${sharp.picks} picks`,
       },
       {
-        label: "Sharpest value",
-        headline: value.who,
-        figure: Math.abs(value.avg).toFixed(1),
-        detail: `mean value · ${value.picks} picks`,
+        label: "Biggest gambler",
+        headline: gambler.who,
+        figure: signed(gambler.avg),
+        detail: `mean value · ${gambler.picks} picks`,
       },
       {
         label: "Most on-script",
         headline: onScript.who,
-        figure: Math.abs(onScript.avg).toFixed(1),
+        figure: signed(onScript.avg),
         detail: `closest to ADP · ${onScript.picks} picks`,
       },
     );
@@ -270,10 +272,10 @@ export default async function Draft() {
                 <ADPScatter picks={board} />
               </Card>
               <Card
-                title="Reach distribution"
+                title="Value distribution"
                 meta="how the league drafts vs the board"
               >
-                <ReachHistogram picks={board} />
+                <ValueHistogram picks={board} />
               </Card>
             </div>
           </section>

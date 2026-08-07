@@ -16,21 +16,9 @@ function useBp() {
 const signed = (n: number) => (n > 0 ? "+" : "") + n.toFixed(1);
 const one = (n: number) => n.toFixed(1);
 
-// Reaches and values share a shape; they differ only in the surviving figure —
-// a reach shows how many spots EARLIER than ADP (reach = adp - overall), a value
-// how many spots LATER (the opposite, -reach). Both display as positive
-// magnitudes; the column label carries the direction, so no minus signs.
-function ValueTable({
-  rows,
-  caption,
-  metricLabel,
-  magnitude,
-}: {
-  rows: ValuePick[];
-  caption: string;
-  metricLabel: string;
-  magnitude: (r: ValuePick) => number;
-}) {
+// Reaches and values share the one signed value scale (+ steal, − reach); the
+// tables differ only in caption and which end of the board they're passed.
+function ValueTable({ rows, caption }: { rows: ValuePick[]; caption: string }) {
   const { ref, bp } = useBp();
   return (
     <div ref={ref}>
@@ -58,20 +46,20 @@ function ValueTable({
             render: (r) => one(r.adp),
           },
           {
-            // the metric is the whole point → the surviving sm figure. The
-            // record (row 0 of the already-sorted list) is accented — the one
+            // value is the whole point → the surviving sm figure. The record
+            // (row 0 of the already-sorted list) is accented — the one
             // highlight per table, the rest stay ink.
-            key: "metric",
-            label: metricLabel,
+            key: "value",
+            label: "Value",
             numeric: true,
             survives: true,
             render: (r) =>
-              r.reach === rows[0]?.reach ? (
+              r.value === rows[0]?.value ? (
                 <span style={{ color: "var(--text-accent)", fontWeight: 600 }}>
-                  {magnitude(r).toFixed(1)}
+                  {signed(r.value)}
                 </span>
               ) : (
-                magnitude(r).toFixed(1)
+                signed(r.value)
               ),
             subLabel: () => "vs ADP",
           },
@@ -86,9 +74,7 @@ export function ReachTable({ rows }: { rows: ValuePick[] }) {
   return (
     <ValueTable
       rows={rows}
-      caption="Biggest reaches — spots drafted earlier than consensus"
-      metricLabel="Reach"
-      magnitude={(r) => r.reach}
+      caption="Biggest reaches — taken earlier than ADP (negative value)"
     />
   );
 }
@@ -97,9 +83,7 @@ export function ValuesTable({ rows }: { rows: ValuePick[] }) {
   return (
     <ValueTable
       rows={rows}
-      caption="Biggest values — spots a player fell past consensus ADP"
-      metricLabel="Value"
-      magnitude={(r) => -r.reach}
+      caption="Biggest values — fell past consensus ADP"
     />
   );
 }
@@ -113,12 +97,12 @@ export function TendencyTable({ rows }: { rows: TendencyRow[] }) {
       <Table<TendencyRow>
         bp={bp}
         rowKey={(r) => r.who}
-        caption="Average reach vs ADP per manager (+ reaches, − waits for value)"
+        caption="Average value per pick per manager (+ finds value, − reaches)"
         columns={[
           { key: "who", label: "Manager", identifying: true },
           {
             key: "avg",
-            label: "Avg reach",
+            label: "Avg value",
             numeric: true,
             survives: true,
             render: (r) => signed(r.avg),
