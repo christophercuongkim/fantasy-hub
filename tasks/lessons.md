@@ -130,6 +130,9 @@ Arranging/sizing multiple charts (grid, grouping, relative heights) breaks no DS
 ### Iterating UI on QA while GitHub Actions is down
 Auto-deploy (a workflow) can't run, but git push can: `git push --force origin <branch>:refs/heads/qa`, then **Dokploy → web-qa → Deploy** (builds from `qa`). No migration step means nothing else the workflow would've done is skipped. Single shared QA slot, so force-pushing `qa` is how you point it at your branch fast.
 
+### Removing a utility framework: grep EVERY `className=`, not just utility prefixes
+Ripping out Tailwind, I verified "no Tailwind left" with `grep -E 'className="[^"]*(flex|grid|text-|bg-|rounded|px-|dark:)'` — a prefix whitelist. It missed `className="pointer-events-none"` (no matching prefix), which then had **no backing CSS** and silently broke a cursor-following tooltip (it started capturing pointer events). **Why:** a verification grep that enumerates the patterns you *expect* can't catch the one you didn't. **How to apply:** when removing a class-based framework, grep the *broad* signal (`className=`) and eyeball the full list, classifying each survivor (framework utility → fix; legit CSS-var/keyframe class like `fontVariables`/`sl-*` → keep). Same principle generally: verify against the wide net, then subtract the known-good — don't verify against a narrow net and assume the complement is empty.
+
 ---
 
 ## Carried over from triptogether (stack-agnostic)
