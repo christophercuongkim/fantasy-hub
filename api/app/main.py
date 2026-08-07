@@ -132,6 +132,26 @@ def aggregate(body: AggregateRequest) -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
 
 
+class ProjectRequest(BaseModel):
+    season: int
+    week: int
+
+
+# Layer-0 baseline projection for one (season, week): EWMA of league-scored
+# points from the cold-tier player_stats → projections_archive Parquet.
+# Synchronous + idempotent, run after ingest + aggregate.
+@app.post("/jobs/project")
+def project(body: ProjectRequest) -> JSONResponse:
+    from app.projection import baseline
+
+    try:
+        return JSONResponse(baseline.project_week(body.season, body.week))
+    except (FileNotFoundError, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — DuckDB / Postgres / parquet failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 # Build the player registry from nflverse ids + resolve draft_picks.player_id
 # by name; unresolved names land in id_crosswalk_log for the admin review page.
 @app.post("/jobs/crosswalk")
