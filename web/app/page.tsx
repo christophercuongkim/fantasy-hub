@@ -23,11 +23,7 @@ export default async function Home() {
     >
       <div>
         <h1
-          style={{
-            font: "600 var(--text-5xl) var(--font-display)",
-            color: "var(--text-primary)",
-            letterSpacing: "-0.02em",
-          }}
+          style={{ font: "var(--type-display)", color: "var(--text-primary)" }}
         >
           fantasy-hub
         </h1>
