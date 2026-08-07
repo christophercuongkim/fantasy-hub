@@ -1,5 +1,14 @@
 # Integration: seakim design system — "bench" theme
 
+> **✅ COMPLETE 2026-08-07.** All four PRs merged — PR A landing (#45), PR B
+> `/hall_of_records` (#47), PR C `/admin/crosswalk` (#53), PR D `/login` +
+> **Tailwind removed entirely** (#54) — plus a full DS-conformance audit pass
+> (#55: `--type-*` roles, `--tracking-tight`, DS `Button` for sign-out, tooltip
+> `pointer-events` regression). No page uses Tailwind; DS v3.1.0 vendored with
+> governance docs. Next: **draft superlatives** (see `resume-point` memory). The
+> original plan is preserved below.
+
+
 Adopt `@seakim/design-system` v3.0.1 (the **bench** fantasy-sport theme,
 `data-app="bench"`, turf hue 145) as fantasy-hub's UI. Next 15 App Router /
 React 19 / pnpm — the DS's supported target.
