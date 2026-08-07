@@ -78,6 +78,10 @@ In CI, `pnpm/action-setup@v4` gets its version from `packageManager` in `package
 
 **Action versions/inputs (verified July 2026):** `create-branch-action@v6` (inputs `project_id`, `api_key`, `branch_name`; outputs `db_url`, `db_url_pooled`), `schema-diff-action@v1` (needs `permissions: pull-requests: write` to post the comment), `delete-branch-action@v3`. `NEON_PROJECT_ID` is a repo **variable**, `NEON_API_KEY`/`PROD_DATABASE_URL` are **secrets**.
 
+### Never guard a pg ENUM column with a string check (`<> ''`) — it crashes at query time
+
+`where p.position <> ''` on an enum column threw `invalid input value for enum "position": ""` (SQLSTATE 22P02) and 500'd the whole page — Postgres casts the `''` literal to the enum to compare, and `''` isn't a valid member. It **typechecks fine** (drizzle types the column as `string`) and only fails when the query runs against the DB, so `next build` and local typecheck stay green. **Why:** an enum's domain is its members, not "any string" — there is no empty enum value to compare against. **How to apply:** an enum column can't be `''`; if it's `NOT NULL` it needs no guard at all, and if nullable use `is not null` (never `<> ''`). More generally: a query that only touches types (no live DB in CI) is unverified until it runs — a page reading the DB needs an actual request against real rows before "done," not just a green typecheck. Same spirit as the ADP source-count lesson below — verify against the real thing.
+
 ---
 
 ## Deploy (Dokploy)
