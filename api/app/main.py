@@ -182,8 +182,9 @@ class BacktestRequest(BaseModel):
     seasons: list[int] | None = None
 
 
-# Held-out backtest: MAE/RMSE of Layer 0 vs naive baselines (last-week,
-# trailing-mean) over historical player-weeks. Synchronous (a few seconds).
+# Held-out backtest: MAE/RMSE of each model layer (0/1/2) vs the naive baselines
+# (last-week, trailing-mean) over historical player-weeks, plus the layer-beats-
+# layer verdicts. Synchronous (a few seconds).
 @app.post("/jobs/backtest")
 def run_backtest(body: BacktestRequest) -> JSONResponse:
     from app.projection import backtest
