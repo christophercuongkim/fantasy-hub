@@ -53,10 +53,15 @@ export function RefreshAll() {
           setError(
             "Nothing to project — no leagues loaded in this environment.",
           );
-        } else if (s.errors.length) {
-          setError(`Projected 0 weeks. First error: ${s.errors[0]}`);
         } else {
-          setNote("Done — no new weeks to project.");
+          // Seasons processed but nothing new — the steady state on a re-run
+          // (all weeks already done; a not-yet-published season 404s). Neutral,
+          // not an alarm.
+          setNote(
+            s.errors.length
+              ? `Up to date — no new weeks. Skipped: ${s.errors[0]}`
+              : "Up to date — no new weeks to project.",
+          );
         }
       }
     };

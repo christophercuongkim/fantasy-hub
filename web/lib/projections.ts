@@ -24,6 +24,7 @@ export async function latestProjections(): Promise<ProjectionSet | null> {
   const db = getDb();
   const head = (await db.execute(sql`
     select season, week from projections
+    where week <= 18
     order by season desc, week desc limit 1
   `)) as unknown as { season: number; week: number }[];
   if (!head.length) return null;
