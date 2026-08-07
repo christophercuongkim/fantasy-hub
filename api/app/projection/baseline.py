@@ -260,7 +260,18 @@ def project_week(season: int, week: int) -> dict:
             )
 
         if not records:
-            raise ValueError(f"no players with >= {MIN_GAMES} prior games")
+            # Legitimately nothing to project (e.g. early weeks of the floor
+            # season — no prior games). Not an error; a 0-player result.
+            return {
+                "season": season,
+                "week": week,
+                "league_id": league_id,
+                "players": 0,
+                "byes_zeroed": 0,
+                "postgres_rows": 0,
+                "model_version": MODEL_VERSION,
+                "path": None,
+            }
 
         out = parquet.dataset_dir("projections_archive", season=season, week=week)
         out.mkdir(parents=True, exist_ok=True)
@@ -363,23 +374,28 @@ def backfill_all() -> dict:
         # through and the current season only projects its new week.
         latest = max(seasons) if seasons else None
         for s in seasons:
-            nflverse.ingest_season(
-                s, ["player_stats", "schedules"], force=(s == latest)
-            )
-            league_id, _ = league(s)
-            done = _projected_weeks(league_id, s)
-            for w in _weeks_with_data(s):
-                if w in done:
-                    continue
-                try:
-                    project_week(s, w)
-                    _STATUS["weeks_done"] += 1
-                except Exception as e:  # noqa: BLE001 — skip a bad week
-                    log.warning("project %sw%s failed: %s", s, w, e)
-                    if len(_STATUS["errors"]) < _ERROR_CAP:
-                        _STATUS["errors"].append(f"{s}w{w}: {e}")
-            _STATUS["seasons_done"] += 1
-    except Exception as e:  # noqa: BLE001 — ingest / league lookup failure
+            try:
+                nflverse.ingest_season(
+                    s, ["player_stats", "schedules"], force=(s == latest)
+                )
+                league_id, _ = league(s)
+                done = _projected_weeks(league_id, s)
+                for w in _weeks_with_data(s):
+                    if w in done:
+                        continue
+                    try:
+                        if project_week(s, w)["players"] > 0:
+                            _STATUS["weeks_done"] += 1
+                    except Exception as e:  # noqa: BLE001 — skip a bad week
+                        log.warning("project %sw%s failed: %s", s, w, e)
+                        if len(_STATUS["errors"]) < _ERROR_CAP:
+                            _STATUS["errors"].append(f"{s}w{w}: {e}")
+                _STATUS["seasons_done"] += 1
+            except Exception as e:  # noqa: BLE001 — skip a season (e.g. no nflverse data yet)
+                log.warning("season %s failed: %s", s, e)
+                if len(_STATUS["errors"]) < _ERROR_CAP:
+                    _STATUS["errors"].append(f"season {s}: {e}")
+    except Exception as e:  # noqa: BLE001 — league lookup / unexpected
         log.exception("backfill aborted")
         _STATUS["error"] = str(e)
     finally:
