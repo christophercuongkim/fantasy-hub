@@ -17,8 +17,17 @@ const signed = (n: number) => (n > 0 ? "+" : "") + n.toFixed(1);
 const one = (n: number) => n.toFixed(1);
 
 // Reaches and values share the one signed value scale (+ steal, − reach); the
-// tables differ only in caption and which end of the board they're passed.
-function ValueTable({ rows, caption }: { rows: ValuePick[]; caption: string }) {
+// tables differ only in caption and which end of the board they're passed. Only
+// the hero table accents its record — one spotlight across the two tables.
+function ValueTable({
+  rows,
+  caption,
+  hero = false,
+}: {
+  rows: ValuePick[];
+  caption: string;
+  hero?: boolean;
+}) {
   const { ref, bp } = useBp();
   return (
     <div ref={ref}>
@@ -54,7 +63,7 @@ function ValueTable({ rows, caption }: { rows: ValuePick[]; caption: string }) {
             numeric: true,
             survives: true,
             render: (r) =>
-              r.value === rows[0]?.value ? (
+              hero && r.value === rows[0]?.value ? (
                 <span style={{ color: "var(--text-accent)", fontWeight: 600 }}>
                   {signed(r.value)}
                 </span>
@@ -84,6 +93,7 @@ export function ValuesTable({ rows }: { rows: ValuePick[] }) {
     <ValueTable
       rows={rows}
       caption="Biggest values — fell past consensus ADP"
+      hero
     />
   );
 }

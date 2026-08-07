@@ -27,18 +27,21 @@ const sectionLabel: React.CSSProperties = {
   color: "var(--text-primary)",
 };
 
-// A superlative: uppercase kicker (eyebrow), who/what (title), the figure as the
-// one accent highlight, a context line. Mirrors the Hall of Records award cards.
+// A superlative: uppercase kicker (eyebrow), who/what (title), a big mono figure,
+// a context line. The figure carries emphasis through size + mono — ink by
+// default; accent only for the section hero, to keep the accent scarce.
 function AwardCard({
   label,
   headline,
   figure,
   detail,
+  hero = false,
 }: {
   label: string;
   headline: string;
   figure: string;
   detail: string;
+  hero?: boolean;
 }) {
   return (
     <Card eyebrow={label} title={headline}>
@@ -57,7 +60,7 @@ function AwardCard({
             fontSize: "var(--text-2xl)",
             fontWeight: 600,
             lineHeight: 1,
-            color: "var(--text-accent)",
+            color: hero ? "var(--text-accent)" : "var(--text-primary)",
           }}
         >
           {figure}
@@ -97,12 +100,13 @@ export default async function Draft() {
     : null;
 
   // Public award cards, all single-pick. Figures are signed value (+ steal,
-  // − reach) on the one scale.
+  // − reach) on the one scale. The biggest value is the section hero (accent).
   const awards: {
     label: string;
     headline: string;
     figure: string;
     detail: string;
+    hero?: boolean;
   }[] = [];
   if (values[0])
     awards.push({
@@ -110,6 +114,7 @@ export default async function Draft() {
       headline: values[0].player,
       figure: signed(values[0].value),
       detail: `${values[0].who} · pick ${values[0].overall} · ${values[0].season}`,
+      hero: true,
     });
   if (reaches[0])
     awards.push({
