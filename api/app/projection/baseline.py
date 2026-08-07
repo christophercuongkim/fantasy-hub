@@ -16,8 +16,9 @@ they're excluded from the average rather than counted as zeros. A player whose
 team is on bye in the TARGET week is zeroed (the is_playing=false => mean=0
 bye-guard, asserted before write).
 
-Writes projections_archive/season=/week=/part-0.parquet (cold tier; no Postgres
-migration in this slice). Idempotent per (season, week).
+Writes both the Parquet archive (projections_archive/season=/week=/, keyed on
+gsis_id — model-version history) and the live Postgres `projections` table the
+web reads (keyed on players.id). Idempotent per (league, season, week).
 """
 
 from __future__ import annotations
@@ -58,19 +59,72 @@ SCORING_COLUMNS: dict[str, str] = {
 }
 
 
-def league_scoring(season: int) -> dict[str, float]:
-    """The league's stat_modifiers for a season (Postgres leagues.scoring_json)."""
+def league(season: int) -> tuple[str, dict[str, float]]:
+    """The league (id + stat_modifiers) for a season, from Postgres. One league
+    today; a second one is distinguished by this id once it lands, since a
+    projection is scoring-specific."""
     with postgres.connect() as conn, conn.cursor() as cur:
         cur.execute(
-            "SELECT scoring_json FROM leagues WHERE season = %s "
+            "SELECT id, scoring_json FROM leagues WHERE season = %s "
             "ORDER BY created_at DESC LIMIT 1",
             (season,),
         )
         row = cur.fetchone()
     if not row:
-        raise ValueError(f"no league scoring for season {season}")
-    mods = (row[0] or {}).get("stat_modifiers") or {}
-    return {k: float(v) for k, v in mods.items()}
+        raise ValueError(f"no league for season {season}")
+    league_id, sj = row
+    mods = (sj or {}).get("stat_modifiers") or {}
+    return str(league_id), {k: float(v) for k, v in mods.items()}
+
+
+_PG_COLUMNS = (
+    "league_id",
+    "player_id",
+    "season",
+    "week",
+    "mean",
+    "is_playing",
+    "model_version",
+    "generated_at",
+)
+
+
+def _player_map(cur, gsis_ids: list[str]) -> dict[str, str]:
+    """gsis_id -> players.id (UUID). Unmatched ids are simply absent."""
+    if not gsis_ids:
+        return {}
+    cur.execute("SELECT gsis_id, id FROM players WHERE gsis_id = ANY(%s)", (gsis_ids,))
+    return {g: str(i) for g, i in cur.fetchall()}
+
+
+def _write_postgres(records: list[dict], league_id: str, season: int, week: int) -> int:
+    """Upsert the live projections into Postgres: delete the (league, season,
+    week) slice, then batch-COPY. Rows whose gsis_id has no players row are
+    skipped (nflverse players not in our registry). p20/p50/p80/sd stay null
+    until Layer 3. Returns the rows written."""
+    with postgres.connect() as conn, conn.cursor() as cur:
+        ids = _player_map(cur, [r["gsis_id"] for r in records])
+        rows = [
+            (
+                league_id,
+                ids[r["gsis_id"]],
+                season,
+                week,
+                r["mean"],
+                r["is_playing"],
+                r["model_version"],
+                r["generated_at"],
+            )
+            for r in records
+            if r["gsis_id"] in ids
+        ]
+        cur.execute(
+            "DELETE FROM projections "
+            "WHERE league_id = %s AND season = %s AND week = %s",
+            (league_id, season, week),
+        )
+        postgres.copy_rows(conn, "projections", _PG_COLUMNS, rows)
+    return len(rows)
 
 
 def points_expr(scoring: dict[str, float]) -> str:
@@ -134,8 +188,12 @@ def _teams_playing(con, season: int, week: int) -> set[str] | None:
 
 
 def project_week(season: int, week: int) -> dict:
-    """Compute + persist Layer-0 projections for (season, week). Idempotent."""
-    scoring = league_scoring(season)
+    """Compute + persist Layer-0 projections for (season, week). Idempotent.
+
+    Writes both the Parquet archive (keyed on gsis_id; model-version history)
+    and the live Postgres `projections` table the web reads (keyed on
+    players.id)."""
+    league_id, scoring = league(season)
     pts = points_expr(scoring)
 
     globs = [g for s in (season - 1, season) if (g := _season_glob(s))]
@@ -185,6 +243,7 @@ def project_week(season: int, week: int) -> dict:
             assert is_playing or mean == 0.0
             records.append(
                 {
+                    "league_id": league_id,
                     "gsis_id": gsis,
                     "player_name": h["name"],
                     "position": h["position"],
@@ -210,11 +269,15 @@ def project_week(season: int, week: int) -> dict:
         con.register("proj", pd.DataFrame(records))
         con.execute(f"COPY (SELECT * FROM proj) TO '{dst}' (FORMAT PARQUET)")
 
+    written = _write_postgres(records, league_id, season, week)
+
     return {
         "season": season,
         "week": week,
+        "league_id": league_id,
         "players": len(records),
         "byes_zeroed": byes,
+        "postgres_rows": written,
         "model_version": MODEL_VERSION,
         "path": str(dst),
     }
