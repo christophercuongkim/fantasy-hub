@@ -1,8 +1,11 @@
 import { auth, isAdmin } from "@/auth";
 
 // Public: only the landing, login, and the NextAuth endpoints. Everything else —
-// including the hall of records — requires sign-in (any Google account). /admin/*
-// additionally requires an admin (ADMIN_EMAILS) — non-admins bounce to the landing.
+// including the hall of records — requires sign-in (any Google account). Admin
+// areas (/admin/*, /projections) additionally require an admin (ADMIN_EMAILS) —
+// non-admins bounce to the landing.
+const ADMIN_PREFIXES = ["/admin", "/projections"];
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isPublic =
@@ -14,7 +17,8 @@ export default auth((req) => {
   if (!req.auth) {
     return Response.redirect(new URL("/login", req.nextUrl));
   }
-  if (pathname.startsWith("/admin") && !isAdmin(req.auth.user?.email)) {
+  const adminOnly = ADMIN_PREFIXES.some((p) => pathname.startsWith(p));
+  if (adminOnly && !isAdmin(req.auth.user?.email)) {
     return Response.redirect(new URL("/", req.nextUrl));
   }
 });

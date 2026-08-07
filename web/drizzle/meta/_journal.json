@@ -64,6 +64,13 @@
       "when": 1785369516646,
       "tag": "20260729235836_players_gsis_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786124686538,
+      "tag": "20260807174446_add_projections",
+      "breakpoints": true
     }
   ]
 }

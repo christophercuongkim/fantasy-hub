@@ -53,12 +53,14 @@ def _write_season(dataset: str, season: int, df: pd.DataFrame) -> None:
 
 
 def test_project_week_end_to_end(tmp_root, monkeypatch):
-    # half-PPR-ish scoring; only the mapped columns need to exist in the fixture
+    # half-PPR-ish scoring; only the mapped columns need to exist in the fixture.
+    # Postgres write is stubbed so the e2e stays offline (Parquet only).
     monkeypatch.setattr(
         baseline,
-        "league_scoring",
-        lambda season: {"rec": 0.5, "rec_yd": 0.1, "rush_yd": 0.1},
+        "league",
+        lambda season: ("L1", {"rec": 0.5, "rec_yd": 0.1, "rush_yd": 0.1}),
     )
+    monkeypatch.setattr(baseline, "_write_postgres", lambda *a, **k: 0)
     stats = pd.DataFrame(
         {
             "player_id": ["00-1"] * 3,
@@ -94,7 +96,8 @@ def test_project_week_end_to_end(tmp_root, monkeypatch):
 
 
 def test_project_week_zeroes_a_bye(tmp_root, monkeypatch):
-    monkeypatch.setattr(baseline, "league_scoring", lambda season: {"rec": 0.5})
+    monkeypatch.setattr(baseline, "league", lambda season: ("L1", {"rec": 0.5}))
+    monkeypatch.setattr(baseline, "_write_postgres", lambda *a, **k: 0)
     _write_season(
         "player_stats",
         2024,

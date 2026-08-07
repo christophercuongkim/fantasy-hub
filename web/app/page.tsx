@@ -56,6 +56,14 @@ export default async function Home() {
         )}
         {admin && (
           <NavCard
+            href="/projections"
+            eyebrow="ADMIN"
+            title="Projections"
+            meta="Weekly baseline model"
+          />
+        )}
+        {admin && (
+          <NavCard
             href="/admin/crosswalk"
             eyebrow="ADMIN"
             title="Player crosswalk"
