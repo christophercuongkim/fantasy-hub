@@ -67,7 +67,7 @@ def league(season: int) -> tuple[str, dict[str, float]]:
     with postgres.connect() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT id, scoring_json FROM leagues WHERE season = %s "
-            "ORDER BY created_at DESC LIMIT 1",
+            "ORDER BY updated_at DESC LIMIT 1",
             (season,),
         )
         row = cur.fetchone()
