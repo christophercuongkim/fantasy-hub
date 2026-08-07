@@ -152,6 +152,32 @@ def project(body: ProjectRequest) -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
 
 
+class RefreshWeekRequest(BaseModel):
+    season: int
+    week: int
+
+
+# One-click "make projections current": re-pull the projection inputs
+# (player_stats + schedules, forced) then project the week. Deliberately skips
+# pbp + the weekly aggregate — Layer 0 reads player_stats directly, and pbp is
+# the slow pull, so this stays fast enough to run synchronously from a button.
+@app.post("/jobs/refresh-week")
+def refresh_week(body: RefreshWeekRequest) -> JSONResponse:
+    from app.ingest import nflverse
+    from app.projection import baseline
+
+    try:
+        ingested = nflverse.ingest_season(
+            body.season, ["player_stats", "schedules"], force=True
+        )
+        projected = baseline.project_week(body.season, body.week)
+        return JSONResponse({"ingested": ingested, "projected": projected})
+    except (FileNotFoundError, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — nflverse / DuckDB / Postgres failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 # Build the player registry from nflverse ids + resolve draft_picks.player_id
 # by name; unresolved names land in id_crosswalk_log for the admin review page.
 @app.post("/jobs/crosswalk")

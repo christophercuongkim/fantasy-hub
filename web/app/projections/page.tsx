@@ -1,6 +1,7 @@
 import { EmptyState } from "@seakim/design-system";
 import { latestProjections } from "@/lib/projections";
 import { ProjectionsTable } from "./table";
+import { RefreshForm } from "./RefreshForm";
 
 export const dynamic = "force-dynamic"; // reads live DB
 
@@ -20,21 +21,34 @@ export default async function Projections() {
         gap: "var(--space-6)",
       }}
     >
-      <header>
-        <h1 style={{ font: "var(--type-title)", color: "var(--text-primary)" }}>
-          Projections
-        </h1>
-        <p
-          style={{
-            marginTop: "var(--space-1)",
-            font: "var(--type-body-sm)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          {data
-            ? `Baseline model · ${data.season} week ${data.week}`
-            : "Weekly baseline projections."}
-        </p>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "var(--space-4)",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h1
+            style={{ font: "var(--type-title)", color: "var(--text-primary)" }}
+          >
+            Projections
+          </h1>
+          <p
+            style={{
+              marginTop: "var(--space-1)",
+              font: "var(--type-body-sm)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            {data
+              ? `Baseline model · ${data.season} week ${data.week}`
+              : "Weekly baseline projections."}
+          </p>
+        </div>
+        <RefreshForm defaultSeason={data?.season} defaultWeek={data?.week} />
       </header>
 
       {data ? (
