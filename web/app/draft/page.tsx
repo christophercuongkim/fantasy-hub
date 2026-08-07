@@ -7,7 +7,7 @@ import {
   valueBoard,
 } from "@/lib/draft-superlatives";
 import { PositionalHeatmap, ScatterCard, ValueHistogram } from "./charts";
-import { YearFilter } from "./YearFilter";
+import { SeasonFilter } from "@/components/SeasonFilter";
 import {
   ReachTable,
   TendencyTable,
@@ -285,7 +285,7 @@ export default async function Draft({
             than the board.
           </p>
         </div>
-        <YearFilter seasons={seasons} value={season} />
+        <SeasonFilter basePath="/draft" seasons={seasons} value={season} />
       </header>
 
       {board.length === 0 ? (
