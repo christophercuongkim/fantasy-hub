@@ -303,7 +303,7 @@ export default async function Draft({
               gap: "var(--space-4)",
             }}
           >
-            <h2 style={sectionLabel}>Superlatives</h2>
+            <h2 style={sectionLabel}>Awards</h2>
             <div style={awardGrid}>
               {awards.map((a) => (
                 <AwardCard key={a.label} {...a} />
