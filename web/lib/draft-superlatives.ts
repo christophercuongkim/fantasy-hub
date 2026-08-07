@@ -60,7 +60,6 @@ export async function positionByRound(): Promise<PosCount[]> {
     select dp.round, p.position as pos, count(*)::int as n
     from draft_picks dp
     join players p on p.id = dp.player_id
-    where p.position is not null and p.position <> ''
     group by dp.round, p.position
     order by dp.round, p.position
   `);
