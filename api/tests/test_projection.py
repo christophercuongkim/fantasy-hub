@@ -72,6 +72,10 @@ def test_project_week_end_to_end(tmp_root, monkeypatch):
             "receptions": [5, 5, 5],
             "receiving_yards": [50, 50, 50],
             "rushing_yards": [0, 0, 0],
+            # Layer 1 opportunity columns (OPP_SQL CASE binds all three).
+            "attempts": [0, 0, 0],
+            "carries": [0, 0, 0],
+            "targets": [8, 8, 8],
         }
     )
     _write_season("player_stats", 2024, stats)
@@ -110,6 +114,10 @@ def test_project_week_zeroes_a_bye(tmp_root, monkeypatch):
                 "season": [2024] * 3,
                 "week": [1, 2, 3],
                 "receptions": [10, 10, 10],
+                # Layer 1 opportunity columns (OPP_SQL CASE binds all three).
+                "attempts": [0, 0, 0],
+                "carries": [0, 0, 0],
+                "targets": [10, 10, 10],
             }
         ),
     )

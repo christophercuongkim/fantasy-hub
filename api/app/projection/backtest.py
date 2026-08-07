@@ -104,7 +104,7 @@ def score(games_by_player: dict[str, dict], pos_eff: dict[str, float]) -> dict:
             proj1 = layer1_projection(window, target["season"], position, pos_eff)
             preds = {
                 "layer0": proj0[0],
-                "layer1": proj1 if proj1 is not None else proj0[0],
+                "layer1": proj1[0] if proj1 is not None else proj0[0],
                 "last_week": window[-1]["pts"],
                 "trailing_mean": sum(g["pts"] for g in window) / len(window),
             }
