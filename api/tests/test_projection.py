@@ -125,3 +125,26 @@ def test_project_week_zeroes_a_bye(tmp_root, monkeypatch):
     assert out["byes_zeroed"] == 1
     mean = duckdb.sql(f"select mean from read_parquet('{out['path']}')").fetchone()[0]
     assert mean == 0.0  # bye-guard
+
+
+def test_refresh_week_endpoint(monkeypatch):
+    """The one-click endpoint chains ingest → project and returns both."""
+    from fastapi.testclient import TestClient
+
+    from app.ingest import nflverse
+    from app.main import app
+
+    monkeypatch.setattr(
+        nflverse,
+        "ingest_season",
+        lambda season, datasets, force: {"season": season, "datasets": datasets},
+    )
+    monkeypatch.setattr(
+        baseline, "project_week", lambda season, week: {"players": 42, "week": week}
+    )
+
+    res = TestClient(app).post("/jobs/refresh-week", json={"season": 2024, "week": 5})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["ingested"]["datasets"] == ["player_stats", "schedules"]
+    assert body["projected"]["players"] == 42
