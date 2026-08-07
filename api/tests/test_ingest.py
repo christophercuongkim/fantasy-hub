@@ -33,6 +33,20 @@ def fake_nfl(monkeypatch):
             {"game_id": ["2024_01_KC_BAL"], "spread_line": [-3.5]}
         ),
     )
+    # player_stats reads the nflverse `stats_player` parquet directly (not
+    # nfl_data_py) — stub it with the new-schema column names it normalizes.
+    monkeypatch.setattr(
+        nflverse.pd,
+        "read_parquet",
+        lambda url, **kw: pd.DataFrame(
+            {
+                "player_id": ["00-1"],
+                "week": [1],
+                "team": ["KC"],
+                "passing_interceptions": [0],
+            }
+        ),
+    )
 
 
 def test_ingest_season_writes_readable_parquet(fake_nfl):

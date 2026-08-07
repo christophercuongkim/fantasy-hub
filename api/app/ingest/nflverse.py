@@ -10,8 +10,22 @@ current season. See implementation plan §5 and the runbook.
 from collections.abc import Callable
 
 import nfl_data_py as nfl
+import pandas as pd
 
 from app.storage import parquet
+
+# nfl_data_py 0.3.3 reads the OLD `player_stats/player_stats_{year}` files, which
+# nflverse froze at 2024. Current weekly player stats live in the `stats_player`
+# release (all seasons 2019+), so read that directly and normalize the two
+# renamed columns so the rest of the pipeline is unchanged.
+_PLAYER_STATS_URL = (
+    "https://github.com/nflverse/nflverse-data/releases/download/"
+    "stats_player/stats_player_week_{}.parquet"
+)
+_PLAYER_STATS_RENAMES = {
+    "team": "recent_team",
+    "passing_interceptions": "interceptions",
+}
 
 # Earliest season with reliable route-participation data (data dictionary Part 2).
 MIN_SEASON = 2019
@@ -42,7 +56,8 @@ def _ingest_schedules(season: int) -> int:
 
 
 def _ingest_player_stats(season: int) -> int:
-    df = nfl.import_weekly_data([season], downcast=True)
+    df = pd.read_parquet(_PLAYER_STATS_URL.format(season))
+    df = df.rename(columns=_PLAYER_STATS_RENAMES)
     return _write("player_stats", season, df)
 
 
