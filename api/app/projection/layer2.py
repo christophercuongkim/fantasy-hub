@@ -14,7 +14,18 @@ defense-weeks so a small-sample defense can't swing a projection. No prior data
 The rate is aggregate points a defense allows to a whole position group per week;
 it's used only as a *ratio* (opponent vs. league), so it's scale-free — the
 league's scoring system cancels, and Layer 1's absolute points carry the units.
-Not shipped unless it beats Layer 1 on the backtest.
+
+STATUS — SHELVED, NOT SHIPPED (backtest 2026-08-07, n=33,561, 2019-2025).
+Layer 2 scored MAE 4.521 / RMSE 6.122 vs Layer 1's 4.505 / 6.096 — it beats
+Layer 0 but LOSES to Layer 1, so per model-spec §0 it does not ship. Tuning
+DVP_K can't rescue it: more shrinkage only pulls the multiplier toward 1.0, i.e.
+toward *being* Layer 1, so no k makes it beat Layer 1, only converge to it. The
+real defect is the signal, not the knob: raw DvP is confounded by schedule (a
+defense looks "generous to WRs" partly because it FACED good WRs), so the ratio
+carries more schedule noise than matchup signal. A matchup layer that clears the
+bar needs a de-confounded signal — opponent-adjusted DvP, points-allowed *per
+opportunity*, or a defense rating regressed against expectation — future work.
+The math + the backtest's layer2 scoring are kept as scaffolding for that.
 """
 
 from __future__ import annotations
