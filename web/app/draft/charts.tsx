@@ -6,8 +6,8 @@ import type { PosCount, ValuePick } from "@/lib/draft-superlatives";
 
 // Colours follow guidelines/data-visualisation.md: the shared layer is
 // achromatic; with two groups it's the one accent hue + --text-tertiary (never
-// the app-accent ramp). Reaches carry the accent (the "notable" side); values
-// are the tertiary comparison. Neutral reference lines are --border-strong.
+// the app-accent ramp). Values/steals carry the accent (the "notable" side);
+// reaches are the tertiary comparison. Neutral reference lines are --border-strong.
 const INK = "var(--text-primary)";
 const LABEL = "var(--text-tertiary)";
 const GRID = "var(--border-subtle)";
@@ -99,17 +99,17 @@ export function ADPScatter({ picks }: { picks: ValuePick[] }) {
         strokeWidth={1}
         strokeDasharray="4 4"
       />
-      {/* points: reaches accent, values tertiary */}
+      {/* points: values (steals) accent, reaches tertiary */}
       {picks.map((p) => (
         <circle
           key={`${p.season}-${p.overall}`}
           cx={x(p.adp)}
           cy={y(p.overall)}
           r={2.5}
-          fill={p.reach > 0 ? ACCENT : LABEL}
-          opacity={p.reach > 0 ? 0.75 : 0.5}
+          fill={p.value > 0 ? ACCENT : LABEL}
+          opacity={p.value > 0 ? 0.75 : 0.5}
         >
-          <title>{`${p.player} — ADP ${p.adp.toFixed(1)}, pick ${p.overall} (${p.reach > 0 ? "+" : ""}${p.reach.toFixed(1)})`}</title>
+          <title>{`${p.player} — ADP ${p.adp.toFixed(1)}, pick ${p.overall} (${p.value > 0 ? "+" : ""}${p.value.toFixed(1)})`}</title>
         </circle>
       ))}
       {/* axis titles */}
@@ -136,19 +136,19 @@ export function ADPScatter({ picks }: { picks: ValuePick[] }) {
   );
 }
 
-// ------------------------------------------------------------ reach histogram
-// How the whole league drafts vs ADP: counts of reach_delta in fixed-width bins.
+// ------------------------------------------------------------ value histogram
+// How the whole league drafts vs ADP: counts of value in fixed-width bins.
 // One series → accent bars, square corners, hairline baseline.
-export function ReachHistogram({ picks }: { picks: ValuePick[] }) {
+export function ValueHistogram({ picks }: { picks: ValuePick[] }) {
   const BIN = 10;
-  const reaches = picks.map((p) => p.reach);
-  const lo = Math.floor(Math.min(...reaches) / BIN) * BIN;
-  const hi = Math.ceil(Math.max(...reaches) / BIN) * BIN;
+  const vals = picks.map((p) => p.value);
+  const lo = Math.floor(Math.min(...vals) / BIN) * BIN;
+  const hi = Math.ceil(Math.max(...vals) / BIN) * BIN;
   const bins: { x0: number; n: number }[] = [];
   for (let b = lo; b < hi; b += BIN) {
     bins.push({
       x0: b,
-      n: reaches.filter((r) => r >= b && r < b + BIN).length,
+      n: vals.filter((v) => v >= b && v < b + BIN).length,
     });
   }
   const W = 560,
@@ -168,7 +168,7 @@ export function ReachHistogram({ picks }: { picks: ValuePick[] }) {
       viewBox={`0 0 ${W} ${H}`}
       style={{ width: "100%", height: "auto", display: "block" }}
       role="img"
-      aria-label="Distribution of reach vs ADP across every pick. Bars left of zero are values; right of zero are reaches."
+      aria-label="Distribution of value vs ADP across every pick. Bars left of zero are reaches; right of zero are values (steals)."
     >
       {bins.map((b) => {
         const h = H - m.b - y(b.n);
@@ -222,7 +222,7 @@ export function ReachHistogram({ picks }: { picks: ValuePick[] }) {
         fill={LABEL}
         textAnchor="start"
       >
-        ← values
+        ← reaches
       </text>
       <text
         x={W - m.r}
@@ -231,7 +231,7 @@ export function ReachHistogram({ picks }: { picks: ValuePick[] }) {
         fill={LABEL}
         textAnchor="end"
       >
-        reaches →
+        values →
       </text>
     </svg>
   );

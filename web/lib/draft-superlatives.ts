@@ -5,8 +5,9 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/db";
 
-// One drafted pick that matched a consensus ADP (reach = adp - overall;
-// positive = drafted earlier than consensus). Powers reaches, values, tendency.
+// One drafted pick that matched a consensus ADP. value = overall - adp, one
+// signed axis: positive = fell past ADP (a steal), negative = taken early (a
+// reach). Powers reaches, values, tendency.
 export type ValuePick = {
   who: string;
   season: number;
@@ -15,14 +16,14 @@ export type ValuePick = {
   player: string;
   pos: string | null;
   adp: number;
-  reach: number;
+  value: number;
 };
 
 export type PosCount = { round: number; pos: string; n: number };
 
-// Every pick with a matched ADP, ordered by reach (reaches first). The page
-// slices the head (biggest reaches) and tail (biggest values) and groups by
-// manager for the tendency table — all from this one pass.
+// Every pick with a matched ADP, ordered by value desc (biggest steals first,
+// biggest reaches last). The page slices the head (values) and tail (reaches)
+// and groups by manager for the tendency table — all from this one pass.
 export async function valueBoard(): Promise<ValuePick[]> {
   const db = getDb();
   const rows = await db.execute(sql`
@@ -31,14 +32,14 @@ export async function valueBoard(): Promise<ValuePick[]> {
            coalesce(p.full_name, dp.player_name) as player,
            p.position as pos,
            dp.adp_at_time::float as adp,
-           dp.reach_delta::float as reach
+           (-dp.reach_delta)::float as value
     from draft_picks dp
     join leagues l on l.id = dp.league_id
     join league_teams lt on lt.id = dp.league_team_id
     left join managers mgr on mgr.id = lt.manager_id
     left join players p on p.id = dp.player_id
     where dp.reach_delta is not null
-    order by dp.reach_delta desc
+    order by value desc
   `);
   return (rows as unknown as Record<string, unknown>[]).map((r) => ({
     who: String(r.who),
@@ -48,7 +49,7 @@ export async function valueBoard(): Promise<ValuePick[]> {
     player: String(r.player),
     pos: (r.pos as string | null) ?? null,
     adp: Number(r.adp),
-    reach: Number(r.reach),
+    value: Number(r.value),
   }));
 }
 
