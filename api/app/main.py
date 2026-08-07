@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import BackgroundTasks, FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -176,6 +176,26 @@ def refresh_week(body: RefreshWeekRequest) -> JSONResponse:
         return JSONResponse(status_code=422, content={"error": str(e)})
     except Exception as e:  # noqa: BLE001 — nflverse / DuckDB / Postgres failure
         return JSONResponse(status_code=424, content={"error": str(e)})
+
+
+def _run_backfill_all() -> None:
+    import logging
+
+    from app.projection import baseline
+
+    try:
+        baseline.backfill_all()
+    except Exception:  # noqa: BLE001 — background task; log and move on
+        logging.getLogger("uvicorn.error").exception("refresh-all failed")
+
+
+# Fire-and-forget full backfill: ingest every league season + project every week
+# with data, in the background. Returns 202 immediately (the job runs minutes).
+# The one-click "Refresh all" button on /projections calls this.
+@app.post("/jobs/refresh-all")
+def refresh_all(background: BackgroundTasks) -> JSONResponse:
+    background.add_task(_run_backfill_all)
+    return JSONResponse(status_code=202, content={"status": "started"})
 
 
 # Build the player registry from nflverse ids + resolve draft_picks.player_id

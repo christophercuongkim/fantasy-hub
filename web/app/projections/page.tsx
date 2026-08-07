@@ -1,7 +1,7 @@
 import { EmptyState } from "@seakim/design-system";
 import { latestProjections } from "@/lib/projections";
 import { ProjectionsTable } from "./table";
-import { RefreshForm } from "./RefreshForm";
+import { RefreshAll } from "./RefreshAll";
 
 export const dynamic = "force-dynamic"; // reads live DB
 
@@ -48,7 +48,7 @@ export default async function Projections() {
               : "Weekly baseline projections."}
           </p>
         </div>
-        <RefreshForm defaultSeason={data?.season} defaultWeek={data?.week} />
+        <RefreshAll />
       </header>
 
       {data ? (
@@ -57,7 +57,7 @@ export default async function Projections() {
         <EmptyState
           icon="chart-line"
           title="No projections yet"
-          description="Run the api project job (ingest → aggregate → project) to populate a week."
+          description="Hit “Refresh all” to ingest the seasons and project every week."
         />
       )}
     </main>
