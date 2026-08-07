@@ -43,9 +43,20 @@ export function RefreshAll() {
         setRunning(false);
         if (s.error) {
           setError(s.error);
+        } else if (s.weeksDone > 0) {
+          setNote(
+            `Done — projected ${s.weeksDone} weeks` +
+              (s.errors.length ? `, ${s.errors.length}+ skipped.` : "."),
+          );
+          router.refresh(); // data changed → reload the page
+        } else if (s.seasonsDone === 0) {
+          setError(
+            "Nothing to project — no leagues loaded in this environment.",
+          );
+        } else if (s.errors.length) {
+          setError(`Projected 0 weeks. First error: ${s.errors[0]}`);
         } else {
-          setNote(`Done — projected ${s.weeksDone} weeks. Reloading…`);
-          router.refresh();
+          setNote("Done — no new weeks to project.");
         }
       }
     };

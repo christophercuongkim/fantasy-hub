@@ -326,12 +326,14 @@ _STATUS: dict = {
     "finished_at": None,
     "seasons_done": 0,
     "weeks_done": 0,
-    "error": None,
+    "errors": [],  # per-week failures (capped) — makes a 0-week run diagnosable
+    "error": None,  # a top-level failure that aborted the whole run
 }
+_ERROR_CAP = 10
 
 
 def backfill_status() -> dict:
-    return dict(_STATUS)
+    return {**_STATUS, "errors": list(_STATUS["errors"])}
 
 
 def backfill_all() -> dict:
@@ -339,8 +341,11 @@ def backfill_all() -> dict:
     week that has data. Long-running — intended to run in the background. A
     failing week is recorded and skipped so one bad week can't abort the run.
     Updates _STATUS as it goes for the progress poll."""
+    import logging
+
     from app.ingest import nflverse
 
+    log = logging.getLogger("uvicorn.error")
     _STATUS.update(
         running=True,
         started_at=datetime.now(UTC).isoformat(),
@@ -349,7 +354,7 @@ def backfill_all() -> dict:
         weeks_done=0,
         error=None,
     )
-    errors: list[str] = []
+    _STATUS["errors"] = []
     try:
         seasons = _league_seasons()
         # Only the latest season still gains weeks → force-re-pull it; older
@@ -370,14 +375,13 @@ def backfill_all() -> dict:
                     project_week(s, w)
                     _STATUS["weeks_done"] += 1
                 except Exception as e:  # noqa: BLE001 — skip a bad week
-                    errors.append(f"{s}w{w}: {e}")
+                    log.warning("project %sw%s failed: %s", s, w, e)
+                    if len(_STATUS["errors"]) < _ERROR_CAP:
+                        _STATUS["errors"].append(f"{s}w{w}: {e}")
             _STATUS["seasons_done"] += 1
     except Exception as e:  # noqa: BLE001 — ingest / league lookup failure
+        log.exception("backfill aborted")
         _STATUS["error"] = str(e)
     finally:
         _STATUS.update(running=False, finished_at=datetime.now(UTC).isoformat())
-    return {
-        "seasons": _STATUS["seasons_done"],
-        "weeks": _STATUS["weeks_done"],
-        "errors": errors,
-    }
+    return backfill_status()
