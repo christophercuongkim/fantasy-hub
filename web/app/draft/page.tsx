@@ -1,11 +1,11 @@
-import { Badge, Card, EmptyState } from "@seakim/design-system";
+import { Badge, Card, EmptyState, Icon } from "@seakim/design-system";
 import { auth, isAdmin } from "@/auth";
 import {
   earliestKicker,
   positionByRound,
   valueBoard,
 } from "@/lib/draft-superlatives";
-import { ADPScatter, PositionalHeatmap, ValueHistogram } from "./charts";
+import { PositionalHeatmap, ScatterCard, ValueHistogram } from "./charts";
 import {
   ReachTable,
   TendencyTable,
@@ -35,14 +35,17 @@ function AwardCard({
   headline,
   figure,
   detail,
+  icon,
   hero = false,
 }: {
   label: string;
   headline: string;
   figure: string;
   detail: string;
+  icon: string;
   hero?: boolean;
 }) {
+  const emphasis = hero ? "var(--text-accent)" : "var(--text-primary)";
   return (
     <Card eyebrow={label} title={headline}>
       <div
@@ -53,18 +56,34 @@ function AwardCard({
           marginTop: "var(--space-2)",
         }}
       >
-        <span
+        <div
           style={{
-            fontFamily: "var(--font-mono)",
-            fontVariantNumeric: "tabular-nums",
-            fontSize: "var(--text-2xl)",
-            fontWeight: 600,
-            lineHeight: 1,
-            color: hero ? "var(--text-accent)" : "var(--text-primary)",
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-2)",
           }}
         >
-          {figure}
-        </span>
+          <span
+            style={{
+              display: "flex",
+              color: hero ? "var(--text-accent)" : "var(--text-tertiary)",
+            }}
+          >
+            <Icon name={icon} size={24} />
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontVariantNumeric: "tabular-nums",
+              fontSize: "var(--text-2xl)",
+              fontWeight: 600,
+              lineHeight: 1,
+              color: emphasis,
+            }}
+          >
+            {figure}
+          </span>
+        </div>
         <span
           style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}
         >
@@ -106,6 +125,7 @@ export default async function Draft() {
     headline: string;
     figure: string;
     detail: string;
+    icon: string;
     hero?: boolean;
   }[] = [];
   if (values[0])
@@ -114,6 +134,7 @@ export default async function Draft() {
       headline: values[0].player,
       figure: signed(values[0].value),
       detail: `${values[0].who} · pick ${values[0].overall} · ${values[0].season}`,
+      icon: "tag",
       hero: true,
     });
   if (reaches[0])
@@ -122,6 +143,7 @@ export default async function Draft() {
       headline: reaches[0].player,
       figure: signed(reaches[0].value),
       detail: `${reaches[0].who} · pick ${reaches[0].overall} · ${reaches[0].season}`,
+      icon: "arrow-fat-up",
     });
   if (round1Steal)
     awards.push({
@@ -129,6 +151,7 @@ export default async function Draft() {
       headline: round1Steal.player,
       figure: signed(round1Steal.value),
       detail: `${round1Steal.who} · pick ${round1Steal.overall} · ${round1Steal.season}`,
+      icon: "medal",
     });
   if (byBook)
     awards.push({
@@ -136,6 +159,7 @@ export default async function Draft() {
       headline: byBook.player,
       figure: signed(byBook.value),
       detail: `drafted right on ADP · ${byBook.who} · ${byBook.season}`,
+      icon: "book-open",
     });
   if (kicker)
     awards.push({
@@ -143,6 +167,7 @@ export default async function Draft() {
       headline: kicker.player,
       figure: `#${kicker.overall}`,
       detail: `${kicker.who} · ${kicker.season}`,
+      icon: "football-helmet",
     });
 
   // Per-manager mean value (admin): steals positive, reaches negative.
@@ -163,6 +188,7 @@ export default async function Draft() {
     headline: string;
     figure: string;
     detail: string;
+    icon: string;
   }[] = [];
   if (tendency.length) {
     const sharp = tendency[0]; // highest mean value
@@ -176,18 +202,21 @@ export default async function Draft() {
         headline: sharp.who,
         figure: signed(sharp.avg),
         detail: `mean value · ${sharp.picks} picks`,
+        icon: "scales",
       },
       {
         label: "Biggest gambler",
         headline: gambler.who,
         figure: signed(gambler.avg),
         detail: `mean value · ${gambler.picks} picks`,
+        icon: "dice-five",
       },
       {
         label: "Most on-script",
         headline: onScript.who,
         figure: signed(onScript.avg),
         detail: `closest to ADP · ${onScript.picks} picks`,
+        icon: "target",
       },
     );
   }
@@ -270,12 +299,7 @@ export default async function Draft() {
                 gridTemplateColumns: "repeat(auto-fit, minmax(22rem, 1fr))",
               }}
             >
-              <Card
-                title="ADP vs actual pick"
-                meta="above the line = reach · below = value"
-              >
-                <ADPScatter picks={board} />
-              </Card>
+              <ScatterCard picks={board} />
               <Card
                 title="Value distribution"
                 meta="how the league drafts vs the board"

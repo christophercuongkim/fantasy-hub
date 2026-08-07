@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { scaleLinear } from "d3";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  scaleLinear,
+  select,
+  zoom,
+  zoomIdentity,
+  type D3ZoomEvent,
+  type ZoomBehavior,
+} from "d3";
+import { Card, IconButton } from "@seakim/design-system";
 import type { PosCount, ValuePick } from "@/lib/draft-superlatives";
 
 // Colours follow guidelines/data-visualisation.md: the shared layer is
@@ -357,5 +365,274 @@ export function PositionalHeatmap({
         </g>
       ))}
     </svg>
+  );
+}
+
+// -------------------------------------------------- ADP scatter, zoom-to-explore
+// Click to enlarge IN PLACE (not a Dialog — the DS reserves those for decisions,
+// never information). Expanded: d3-zoom pan/drag + wheel/pinch, +/−/reset for
+// non-pointer users, and player labels appear once you zoom in.
+export function ScatterCard({ picks }: { picks: ValuePick[] }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <Card
+      title="ADP vs actual pick"
+      meta="above the line = reach · below = value"
+      style={expanded ? { gridColumn: "1 / -1" } : undefined}
+    >
+      <div style={{ position: "relative" }}>
+        <div style={{ position: "absolute", top: 0, right: 0, zIndex: 1 }}>
+          <IconButton
+            icon={expanded ? "arrows-in" : "arrows-out"}
+            label={expanded ? "Collapse" : "Enlarge"}
+            variant="ghost"
+            size="sm"
+            onClick={() => setExpanded((v) => !v)}
+          />
+        </div>
+        {expanded ? (
+          <ScatterZoom picks={picks} />
+        ) : (
+          <ADPScatter picks={picks} />
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function ScatterZoom({ picks }: { picks: ValuePick[] }) {
+  const W = 720,
+    H = 520,
+    m = { t: 20, r: 20, b: 44, l: 52 };
+  const max =
+    Math.ceil(
+      Math.max(1, ...picks.map((p) => Math.max(p.adp, p.overall))) / 10,
+    ) * 10;
+  const x0 = scaleLinear()
+    .domain([0, max])
+    .range([m.l, W - m.r]);
+  const y0 = scaleLinear()
+    .domain([0, max])
+    .range([m.t, H - m.b]);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const zbRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const [tr, setTr] = useState(zoomIdentity);
+  const clip = "clip" + useId().replace(/:/g, "");
+
+  useEffect(() => {
+    const node = svgRef.current;
+    if (!node) return;
+    const zb = zoom<SVGSVGElement, unknown>()
+      .scaleExtent([1, 8])
+      .translateExtent([
+        [0, 0],
+        [W, H],
+      ])
+      .extent([
+        [0, 0],
+        [W, H],
+      ])
+      .on("zoom", (e: D3ZoomEvent<SVGSVGElement, unknown>) =>
+        setTr(e.transform),
+      );
+    zbRef.current = zb;
+    select(node).call(zb);
+    return () => {
+      select(node).on(".zoom", null);
+    };
+  }, []);
+
+  const x = tr.rescaleX(x0);
+  const y = tr.rescaleY(y0);
+  const xt = x.ticks(7);
+  const yt = y.ticks(7);
+
+  const nudge = (k: number) => {
+    const node = svgRef.current;
+    if (node && zbRef.current)
+      select(node).transition().duration(200).call(zbRef.current.scaleBy, k);
+  };
+  const reset = () => {
+    const node = svgRef.current;
+    if (node && zbRef.current)
+      select(node)
+        .transition()
+        .duration(200)
+        .call(zbRef.current.transform, zoomIdentity);
+  };
+
+  const inView = (p: ValuePick) => {
+    const cx = x(p.adp),
+      cy = y(p.overall);
+    return cx >= m.l && cx <= W - m.r && cy >= m.t && cy <= H - m.b;
+  };
+  const visible = picks.filter(inView);
+  const showLabels = tr.k >= 2.5 && visible.length <= 28;
+
+  return (
+    <div>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        style={{
+          width: "100%",
+          height: "auto",
+          display: "block",
+          touchAction: "none",
+          cursor: "grab",
+        }}
+        role="img"
+        aria-label="ADP versus actual pick — drag to pan, scroll or pinch to zoom."
+      >
+        <defs>
+          <clipPath id={clip}>
+            <rect
+              x={m.l}
+              y={m.t}
+              width={W - m.l - m.r}
+              height={H - m.t - m.b}
+            />
+          </clipPath>
+        </defs>
+        {xt.map((t) => (
+          <g key={`x${t}`}>
+            <line
+              x1={x(t)}
+              x2={x(t)}
+              y1={m.t}
+              y2={H - m.b}
+              stroke={GRID}
+              strokeWidth={1}
+            />
+            <text
+              x={x(t)}
+              y={H - m.b + 16}
+              fontSize="11"
+              fill={LABEL}
+              textAnchor="middle"
+              style={FIG}
+            >
+              {t}
+            </text>
+          </g>
+        ))}
+        {yt.map((t) => (
+          <g key={`y${t}`}>
+            <line
+              x1={m.l}
+              x2={W - m.r}
+              y1={y(t)}
+              y2={y(t)}
+              stroke={GRID}
+              strokeWidth={1}
+            />
+            <text
+              x={m.l - 8}
+              y={y(t) + 4}
+              fontSize="11"
+              fill={LABEL}
+              textAnchor="end"
+              style={FIG}
+            >
+              {t}
+            </text>
+          </g>
+        ))}
+        <g clipPath={`url(#${clip})`}>
+          <line
+            x1={x(0)}
+            y1={y(0)}
+            x2={x(max)}
+            y2={y(max)}
+            stroke={REF}
+            strokeWidth={1}
+            strokeDasharray="4 4"
+          />
+          {picks.map((p) => (
+            <circle
+              key={`${p.season}-${p.overall}`}
+              cx={x(p.adp)}
+              cy={y(p.overall)}
+              r={3}
+              fill={p.value > 0 ? ACCENT : LABEL}
+              opacity={p.value > 0 ? 0.8 : 0.5}
+            >
+              <title>{`${p.player} — ADP ${p.adp.toFixed(1)}, pick ${p.overall} (${p.value > 0 ? "+" : ""}${p.value.toFixed(1)})`}</title>
+            </circle>
+          ))}
+          {showLabels &&
+            visible.map((p) => (
+              <text
+                key={`l${p.season}-${p.overall}`}
+                x={x(p.adp) + 6}
+                y={y(p.overall) - 5}
+                fontSize="10"
+                fill={INK}
+              >
+                {p.player}
+              </text>
+            ))}
+        </g>
+        <text
+          x={(m.l + W - m.r) / 2}
+          y={H - 6}
+          fontSize="11"
+          fill={LABEL}
+          textAnchor="middle"
+        >
+          consensus ADP →
+        </text>
+        <text
+          x={14}
+          y={(m.t + H - m.b) / 2}
+          fontSize="11"
+          fill={LABEL}
+          textAnchor="middle"
+          transform={`rotate(-90 14 ${(m.t + H - m.b) / 2})`}
+        >
+          actual pick →
+        </text>
+      </svg>
+      <div
+        style={{
+          display: "flex",
+          gap: "var(--space-2)",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          marginTop: "var(--space-2)",
+        }}
+      >
+        <span
+          style={{
+            font: "var(--type-caption)",
+            color: "var(--text-tertiary)",
+            marginRight: "auto",
+          }}
+        >
+          Drag to pan · scroll or pinch to zoom · zoom in for names
+        </span>
+        <IconButton
+          icon="minus"
+          label="Zoom out"
+          variant="secondary"
+          size="sm"
+          onClick={() => nudge(1 / 1.5)}
+        />
+        <IconButton
+          icon="plus"
+          label="Zoom in"
+          variant="secondary"
+          size="sm"
+          onClick={() => nudge(1.5)}
+        />
+        <IconButton
+          icon="arrow-counter-clockwise"
+          label="Reset zoom"
+          variant="ghost"
+          size="sm"
+          onClick={reset}
+        />
+      </div>
+    </div>
   );
 }
