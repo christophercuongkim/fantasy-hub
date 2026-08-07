@@ -40,9 +40,10 @@ def layer1_projection(
     position: str,
     pos_eff: dict[str, float],
     k: float = K,
-) -> float | None:
+) -> tuple[float, int] | None:
     """window = recent games [{season, week, pts, opp}]; pos_eff = {position:
-    league-points-per-opportunity}. Returns projected points, or None if the
+    league-points-per-opportunity}. Returns (projected points, n games backing
+    the volume EWMA) — mirroring weighted_projection's (mean, n) — or None if the
     volume EWMA can't be formed (too few games)."""
     vol = weighted_projection(
         [{"season": g["season"], "week": g["week"], "pts": g["opp"]} for g in window],
@@ -50,13 +51,13 @@ def layer1_projection(
     )
     if vol is None:
         return None
-    opp_proj = vol[0]
+    opp_proj, n_games = vol
 
     base = pos_eff.get(position, 0.0)
-    n = sum(g["opp"] for g in window)
-    if n > 0:
-        player_eff = sum(g["pts"] for g in window) / n
-        eff = (n * player_eff + k * base) / (n + k)
+    opp = sum(g["opp"] for g in window)
+    if opp > 0:
+        player_eff = sum(g["pts"] for g in window) / opp
+        eff = (opp * player_eff + k * base) / (opp + k)
     else:
         eff = base
-    return opp_proj * eff
+    return opp_proj * eff, n_games

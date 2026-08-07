@@ -33,7 +33,7 @@ LAMBDA = 0.85
 LOOKBACK = 8
 MIN_GAMES = 3
 PRIOR_SEASON_DISCOUNT = 0.7
-MODEL_VERSION = "baseline-ewma-1"
+MODEL_VERSION = "layer1-vol-eff-1"
 FANTASY_POS = ("QB", "RB", "WR", "TE")
 SEASON_FLOOR = 2019  # nflverse data floor (mirrors ingest.nflverse.MIN_SEASON)
 
@@ -194,6 +194,10 @@ def project_week(season: int, week: int) -> dict:
     Writes both the Parquet archive (keyed on gsis_id; model-version history)
     and the live Postgres `projections` table the web reads (keyed on
     players.id)."""
+    # Local import breaks the baseline<->layer1 cycle (layer1 imports the EWMA
+    # from this module); by call time both modules are fully loaded.
+    from app.projection.layer1 import OPP_SQL, layer1_projection
+
     league_id, scoring = league(season)
     pts = points_expr(scoring)
 
@@ -208,7 +212,8 @@ def project_week(season: int, week: int) -> dict:
         rows = con.execute(
             f"""
             SELECT player_id AS gsis_id, player_display_name AS name, position,
-                   recent_team AS team, season, week, ({pts})::double AS pts
+                   recent_team AS team, season, week, ({pts})::double AS pts,
+                   ({OPP_SQL})::double AS opp
             FROM read_parquet({srcs})
             WHERE position IN {FANTASY_POS}
               AND (season < {season} OR (season = {season} AND week < {week}))
@@ -216,22 +221,34 @@ def project_week(season: int, week: int) -> dict:
         ).fetchall()
         playing = _teams_playing(con, season, week)
 
-        # group each player's prior games + track their most-recent team
+        # group each player's prior games + track their most-recent team;
+        # accumulate pooled per-position opportunity + points for the shrink
+        # target (all rows here are strictly prior to the target week → no leak).
         hist: dict[str, dict] = {}
-        for gsis, name, position, team, s, w, p in rows:
+        pos_pts: dict[str, float] = {}
+        pos_opp: dict[str, float] = {}
+        for gsis, name, position, team, s, w, p, o in rows:
             h = hist.setdefault(
                 gsis,
                 {"name": name, "position": position, "games": [], "last": (0, 0, None)},
             )
-            h["games"].append({"season": s, "week": w, "pts": float(p or 0.0)})
+            pf, of = float(p or 0.0), float(o or 0.0)
+            h["games"].append({"season": s, "week": w, "pts": pf, "opp": of})
             if (s, w) > (h["last"][0], h["last"][1]):
                 h["last"] = (s, w, team)
+            pos_pts[position] = pos_pts.get(position, 0.0) + pf
+            pos_opp[position] = pos_opp.get(position, 0.0) + of
+
+        pos_eff = {
+            pos: (pos_pts[pos] / opp if opp > 0 else 0.0)
+            for pos, opp in pos_opp.items()
+        }
 
         now = datetime.now(UTC).isoformat()
         records: list[dict] = []
         byes = 0
         for gsis, h in hist.items():
-            proj = weighted_projection(h["games"], season)
+            proj = layer1_projection(h["games"], season, h["position"], pos_eff)
             if proj is None:
                 continue
             mean, n = proj
