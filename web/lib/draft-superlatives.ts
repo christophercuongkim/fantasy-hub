@@ -52,6 +52,41 @@ export async function valueBoard(): Promise<ValuePick[]> {
   }));
 }
 
+export type NamedPick = {
+  who: string;
+  season: number;
+  overall: number;
+  player: string;
+};
+
+// Earliest-drafted kicker across all seasons — the "who reached for a kicker"
+// award. Not ADP-gated (kickers fall below the board); 'K' is a valid enum
+// member so the comparison is safe. null if no kicker is resolved.
+export async function earliestKicker(): Promise<NamedPick | null> {
+  const db = getDb();
+  const rows = (await db.execute(sql`
+    select coalesce(mgr.display_name, lt.name) as who,
+           l.season, dp.overall,
+           coalesce(p.full_name, dp.player_name) as player
+    from draft_picks dp
+    join leagues l on l.id = dp.league_id
+    join league_teams lt on lt.id = dp.league_team_id
+    left join managers mgr on mgr.id = lt.manager_id
+    join players p on p.id = dp.player_id
+    where p.position = 'K'
+    order by dp.overall asc
+    limit 1
+  `)) as unknown as Record<string, unknown>[];
+  if (!rows.length) return null;
+  const r = rows[0];
+  return {
+    who: String(r.who),
+    season: Number(r.season),
+    overall: Number(r.overall),
+    player: String(r.player),
+  };
+}
+
 // Pick counts by round × position (resolved picks only), for the positional
 // draft profile. Not gated on ADP — position comes from the crosswalk.
 export async function positionByRound(): Promise<PosCount[]> {

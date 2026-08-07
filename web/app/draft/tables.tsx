@@ -46,12 +46,21 @@ function ValueTable({ rows, caption }: { rows: ValuePick[]; caption: string }) {
             render: (r) => one(r.adp),
           },
           {
-            // reach is the whole point → the surviving sm figure.
+            // reach is the whole point → the surviving sm figure. The record
+            // (row 0 of the already-sorted list) is accented — the one
+            // highlight per table, the rest stay ink.
             key: "reach",
             label: "Reach",
             numeric: true,
             survives: true,
-            render: (r) => signed(r.reach),
+            render: (r) =>
+              r.reach === rows[0]?.reach ? (
+                <span style={{ color: "var(--text-accent)", fontWeight: 600 }}>
+                  {signed(r.reach)}
+                </span>
+              ) : (
+                signed(r.reach)
+              ),
             subLabel: () => "vs ADP",
           },
         ]}
@@ -105,42 +114,6 @@ export function TendencyTable({ rows }: { rows: TendencyRow[] }) {
             secondary: true,
             render: (r) => `${r.picks}`,
           },
-        ]}
-        rows={rows}
-      />
-    </div>
-  );
-}
-
-export type PositionalRow = { round: number; counts: Record<string, number> };
-
-export function PositionalTable({
-  rows,
-  positions,
-}: {
-  rows: PositionalRow[];
-  positions: string[];
-}) {
-  const { ref, bp } = useBp();
-  return (
-    <div ref={ref}>
-      <Table<PositionalRow>
-        bp={bp}
-        rowKey={(r) => r.round}
-        caption="Picks by position in each round (all seasons)"
-        columns={[
-          {
-            key: "round",
-            label: "Round",
-            identifying: true,
-            render: (r) => `R${r.round}`,
-          },
-          ...positions.map((pos) => ({
-            key: pos,
-            label: pos,
-            numeric: true,
-            render: (r: PositionalRow) => r.counts[pos] || "—",
-          })),
         ]}
         rows={rows}
       />
