@@ -1,19 +1,19 @@
-"""Held-out backtest — does Layer 0 actually beat a dumber baseline?
+"""Held-out backtest — does each layer beat the one below it?
 
-The model spec's rule is that every layer must beat the one below it on
-held-out data, or it doesn't ship (§0). Layer 0 (the recency-weighted EWMA) is
-only worth keeping if it beats naive baselines, so this measures it against two:
+The model spec's rule is that every layer must beat the one below on held-out
+data, or it doesn't ship (§0). This compares, over historical player-weeks with
+>= MIN_GAMES prior games (so every method produces a prediction on the same
+population):
 
-- last_week    — predict this week = the most recent prior game's points
-- trailing_mean — the unweighted mean of the same lookback window (no decay)
+- last_week     — predict this week = the most recent prior game's points
+- trailing_mean — unweighted mean of the lookback window (no decay)
+- layer0        — the recency-weighted EWMA of points
+- layer1        — volume × efficiency (EWMA opportunities × shrunk efficiency)
 
-Beating trailing_mean is the real test: same games, same window — it isolates
-whether the EWMA *weighting* helps at all.
-
-For each player-week that has >= MIN_GAMES prior games (so all methods produce a
-prediction) it compares each prediction to the player's ACTUAL league-scored
-points that week, and reports MAE + RMSE per method. Reuses the projection
-math + the league scoring so the backtest and the live model can't drift.
+Each is compared to the player's ACTUAL league-scored points that week; reports
+MAE + RMSE per method, and the two verdicts that matter (layer0 vs the flat mean,
+layer1 vs layer0). Reuses the projection math + league scoring so the backtest
+can't drift from the model.
 """
 
 from __future__ import annotations
@@ -31,12 +31,13 @@ from app.projection.baseline import (
     points_expr,
     weighted_projection,
 )
+from app.projection.layer1 import OPP_SQL, layer1_projection
 from app.storage import duck
 
 
-def _league_points(seasons: list[int]) -> list[dict]:
-    """(gsis_id, season, week, pts) for regular-season games, each season scored
-    with its OWN league scoring — the ground truth to score predictions against."""
+def _player_weeks(seasons: list[int]) -> list[dict]:
+    """(gsis_id, position, season, week, pts, opp) for regular-season games, each
+    season scored with its OWN league scoring — the ground truth + the volume."""
     out: list[dict] = []
     for s in seasons:
         g = _season_glob(s)
@@ -47,42 +48,64 @@ def _league_points(seasons: list[int]) -> list[dict]:
         with duck.connect() as con:
             rows = con.execute(
                 f"""
-                SELECT player_id AS gsis_id, season, week, ({pts})::double AS pts
+                SELECT player_id AS gsis_id, position, season, week,
+                       ({pts})::double AS pts, ({OPP_SQL})::double AS opp
                 FROM read_parquet('{g}')
                 WHERE position IN {FANTASY_POS} AND week <= {REG_SEASON_MAX_WEEK}
                 """
             ).fetchall()
         out += [
-            {"gsis_id": r[0], "season": r[1], "week": r[2], "pts": float(r[3] or 0.0)}
+            {
+                "gsis_id": r[0],
+                "position": r[1],
+                "season": r[2],
+                "week": r[3],
+                "pts": float(r[4] or 0.0),
+                "opp": float(r[5] or 0.0),
+            }
             for r in rows
         ]
     return out
 
 
-def score(games_by_player: dict[str, list[dict]]) -> dict:
+def positional_efficiency(rows: list[dict]) -> dict[str, float]:
+    """Mean league-points-per-opportunity per position (pooled). A minor leak —
+    it's a global constant, not player-specific — acceptable for a baseline."""
+    agg: dict[str, list[float]] = defaultdict(lambda: [0.0, 0.0])
+    for r in rows:
+        a = agg[r["position"]]
+        a[0] += r["pts"]
+        a[1] += r["opp"]
+    return {pos: (pt / opp if opp > 0 else 0.0) for pos, (pt, opp) in agg.items()}
+
+
+def score(games_by_player: dict[str, dict], pos_eff: dict[str, float]) -> dict:
     """Pure scoring loop (no I/O) so it's unit-testable. Each player's games are
-    walked as targets; a target needs >= MIN_GAMES prior games in the lookback
-    window, and its actual points are compared to each method's prediction."""
+    walked as targets; a target needs >= MIN_GAMES prior games in the window."""
     sums = {  # method -> [abs_error_sum, sq_error_sum]
         "layer0": [0.0, 0.0],
+        "layer1": [0.0, 0.0],
         "last_week": [0.0, 0.0],
         "trailing_mean": [0.0, 0.0],
     }
     n = 0
-    for games in games_by_player.values():
-        ordered = sorted(games, key=lambda g: (g["season"], g["week"]))
+    for info in games_by_player.values():
+        position = info["position"]
+        ordered = sorted(info["games"], key=lambda g: (g["season"], g["week"]))
         for i in range(len(ordered)):
             window = ordered[max(0, i - LOOKBACK) : i]
             if len(window) < MIN_GAMES:
                 continue
             target = ordered[i]
             actual = target["pts"]
-            proj = weighted_projection(window, target["season"])
-            if proj is None:
+            proj0 = weighted_projection(window, target["season"])
+            if proj0 is None:
                 continue
+            proj1 = layer1_projection(window, target["season"], position, pos_eff)
             preds = {
-                "layer0": proj[0],
-                "last_week": window[-1]["pts"],  # most recent prior game
+                "layer0": proj0[0],
+                "layer1": proj1 if proj1 is not None else proj0[0],
+                "last_week": window[-1]["pts"],
                 "trailing_mean": sum(g["pts"] for g in window) / len(window),
             }
             for name, pred in preds.items():
@@ -103,6 +126,10 @@ def score(games_by_player: dict[str, list[dict]]) -> dict:
         "last_week": result["layer0"]["mae"] < result["last_week"]["mae"],
         "trailing_mean": result["layer0"]["mae"] < result["trailing_mean"]["mae"],
     }
+    result["layer1_beats"] = {
+        "layer0": result["layer1"]["mae"] < result["layer0"]["mae"],
+        "trailing_mean": result["layer1"]["mae"] < result["trailing_mean"]["mae"],
+    }
     return result
 
 
@@ -110,7 +137,12 @@ def backtest(seasons: list[int] | None = None) -> dict:
     """Run the backtest over the given seasons (default: all league seasons with
     data). Synchronous — a few seconds over the cold tier."""
     seasons = seasons or _league_seasons()
-    by_player: dict[str, list[dict]] = defaultdict(list)
-    for r in _league_points(seasons):
-        by_player[r["gsis_id"]].append(r)
-    return {**score(by_player), "seasons": sorted(seasons)}
+    rows = _player_weeks(seasons)
+    pos_eff = positional_efficiency(rows)
+    by_player: dict[str, dict] = {}
+    for r in rows:
+        info = by_player.setdefault(
+            r["gsis_id"], {"position": r["position"], "games": []}
+        )
+        info["games"].append(r)
+    return {**score(by_player, pos_eff), "seasons": sorted(seasons)}
