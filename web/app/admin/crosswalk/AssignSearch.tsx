@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { Input } from "@seakim/design-system";
 import { confirmMatch, searchPlayers, type PlayerHit } from "./actions";
 
 // Free-text "assign any player" combobox for a review entry — used when the
@@ -71,21 +70,47 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
         maxWidth: "20rem",
       }}
     >
-      <Input
-        size="sm"
-        fullWidth
-        iconLeft="magnifying-glass"
-        role="combobox"
-        aria-expanded={showing}
-        aria-controls={listId}
-        aria-activedescendant={showing ? `${listId}-${active}` : undefined}
-        aria-autocomplete="list"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onFocus={() => hits.length && setOpen(true)}
-        onKeyDown={onKeyDown}
-        placeholder="or search any player…"
-      />
+      {/* Token-styled native input (matches the DS Input look) rather than the
+          DS Input component. */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--space-3)",
+          height: "var(--control-h-sm)",
+          padding: "0 var(--space-4)",
+          background: "var(--surface-raised)",
+          border: "1px solid var(--border-default)",
+          borderRadius: "var(--radius-none)",
+        }}
+      >
+        <i
+          className="ph ph-magnifying-glass"
+          aria-hidden="true"
+          style={{ fontSize: 14, color: "var(--text-tertiary)", flex: "none" }}
+        />
+        <input
+          role="combobox"
+          aria-expanded={showing}
+          aria-controls={listId}
+          aria-activedescendant={showing ? `${listId}-${active}` : undefined}
+          aria-autocomplete="list"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onFocus={() => hits.length && setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder="or search any player…"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            font: "var(--type-body-sm)",
+            color: "var(--text-primary)",
+          }}
+        />
+      </div>
       {showing && (
         <ul
           id={listId}
