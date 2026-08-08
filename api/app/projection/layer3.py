@@ -35,10 +35,18 @@ from statistics import pstdev
 MU_FLOOR = 4.0  # don't fit ratios where the denominator (mu) is tiny
 TAUS = (0.2, 0.5, 0.8)
 
-# Per-position residual-ratio constants {pos: {r20, r50, r80, cv}}, regenerated
-# from the backtest's layer3.ratios output. Empty until Layer 3 is promoted
-# (project_week reads these); the backtest fits fresh ratios each run regardless.
-RATIOS: dict[str, dict[str, float]] = {}
+# Per-position residual-ratio constants {pos: {r20, r50, r80, cv}}, fit from the
+# `/jobs/backtest` layer3.ratios output (QA cold tier, seasons 2019-2025, fit
+# n=24,093). Regenerate + re-commit these whenever MODEL_VERSION's point estimate
+# changes. The backtest fits fresh ratios each run regardless; these are what the
+# live project_week reads. QBs are tight (median ~0.95x mean); skill positions are
+# boom/bust (median ~0.79x, ceiling ~1.5x, TE widest).
+RATIOS: dict[str, dict[str, float]] = {
+    "QB": {"r20": 0.498, "r50": 0.952, "r80": 1.434, "cv": 0.641},
+    "RB": {"r20": 0.349, "r50": 0.798, "r80": 1.515, "cv": 0.799},
+    "WR": {"r20": 0.316, "r50": 0.788, "r80": 1.535, "cv": 0.801},
+    "TE": {"r20": 0.317, "r50": 0.778, "r80": 1.543, "cv": 0.823},
+}
 
 
 def _quantile(xs_sorted: list[float], q: float) -> float:

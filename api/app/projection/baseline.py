@@ -33,7 +33,7 @@ LAMBDA = 0.85
 LOOKBACK = 8
 MIN_GAMES = 3
 PRIOR_SEASON_DISCOUNT = 0.7
-MODEL_VERSION = "layer1-vol-eff-1"
+MODEL_VERSION = "layer3-dist-1"
 FANTASY_POS = ("QB", "RB", "WR", "TE")
 SEASON_FLOOR = 2019  # nflverse data floor (mirrors ingest.nflverse.MIN_SEASON)
 
@@ -84,6 +84,10 @@ _PG_COLUMNS = (
     "season",
     "week",
     "mean",
+    "p20",
+    "p50",
+    "p80",
+    "sd",
     "is_playing",
     "model_version",
     "generated_at",
@@ -101,8 +105,7 @@ def _player_map(cur, gsis_ids: list[str]) -> dict[str, str]:
 def _write_postgres(records: list[dict], league_id: str, season: int, week: int) -> int:
     """Upsert the live projections into Postgres: delete the (league, season,
     week) slice, then batch-COPY. Rows whose gsis_id has no players row are
-    skipped (nflverse players not in our registry). p20/p50/p80/sd stay null
-    until Layer 3. Returns the rows written."""
+    skipped (nflverse players not in our registry). Returns the rows written."""
     with postgres.connect() as conn, conn.cursor() as cur:
         ids = _player_map(cur, [r["gsis_id"] for r in records])
         rows = [
@@ -112,6 +115,10 @@ def _write_postgres(records: list[dict], league_id: str, season: int, week: int)
                 season,
                 week,
                 r["mean"],
+                r["p20"],
+                r["p50"],
+                r["p80"],
+                r["sd"],
                 r["is_playing"],
                 r["model_version"],
                 r["generated_at"],
@@ -189,13 +196,15 @@ def _teams_playing(con, season: int, week: int) -> set[str] | None:
 
 
 def project_week(season: int, week: int) -> dict:
-    """Compute + persist Layer-0 projections for (season, week). Idempotent.
+    """Compute + persist projections for (season, week). Idempotent.
 
-    Writes both the Parquet archive (keyed on gsis_id; model-version history)
-    and the live Postgres `projections` table the web reads (keyed on
-    players.id)."""
+    Runs the current model stack — Layer 1 volume×efficiency mean, wrapped in the
+    Layer 3 fitted distribution (p20/p50/p80/sd). Writes both the Parquet archive
+    (keyed on gsis_id; model-version history) and the live Postgres `projections`
+    table the web reads (keyed on players.id)."""
     # Local import breaks the baseline<->layer1 cycle (layer1 imports the EWMA
     # from this module); by call time both modules are fully loaded.
+    from app.projection import layer3
     from app.projection.layer1 import OPP_SQL, layer1_projection
 
     league_id, scoring = league(season)
@@ -254,9 +263,17 @@ def project_week(season: int, week: int) -> dict:
             mean, n = proj
             team = h["last"][2]
             is_playing = playing is None or team in playing
+            # Layer 3: fitted floor/median/ceiling around the mean. On a bye the
+            # whole distribution collapses to 0 alongside the mean bye-guard.
+            ratios = layer3.RATIOS.get(h["position"])
             if not is_playing:
                 mean = 0.0  # bye-guard
                 byes += 1
+                dist = {"p20": 0.0, "p50": 0.0, "p80": 0.0, "sd": 0.0}
+            elif ratios:
+                dist = layer3.distribution(mean, ratios)
+            else:  # unmapped position → mean only, intervals left null
+                dist = {"p20": None, "p50": None, "p80": None, "sd": None}
             # bye-guard invariant, asserted before write (app logic, not a CHECK)
             assert is_playing or mean == 0.0
             records.append(
@@ -269,6 +286,10 @@ def project_week(season: int, week: int) -> dict:
                     "season": season,
                     "week": week,
                     "mean": round(mean, 2),
+                    "p20": dist["p20"],
+                    "p50": dist["p50"],
+                    "p80": dist["p80"],
+                    "sd": dist["sd"],
                     "n_games": n,
                     "is_playing": is_playing,
                     "model_version": MODEL_VERSION,

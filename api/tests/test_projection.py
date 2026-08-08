@@ -91,12 +91,15 @@ def test_project_week_end_to_end(tmp_root, monkeypatch):
     assert out["players"] == 1
     assert out["byes_zeroed"] == 0
 
-    mean, is_playing = duckdb.sql(
-        f"select mean, is_playing from read_parquet('{out['path']}')"
+    mean, p20, p50, p80, is_playing = duckdb.sql(
+        f"select mean, p20, p50, p80, is_playing from read_parquet('{out['path']}')"
     ).fetchone()
     # 5*0.5 + 50*0.1 = 7.5 each week; equal games => EWMA is 7.5
     assert mean == pytest.approx(7.5, abs=0.01)
     assert is_playing is True
+    # Layer 3: WR distribution around the mean (r50=0.788 → p50 = 7.5*0.788)
+    assert p50 == pytest.approx(5.91, abs=0.01)
+    assert p20 < mean < p80  # floor below, ceiling above the mean
 
 
 def test_project_week_zeroes_a_bye(tmp_root, monkeypatch):
@@ -131,8 +134,11 @@ def test_project_week_zeroes_a_bye(tmp_root, monkeypatch):
 
     out = baseline.project_week(2024, 4)
     assert out["byes_zeroed"] == 1
-    mean = duckdb.sql(f"select mean from read_parquet('{out['path']}')").fetchone()[0]
+    mean, p20, p50, p80, sd = duckdb.sql(
+        f"select mean, p20, p50, p80, sd from read_parquet('{out['path']}')"
+    ).fetchone()
     assert mean == 0.0  # bye-guard
+    assert (p20, p50, p80, sd) == (0.0, 0.0, 0.0, 0.0)  # distribution collapses too
 
 
 def test_refresh_week_endpoint(monkeypatch):
