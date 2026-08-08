@@ -201,6 +201,25 @@ class BacktestRequest(BaseModel):
     seasons: list[int] | None = None
 
 
+class CalibratePriorsRequest(BaseModel):
+    seasons: list[int] | None = None
+
+
+# Fit the draft-informed prior curve (expected ppg vs ADP, per position) from
+# history and report it + per-season coverage. Read-only — produces the constants
+# for slice 2b to bake into priors.DRAFT_CURVE. Synchronous (a few seconds).
+@app.post("/jobs/calibrate-priors")
+def calibrate_priors(body: CalibratePriorsRequest) -> JSONResponse:
+    from app.projection import priors
+
+    try:
+        return JSONResponse(priors.calibrate(body.seasons))
+    except (FileNotFoundError, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — DuckDB / Postgres / parquet failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 # Held-out backtest: MAE/RMSE of each model layer (0/1/2) vs the naive baselines
 # (last-week, trailing-mean) over historical player-weeks, plus the layer-beats-
 # layer verdicts. Synchronous (a few seconds).
