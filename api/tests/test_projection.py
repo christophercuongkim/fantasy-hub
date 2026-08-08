@@ -218,6 +218,17 @@ def test_refresh_current_offseason(monkeypatch):
     assert res.json()["status"] == "offseason"
 
 
+def test_refresh_current_module_main(monkeypatch, capsys):
+    """`python -m app.refresh_current` prints the result and exits 0."""
+    import app.refresh_current as mod
+
+    monkeypatch.setattr(
+        baseline, "refresh_current", lambda: {"status": "projected", "week": 5}
+    )
+    assert mod.main() == 0
+    assert '"week": 5' in capsys.readouterr().out
+
+
 def test_refresh_week_endpoint(monkeypatch):
     """The one-click endpoint chains ingest → project and returns both."""
     from fastapi.testclient import TestClient

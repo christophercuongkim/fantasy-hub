@@ -385,6 +385,29 @@ def current_week(season: int) -> int | None:
     return int(row[0]) if row and row[0] is not None else None
 
 
+def refresh_current() -> dict:
+    """Resolve the current NFL week and project it — the weekly cron's work in one
+    call, shared by the HTTP endpoint and `python -m app.refresh_current`.
+    Force-ingests the season's inputs first so the schedule + stats are fresh."""
+    from app.ingest import nflverse
+
+    season = current_season()
+    if season is None:
+        return {"status": "no_league_seasons"}
+    ingested = nflverse.ingest_season(season, ["player_stats", "schedules"], force=True)
+    week = current_week(season)
+    if week is None:
+        return {"status": "offseason", "season": season, "ingested": ingested}
+    projected = project_week(season, week)
+    return {
+        "status": "projected",
+        "season": season,
+        "week": week,
+        "ingested": ingested,
+        "projected": projected,
+    }
+
+
 def _projected_weeks(league_id: str, season: int) -> set[int]:
     """Weeks already stored for the CURRENT model — skipped on re-runs. A model
     bump changes MODEL_VERSION, so nothing matches and everything re-projects."""

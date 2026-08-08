@@ -333,23 +333,28 @@ That last query should always return zero rows. If it doesn't, the bye-week guar
 
 The projections are kept current by a **Dokploy scheduled task**, not GitHub
 Actions — the api is Swarm-internal (not host-published), so nothing outside the
-overlay network can reach it, but a schedule *inside* the api service can hit
-`localhost`.
+overlay network can reach it, but a schedule *inside* the api service can run the
+job in-process.
 
-**The endpoint.** `POST /jobs/refresh-current` (no body) resolves the current NFL
-week from the ingested schedule (the earliest regular-season week with a game
-today or later, via the DB's `current_date`), force-ingests that season's
-`player_stats` + `schedules`, and projects the week. It self-advances week to
-week and **no-ops in the offseason** (`{"status":"offseason"}` when there's no
-upcoming week), so it is safe to leave running year-round.
+**The job.** `python -m app.refresh_current` resolves the current NFL week from
+the ingested schedule (the earliest regular-season week with a game today or
+later, via the DB's `current_date`), force-ingests that season's `player_stats` +
+`schedules`, and projects the week. It self-advances week to week and **no-ops in
+the offseason** (prints `{"status": "offseason"}` when there's no upcoming week),
+so it is safe to leave running year-round. The identical work is also exposed as
+`POST /jobs/refresh-current` for a manual HTTP trigger.
+
+**Why the module, not `curl`:** the api image is a slim Python base — **it has no
+`curl`** (nor `wget`). Running the module in-process needs no HTTP client and no
+network round-trip, and its exit code drives the scheduler's success/failure.
 
 **The schedule (configure in Dokploy → the api service → Schedules):**
 
 | Field | Value |
 |---|---|
 | Cron | `0 13 * * 3` — Wednesday 13:00 UTC (~8–9am ET) |
-| Command | `curl -fsS -X POST http://localhost:4001/jobs/refresh-current` |
-| Runs in | the api service container |
+| Command | `uv run --no-dev python -m app.refresh_current` |
+| Runs in | the api service container (WORKDIR `/app`, same env as the `uv run` CMD) |
 
 Wednesday, because nflverse publishes the completed week Tuesday US morning;
 running Wednesday means the projection for the upcoming week is built on complete
@@ -358,8 +363,8 @@ slice — so a missed run is fixed by the next one, or by the **Refresh all** bu
 on `/projections` (which re-projects every week).
 
 **If projections look stale on a game week:** check the schedule ran (Dokploy
-task history), then hit the endpoint by hand from the api container —
-`docker exec <api-container> curl -fsS -X POST http://localhost:4001/jobs/refresh-current`.
+task history), then run it by hand from the api container —
+`docker exec <api-container> uv run --no-dev python -m app.refresh_current`.
 
 ---
 

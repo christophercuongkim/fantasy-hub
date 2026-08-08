@@ -180,34 +180,17 @@ def refresh_week(body: RefreshWeekRequest) -> JSONResponse:
 
 # The weekly cron target: resolve the current NFL week from the schedule, then
 # refresh it like /jobs/refresh-week but with no body to fill in. Synchronous +
-# idempotent. No-ops cleanly in the offseason (no current week → nothing to do).
+# idempotent. No-ops cleanly in the offseason. Shares baseline.refresh_current()
+# with the `python -m app.refresh_current` entrypoint the Dokploy schedule runs.
 @app.post("/jobs/refresh-current")
 def refresh_current() -> JSONResponse:
-    from app.ingest import nflverse
     from app.projection import baseline
 
-    season = baseline.current_season()
-    if season is None:
-        return JSONResponse(status_code=422, content={"error": "no league seasons"})
     try:
-        ingested = nflverse.ingest_season(
-            season, ["player_stats", "schedules"], force=True
-        )
-        week = baseline.current_week(season)
-        if week is None:
-            return JSONResponse(
-                {"status": "offseason", "season": season, "ingested": ingested}
-            )
-        projected = baseline.project_week(season, week)
-        return JSONResponse(
-            {
-                "status": "projected",
-                "season": season,
-                "week": week,
-                "ingested": ingested,
-                "projected": projected,
-            }
-        )
+        result = baseline.refresh_current()
+        if result.get("status") == "no_league_seasons":
+            return JSONResponse(status_code=422, content={"error": "no league seasons"})
+        return JSONResponse(result)
     except (FileNotFoundError, ValueError) as e:
         return JSONResponse(status_code=422, content={"error": str(e)})
     except Exception as e:  # noqa: BLE001 — nflverse / DuckDB / Postgres failure
