@@ -13,7 +13,7 @@ reasonably ask "why on earth is it like this?" or would otherwise re-litigate it
 | `Accepted` | In force. Bindings must comply. |
 | `Superseded by NNNN` | Kept for the record. Never deleted, never edited to agree with the new answer. |
 
-All thirteen are in force as of 2026-08-05. ADRs are **append-only**. Correct one by writing its successor, not by rewriting it —
+Fourteen are in force as of 2026-08-05; 0015 and 0016 are proposed and must not be built against yet. ADRs are **append-only**. Correct one by writing its successor, not by rewriting it —
 the value is in the trail, and a silently edited ADR is worse than none.
 
 ## Index
@@ -34,6 +34,9 @@ the value is in the trail, and a silently edited ADR is worse than none.
 | [0012](0012-conformance-checks-ship-with-rules.md) | Conformance checks ship with the rules; consuming repos run them | Accepted |
 | [0013](0013-alpha-variants-are-tokens.md) | Alpha variants are tokens, not per-component constants | Accepted |
 | [0014](0014-text-selection-tier-1.md) | Text selection is Tier 1, and when a Tier 1 divergence needs an ADR | Accepted |
+| [0015](0015-sequential-chart-ramp.md) | A sequential (magnitude) chart ramp | Accepted |
+| [0016](0016-many-series-trajectories.md) | Many-series trajectories: the >6 change-over-time case | Accepted |
+| [0017](0017-distribution-interval-glyph.md) | A distribution/interval glyph (`Range`) | Accepted |
 
 ## Writing one
 

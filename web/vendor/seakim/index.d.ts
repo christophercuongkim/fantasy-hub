@@ -28,6 +28,7 @@ export { SegmentedControl } from "./components/forms/SegmentedControl";
 export { Slider } from "./components/forms/Slider";
 export { DatePicker } from "./components/forms/DatePicker";
 export { Table } from "./components/data/Table";
+export { Range } from "./components/data/Range";
 export { Dialog } from "./components/feedback/Dialog";
 export { Toast } from "./components/feedback/Toast";
 export { Tooltip } from "./components/feedback/Tooltip";
