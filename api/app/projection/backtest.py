@@ -9,7 +9,8 @@ population):
 - trailing_mean — unweighted mean of the lookback window (no decay)
 - layer0        — the recency-weighted EWMA of points
 - layer1        — volume × efficiency (EWMA opportunities × shrunk efficiency)
-- layer2        — layer1 × the opponent matchup multiplier
+- layer2        — layer1 × raw DvP matchup multiplier (shelved: schedule-confounded)
+- layer2b       — layer1 × the de-confounded over-expectation factor (actual/layer1)
 
 Each is compared to the player's ACTUAL league-scored points that week; reports
 MAE + RMSE per method, and the verdicts that matter (layer0 vs the flat mean,
@@ -39,7 +40,7 @@ from app.projection.baseline import (
     weighted_projection,
 )
 from app.projection.layer1 import OPP_SQL, layer1_projection
-from app.projection.layer2 import dvp_weeks, multiplier_for
+from app.projection.layer2 import dvp_weeks, multiplier_for, over_expectation
 from app.storage import duck
 
 
@@ -94,15 +95,10 @@ def score(
 ) -> dict:
     """Pure scoring loop (no I/O) so it's unit-testable. Each player's games are
     walked as targets; a target needs >= MIN_GAMES prior games in the window."""
-    sums = {  # method -> [abs_error_sum, sq_error_sum]
-        "layer0": [0.0, 0.0],
-        "layer1": [0.0, 0.0],
-        "layer2": [0.0, 0.0],
-        "last_week": [0.0, 0.0],
-        "trailing_mean": [0.0, 0.0],
-    }
-    n = 0
-    dist_samples: list[tuple[str, float, float]] = []  # (position, layer1 mu, actual)
+    # Pass 1: every scorable target's base predictions, and the actual/layer1
+    # ratios per (position, defense, week) — the raw material for layer2b.
+    evals: list[dict] = []
+    oe: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     for info in games_by_player.values():
         position = info["position"]
         ordered = sorted(info["games"], key=lambda g: (g["season"], g["week"]))
@@ -120,25 +116,48 @@ def score(
             mult = multiplier_for(
                 dvp, position, target["opponent"], target["season"], target["week"]
             )
-            preds = {
-                "layer0": proj0[0],
-                "layer1": l1,
-                "layer2": l1 * mult,
-                "last_week": window[-1]["pts"],
-                "trailing_mean": sum(g["pts"] for g in window) / len(window),
-            }
-            for name, pred in preds.items():
-                e = pred - actual
-                sums[name][0] += abs(e)
-                sums[name][1] += e * e
-            dist_samples.append((position, l1, actual))
-            n += 1
+            evals.append(
+                {
+                    "position": position,
+                    "opponent": target["opponent"],
+                    "season": target["season"],
+                    "week": target["week"],
+                    "actual": actual,
+                    "layer0": proj0[0],
+                    "layer1": l1,
+                    "layer2": l1 * mult,
+                    "last_week": window[-1]["pts"],
+                    "trailing_mean": sum(g["pts"] for g in window) / len(window),
+                }
+            )
+            if l1 > 0 and target["opponent"]:
+                oe[position][target["opponent"]].append(
+                    (target["season"], target["week"], actual / l1)
+                )
 
-    if n == 0:
+    if not evals:
         return {"n": 0}
+
+    # Pass 2: layer2b = layer1 × the over-expectation factor, computed from prior
+    # weeks only (the oe table filters strictly-prior per target → no leak).
+    for ev in evals:
+        factor = over_expectation(
+            oe, ev["position"], ev["opponent"], ev["season"], ev["week"]
+        )
+        ev["layer2b"] = ev["layer1"] * factor
+
+    n = len(evals)
+    methods = ("layer0", "layer1", "layer2", "layer2b", "last_week", "trailing_mean")
+    sums = {m: [0.0, 0.0] for m in methods}
+    for ev in evals:
+        for m in methods:
+            e = ev[m] - ev["actual"]
+            sums[m][0] += abs(e)
+            sums[m][1] += e * e
+
     result: dict = {"n": n}
-    for name, (abs_sum, sq_sum) in sums.items():
-        result[name] = {
+    for m, (abs_sum, sq_sum) in sums.items():
+        result[m] = {
             "mae": round(abs_sum / n, 3),
             "rmse": round((sq_sum / n) ** 0.5, 3),
         }
@@ -154,8 +173,14 @@ def score(
         "layer1": result["layer2"]["mae"] < result["layer1"]["mae"],
         "layer0": result["layer2"]["mae"] < result["layer0"]["mae"],
     }
+    result["layer2b_beats"] = {
+        "layer1": result["layer2b"]["mae"] < result["layer1"]["mae"],
+        "layer2": result["layer2b"]["mae"] < result["layer2"]["mae"],
+        "layer0": result["layer2b"]["mae"] < result["layer0"]["mae"],
+    }
     # Layer 3: fit residual-ratio quantiles off Layer 1's point estimate, then
     # report interval calibration (coverage + pinball) — the distribution gate.
+    dist_samples = [(ev["position"], ev["layer1"], ev["actual"]) for ev in evals]
     ratios = layer3.fit_ratios(dist_samples)
     result["layer3"] = {**layer3.evaluate(dist_samples, ratios), "ratios": ratios}
     return result

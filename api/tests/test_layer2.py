@@ -47,6 +47,28 @@ def test_multiplier_for_uses_prior_same_season_only():
     assert layer2.multiplier_for(dvp, "QB", "D", 2024, 4) == 1.0
 
 
+def test_over_expectation_shrinks_prior_ratios():
+    oe = {
+        "WR": {
+            "D": [
+                (2024, 1, 1.5),
+                (2024, 2, 1.5),
+                (2024, 3, 1.5),
+                (2024, 5, 9.0),  # future week — excluded for a wk4 target
+                (2023, 1, 9.0),  # prior season — excluded
+            ]
+        }
+    }
+    # 3 prior ratios of 1.5, k=4: (3·1.5 + 4·1.0)/(3+4) = 8.5/7 ≈ 1.214
+    assert layer2.over_expectation(oe, "WR", "D", 2024, 4, k=4) == pytest.approx(
+        1.214, abs=0.001
+    )
+    # unknown defense, no prior weeks, or missing defense → neutral 1.0
+    assert layer2.over_expectation(oe, "WR", "ZZ", 2024, 4) == 1.0
+    assert layer2.over_expectation(oe, "WR", "D", 2024, 1) == 1.0
+    assert layer2.over_expectation(oe, "WR", None, 2024, 4) == 1.0
+
+
 def test_dvp_weeks_skips_missing_opponent():
     rows = [
         {"position": "WR", "opponent": None, "season": 2024, "week": 1, "pts": 5.0},
