@@ -166,9 +166,12 @@ def _draft_adp(seasons: list[int]) -> list[tuple[int, str, str, float]]:
             SELECT dp.season, p.gsis_id, p.position, dp.adp_at_time
             FROM draft_picks dp JOIN players p ON p.id = dp.player_id
             WHERE dp.adp_at_time IS NOT NULL AND p.gsis_id IS NOT NULL
-              AND dp.season = ANY(%s) AND p.position IN %s
+              AND dp.season = ANY(%s) AND p.position::text = ANY(%s)
             """,
-            (list(seasons), tuple(FANTASY_POS)),
+            # psycopg3 binds server-side, so `IN %s` with a tuple is a syntax
+            # error — use `= ANY(array)`. Cast the position enum to text to
+            # compare against the string list.
+            (list(seasons), list(FANTASY_POS)),
         )
         return [(int(s), g, pos, float(a)) for s, g, pos, a in cur.fetchall()]
 
