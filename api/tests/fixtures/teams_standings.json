@@ -1,0 +1,87 @@
+{
+  "fantasy_content": {
+    "league": {
+      "league_key": "449.l.93367",
+      "league_id": "93367",
+      "name": "PeopleCanEat",
+      "season": "2024",
+      "num_teams": 12,
+      "is_finished": 1,
+      "teams": [
+        {
+          "team": {
+            "team_key": "449.l.93367.t.1",
+            "team_id": "1",
+            "name": "Napoleon Kyrenite",
+            "managers": [
+              {
+                "manager": {
+                  "manager_id": "1",
+                  "nickname": "JD",
+                  "guid": "BYK6ZACXDQHVFEVDFTYJFOQYMY"
+                }
+              }
+            ],
+            "team_standings": {
+              "rank": 5,
+              "outcome_totals": {
+                "wins": "8",
+                "losses": "6",
+                "ties": 0,
+                "percentage": ".571"
+              },
+              "points_for": "1489.12",
+              "points_against": "1362.56"
+            }
+          }
+        },
+        {
+          "team": {
+            "team_key": "449.l.93367.t.10",
+            "team_id": "10",
+            "name": "Samuel L. Jackson",
+            "is_owned_by_current_login": 1,
+            "managers": [
+              {
+                "manager": {
+                  "manager_id": "10",
+                  "nickname": "Chris",
+                  "guid": "OJP3ANS4PWZCN2H4IV5PZ6PAT4",
+                  "is_current_login": "1"
+                }
+              }
+            ],
+            "team_standings": {
+              "rank": 2,
+              "outcome_totals": {
+                "wins": "9",
+                "losses": "5",
+                "ties": 0,
+                "percentage": ".643"
+              },
+              "points_for": "1438.22",
+              "points_against": "1443.16"
+            }
+          }
+        },
+        {
+          "team": {
+            "team_key": "470.l.735658.t.3",
+            "team_id": "3",
+            "name": "Kill Bill",
+            "managers": [
+              {
+                "manager": {
+                  "manager_id": "3",
+                  "nickname": "Michael",
+                  "guid": "PJRFSGNITXLQW3FAALGWTBCSYQ"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "teams:attributes": { "count": 3 }
+    }
+  }
+}
