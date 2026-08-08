@@ -220,9 +220,9 @@ def calibrate_priors(body: CalibratePriorsRequest) -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
 
 
-# Held-out backtest: MAE/RMSE of each model layer (0/1/2) vs the naive baselines
-# (last-week, trailing-mean) over historical player-weeks, plus the layer-beats-
-# layer verdicts. Synchronous (a few seconds).
+# Held-out backtest: MAE/RMSE of each model layer (0/1/2/2b) vs the naive
+# baselines (last-week, trailing-mean) over historical player-weeks, plus the
+# layer-beats-layer verdicts. Synchronous (a few seconds).
 @app.post("/jobs/backtest")
 def run_backtest(body: BacktestRequest) -> JSONResponse:
     from app.projection import backtest

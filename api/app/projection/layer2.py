@@ -69,6 +69,38 @@ def dvp_weeks(rows: list[dict]) -> dict[str, dict[str, dict[tuple[int, int], flo
     return agg
 
 
+OE_K = 4  # games of shrinkage toward 1.0 for the over-expectation factor
+
+
+def over_expectation(
+    oe: dict,
+    position: str,
+    defense: str | None,
+    season: int,
+    before_week: int,
+    k: float = OE_K,
+) -> float:
+    """Layer 2 v2 — de-confounded matchup. `oe[position][defense]` is a list of
+    (season, week, actual/layer1) ratios: how players scored *versus their own
+    Layer 1 expectation* when facing that defense. Returns the mean ratio over this
+    season's prior weeks, shrunk toward 1.0 by k games (1.0 with no signal).
+
+    Unlike `multiplier_for` (raw points allowed, confounded by the quality of
+    offenses a defense happened to face), each player here is normalised by his own
+    projection, so facing good players doesn't read as being generous."""
+    if not defense:
+        return 1.0
+    ratios = [
+        r
+        for (s, w, r) in oe.get(position, {}).get(defense, [])
+        if s == season and w < before_week
+    ]
+    n = len(ratios)
+    if n == 0:
+        return 1.0
+    return (sum(ratios) + k * 1.0) / (n + k)
+
+
 def multiplier_for(
     dvp: dict,
     position: str,
