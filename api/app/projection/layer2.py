@@ -87,7 +87,15 @@ def over_expectation(
 
     Unlike `multiplier_for` (raw points allowed, confounded by the quality of
     offenses a defense happened to face), each player here is normalised by his own
-    projection, so facing good players doesn't read as being generous."""
+    projection, so facing good players doesn't read as being generous.
+
+    STATUS — SHELVED, NOT SHIPPED (backtest 2026-08-08, n=33,561, 2019-2025).
+    layer2b scored MAE 4.691 / RMSE 6.438 vs Layer 1's 4.505 / 6.096 — WORSE than
+    Layer 1, and worse than even v1's raw-DvP layer2 (4.521). De-confounding fixed
+    the bias but the actual/layer1 ratios are so noisy per game that the averaged
+    factor injects more variance than matchup signal. Two attempts now agree:
+    matchup-as-a-weekly-multiplier is below Layer 1's ceiling at this granularity.
+    Kept, with v1, as backtest scaffolding for any future finer-grained attempt."""
     if not defense:
         return 1.0
     ratios = [
