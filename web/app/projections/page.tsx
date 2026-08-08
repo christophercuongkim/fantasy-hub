@@ -44,8 +44,8 @@ export default async function Projections() {
             }}
           >
             {data
-              ? `Baseline model · ${data.season} week ${data.week}`
-              : "Weekly baseline projections."}
+              ? `Floor · projection · ceiling · ${data.season} week ${data.week}`
+              : "Weekly projections with floor and ceiling."}
           </p>
         </div>
         <RefreshAll />
