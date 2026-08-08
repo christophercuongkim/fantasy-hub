@@ -56,3 +56,6 @@ def test_score_gate_and_metrics():
     assert r["layer1_beats"] == {"layer0": False, "trailing_mean": True}
     assert r["layer2"]["mae"] == r["layer1"]["mae"]  # no matchup data → passthrough
     assert r["layer2_beats"] == {"layer1": False, "layer0": False}
+    # layer3: the one scorable target (mu ~9.03 >= floor) yields one fitted sample.
+    assert r["layer3"]["n"] == 1
+    assert "WR" in r["layer3"]["ratios"]
