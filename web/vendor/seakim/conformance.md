@@ -100,11 +100,11 @@ Ship unless the platform genuinely has no use case.
 `Avatar` · `Stat` · `Tag` · `Textarea` · `Radio` · `SegmentedControl` · `Tabs` ·
 `Tooltip` · `Table`
 
-### On demand (3)
+### On demand (4)
 
 Specced so they are consistent whenever they arrive.
 
-`Slider` · `DatePicker` · `Sheet` as a component distinct from a `Dialog` mode
+`Slider` · `DatePicker` · `Range` (the interval/distribution glyph, [0017](decisions/0017-distribution-interval-glyph.md)) · `Sheet` as a component distinct from a `Dialog` mode
 
 ### Forbidden (1)
 
@@ -244,6 +244,12 @@ that survives migration is visibly wrong in review rather than quietly almost-ri
 `showSkSheet` in Flutter picks bottom sheet at `sm` and centred panel from `md` up, and
 React's `PlayerSheet` does the same by hand. That works, so this is not urgent; promote it
 when a second product needs a sheet that is not a dialog.
+
+**9. ~~`Range` is built in both bindings, pending 0017.~~ Done, [0017](decisions/0017-distribution-interval-glyph.md) accepted.**
+The interval/distribution glyph — `components/data/Range.jsx` and
+`flutter/lib/src/widgets/sk_range.dart`, against `spec/Range.md`. Its two load-bearing
+rules (siblings share a domain; exactly one promoted instance) are deliberately not
+machine-checkable and live in review, not lint.
 
 ---
 

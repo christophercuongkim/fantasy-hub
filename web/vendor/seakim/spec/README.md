@@ -35,6 +35,7 @@ describes the present and then rots.
 | [Table](Table.md) | Built | React, Flutter — Bench's roster and standings both use it |
 | [DatePicker](DatePicker.md) | Built | React, Flutter |
 | [Slider](Slider.md) | Built | React, Flutter |
+| [Range](Range.md) | Built | React — Bench projections; Flutter owed |
 
 ## Known debt
 
