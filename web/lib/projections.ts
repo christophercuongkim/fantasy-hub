@@ -9,6 +9,9 @@ export type ProjectionRow = {
   pos: string;
   team: string | null;
   mean: number;
+  // p20 floor / p80 ceiling — null on pre-Layer-3 rows or an unmapped position.
+  p20: number | null;
+  p80: number | null;
   isPlaying: boolean;
 };
 
@@ -33,7 +36,8 @@ export async function latestProjections(): Promise<ProjectionSet | null> {
 
   const rows = (await db.execute(sql`
     select pl.full_name as player, pl.position as pos, pl.team,
-           p.mean::float as mean, p.is_playing as is_playing
+           p.mean::float as mean, p.p20::float as p20, p.p80::float as p80,
+           p.is_playing as is_playing
     from projections p
     join players pl on pl.id = p.player_id
     where p.season = ${season} and p.week = ${week}
@@ -48,6 +52,8 @@ export async function latestProjections(): Promise<ProjectionSet | null> {
       pos: String(r.pos),
       team: (r.team as string | null) ?? null,
       mean: Number(r.mean),
+      p20: r.p20 == null ? null : Number(r.p20),
+      p80: r.p80 == null ? null : Number(r.p80),
       isPlaying: Boolean(r.is_playing),
     })),
   };
