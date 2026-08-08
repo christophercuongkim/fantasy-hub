@@ -1,0 +1,48 @@
+"use server";
+
+// Admin actions for Yahoo league sync. Both proxy to the api (internal-only, so
+// the browser can't reach it directly). Never throw — failures surface inline.
+
+const apiUrl = () => process.env.API_URL ?? "http://localhost:4001";
+
+export async function saveCookie(
+  cookie: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${apiUrl()}/yahoo/cookies`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cookie }),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const detail = (await res.text().catch(() => "")).slice(0, 200);
+      return { error: `HTTP ${res.status}. ${detail}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not reach the api.",
+    };
+  }
+}
+
+export async function syncTeams(
+  leagueKey: string,
+): Promise<{ result?: Record<string, unknown>; error?: string }> {
+  try {
+    const res = await fetch(`${apiUrl()}/jobs/sync-teams`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ league_key: leagueKey }),
+      cache: "no-store",
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: String(body.error ?? `HTTP ${res.status}`) };
+    return { result: body };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not reach the api.",
+    };
+  }
+}

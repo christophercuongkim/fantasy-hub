@@ -71,6 +71,13 @@
       "when": 1786124686538,
       "tag": "20260807174446_add_projections",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786223081025,
+      "tag": "20260808210441_add_yahoo_cookies",
+      "breakpoints": true
     }
   ]
 }

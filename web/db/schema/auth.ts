@@ -12,3 +12,13 @@ export const yahooTokens = pgTable("yahoo_tokens", {
   guid: text(),
   updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
+
+// The logged-in Yahoo session Cookie header, for the pub-api-rw fantasy API the
+// web app uses (it takes session cookies; the public OAuth host refuses them).
+// AES-256-GCM at rest with the same TOKEN_ENC_KEY the api holds. Pasted by the
+// admin from a browser request; re-pasted when it expires (a 401 from Yahoo).
+export const yahooCookies = pgTable("yahoo_cookies", {
+  id: text().primaryKey().default("default"),
+  cookieEnc: text().notNull(),
+  updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});

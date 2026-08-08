@@ -278,3 +278,40 @@ def crosswalk() -> JSONResponse:
         return JSONResponse(build.run())
     except Exception as e:  # noqa: BLE001 — nflverse download / DB failure
         return JSONResponse(status_code=424, content={"error": str(e)})
+
+
+class SetCookieRequest(BaseModel):
+    cookie: str
+
+
+# Store the logged-in Yahoo session Cookie header (encrypted) for pub-api-rw.
+# The admin pastes it from a browser request; re-pasted when Yahoo expires it.
+@app.post("/yahoo/cookies")
+def set_yahoo_cookie(body: SetCookieRequest) -> JSONResponse:
+    from app.yahoo import cookies
+
+    if not body.cookie.strip():
+        return JSONResponse(status_code=422, content={"error": "empty cookie"})
+    cookies.save(body.cookie.strip())
+    return JSONResponse({"status": "stored"})
+
+
+class SyncTeamsRequest(BaseModel):
+    league_key: str
+
+
+# Pull the league's teams + standings from Yahoo (cookie-auth pub-api-rw) and
+# backfill league_teams. The league must already exist (bootstrap loads it).
+@app.post("/jobs/sync-teams")
+def sync_teams_job(body: SyncTeamsRequest) -> JSONResponse:
+    from app.yahoo import pub_api, sync
+
+    try:
+        payload = pub_api.teams(body.league_key)
+        return JSONResponse(sync.sync_teams(payload))
+    except pub_api.CookieExpired as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    except (pub_api.NoCookie, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
