@@ -15,12 +15,18 @@ Each is compared to the player's ACTUAL league-scored points that week; reports
 MAE + RMSE per method, and the verdicts that matter (layer0 vs the flat mean,
 layer1 vs layer0, layer2 vs layer1). Reuses the projection math + league scoring
 so the backtest can't drift from the model.
+
+Layer 3 (distributions) can't be judged by MAE, so it's reported separately: the
+same Layer 1 point estimates are turned into p20/p50/p80 intervals and scored on
+calibration — coverage + pinball loss — under `result["layer3"]`, with the fitted
+per-position ratios it produces.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
 
+from app.projection import layer3
 from app.projection.baseline import (
     FANTASY_POS,
     LOOKBACK,
@@ -96,6 +102,7 @@ def score(
         "trailing_mean": [0.0, 0.0],
     }
     n = 0
+    dist_samples: list[tuple[str, float, float]] = []  # (position, layer1 mu, actual)
     for info in games_by_player.values():
         position = info["position"]
         ordered = sorted(info["games"], key=lambda g: (g["season"], g["week"]))
@@ -124,6 +131,7 @@ def score(
                 e = pred - actual
                 sums[name][0] += abs(e)
                 sums[name][1] += e * e
+            dist_samples.append((position, l1, actual))
             n += 1
 
     if n == 0:
@@ -146,6 +154,10 @@ def score(
         "layer1": result["layer2"]["mae"] < result["layer1"]["mae"],
         "layer0": result["layer2"]["mae"] < result["layer0"]["mae"],
     }
+    # Layer 3: fit residual-ratio quantiles off Layer 1's point estimate, then
+    # report interval calibration (coverage + pinball) — the distribution gate.
+    ratios = layer3.fit_ratios(dist_samples)
+    result["layer3"] = {**layer3.evaluate(dist_samples, ratios), "ratios": ratios}
     return result
 
 
