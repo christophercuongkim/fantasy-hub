@@ -360,6 +360,31 @@ def _weeks_with_data(season: int) -> list[int]:
     return [int(r[0]) for r in rows]
 
 
+def current_season() -> int | None:
+    """The latest league season — the one a weekly refresh targets."""
+    seasons = _league_seasons()
+    return seasons[-1] if seasons else None
+
+
+def current_week(season: int) -> int | None:
+    """The next regular-season week to project: the earliest week (<= 18) with a
+    game today or later, from the ingested schedule. None once the regular season
+    is complete (the offseason) or the schedule isn't ingested — a weekly cron
+    then simply no-ops. Uses the DB's current_date so it self-advances."""
+    d = parquet.dataset_dir("schedules", season=season)
+    if not (d.is_dir() and any(d.glob("*.parquet"))):
+        return None
+    with duck.connect() as con:
+        row = con.execute(
+            f"""
+            SELECT min(week) FROM read_parquet('{d}/*.parquet')
+            WHERE week <= {REG_SEASON_MAX_WEEK}
+              AND CAST(gameday AS DATE) >= current_date
+            """
+        ).fetchone()
+    return int(row[0]) if row and row[0] is not None else None
+
+
 def _projected_weeks(league_id: str, season: int) -> set[int]:
     """Weeks already stored for the CURRENT model — skipped on re-runs. A model
     bump changes MODEL_VERSION, so nothing matches and everything re-projects."""

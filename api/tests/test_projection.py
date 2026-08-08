@@ -141,6 +141,83 @@ def test_project_week_zeroes_a_bye(tmp_root, monkeypatch):
     assert (p20, p50, p80, sd) == (0.0, 0.0, 0.0, 0.0)  # distribution collapses too
 
 
+def _schedule(season, weeks, gamedays):
+    return pd.DataFrame(
+        {
+            "season": [season] * len(weeks),
+            "week": weeks,
+            "home_team": ["NE"] * len(weeks),
+            "away_team": ["BUF"] * len(weeks),
+            "gameday": gamedays,
+        }
+    )
+
+
+def test_current_week_picks_earliest_upcoming(tmp_root):
+    # week 1 played (past), weeks 2-3 upcoming → next week to project is 2.
+    _write_season(
+        "schedules",
+        2024,
+        _schedule(2024, [1, 2, 3], ["2000-09-08", "2999-09-15", "2999-09-22"]),
+    )
+    assert baseline.current_week(2024) == 2
+
+
+def test_current_week_offseason_is_none(tmp_root):
+    # every game in the past → regular season complete → no current week.
+    past = _schedule(2023, [1, 2], ["2000-09-08", "2000-09-15"])
+    _write_season("schedules", 2023, past)
+    assert baseline.current_week(2023) is None
+
+
+def test_current_week_no_schedule_is_none(tmp_root):
+    assert baseline.current_week(2099) is None
+
+
+def test_refresh_current_endpoint(monkeypatch):
+    """Resolves the current week from the schedule, then ingests + projects it."""
+    from fastapi.testclient import TestClient
+
+    from app.ingest import nflverse
+    from app.main import app
+
+    monkeypatch.setattr(baseline, "current_season", lambda: 2024)
+    monkeypatch.setattr(
+        nflverse,
+        "ingest_season",
+        lambda season, datasets, force: {"season": season, "datasets": datasets},
+    )
+    monkeypatch.setattr(baseline, "current_week", lambda season: 5)
+    monkeypatch.setattr(
+        baseline, "project_week", lambda season, week: {"players": 30, "week": week}
+    )
+
+    res = TestClient(app).post("/jobs/refresh-current")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "projected"
+    assert body["week"] == 5
+    assert body["projected"]["players"] == 30
+
+
+def test_refresh_current_offseason(monkeypatch):
+    """No current week (offseason) → no-op, still 200."""
+    from fastapi.testclient import TestClient
+
+    from app.ingest import nflverse
+    from app.main import app
+
+    monkeypatch.setattr(baseline, "current_season", lambda: 2024)
+    monkeypatch.setattr(
+        nflverse, "ingest_season", lambda season, datasets, force: {"ok": True}
+    )
+    monkeypatch.setattr(baseline, "current_week", lambda season: None)
+
+    res = TestClient(app).post("/jobs/refresh-current")
+    assert res.status_code == 200
+    assert res.json()["status"] == "offseason"
+
+
 def test_refresh_week_endpoint(monkeypatch):
     """The one-click endpoint chains ingest → project and returns both."""
     from fastapi.testclient import TestClient
