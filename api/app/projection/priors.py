@@ -27,8 +27,14 @@ BLEND_K = 3  # games of shrinkage toward the prior (mirrors MIN_GAMES)
 FIT_MIN_GAMES = 4  # only fit the curve on players with a stable per-game sample
 
 # {position: {"a": intercept, "b": ln(adp) slope, "replacement": floor ppg}}.
-# Baked from /jobs/calibrate-priors; empty until slice 2b promotes it.
-DRAFT_CURVE: dict[str, dict[str, float]] = {}
+# Baked from the /jobs/calibrate-priors run (QA, 2019-2025, 895 samples).
+# Regenerate + re-paste when scoring or the draft population changes.
+DRAFT_CURVE: dict[str, dict[str, float]] = {
+    "QB": {"a": 29.8349, "b": -2.7323, "replacement": 15.0773},
+    "RB": {"a": 20.9703, "b": -2.7307, "replacement": 6.8963},
+    "WR": {"a": 20.4393, "b": -2.5167, "replacement": 7.3937},
+    "TE": {"a": 19.0441, "b": -2.3719, "replacement": 6.383},
+}
 
 
 def _ols(pairs: list[tuple[float, float]]) -> tuple[float, float]:
@@ -114,6 +120,35 @@ def blend(
     if n_games <= 0:
         return prior
     return (n_games * observed_ppg + k * prior) / (n_games + k)
+
+
+def draft_population(league_id: str, season: int) -> list[dict]:
+    """The league-season's drafted players with a resolvable gsis + fantasy
+    position, and their overall ADP (may be None → replacement prior). These are
+    the candidates project_week gives a prior to when the model projects nothing
+    for them (< MIN_GAMES history)."""
+    from app.projection.baseline import FANTASY_POS
+    from app.storage import postgres
+
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT p.gsis_id, p.position, p.full_name, dp.adp_at_time
+            FROM draft_picks dp JOIN players p ON p.id = dp.player_id
+            WHERE dp.league_id = %s AND dp.season = %s AND p.gsis_id IS NOT NULL
+              AND p.position::text = ANY(%s)
+            """,
+            (league_id, season, list(FANTASY_POS)),
+        )
+        return [
+            {
+                "gsis_id": g,
+                "position": pos,
+                "name": name,
+                "adp": float(a) if a is not None else None,
+            }
+            for g, pos, name, a in cur.fetchall()
+        ]
 
 
 # --- calibration (I/O): fit the curve from history + report coverage ----------

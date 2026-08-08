@@ -55,12 +55,15 @@ def _write_season(dataset: str, season: int, df: pd.DataFrame) -> None:
 def test_project_week_end_to_end(tmp_root, monkeypatch):
     # half-PPR-ish scoring; only the mapped columns need to exist in the fixture.
     # Postgres write is stubbed so the e2e stays offline (Parquet only).
+    from app.projection import priors
+
     monkeypatch.setattr(
         baseline,
         "league",
         lambda season: ("L1", {"rec": 0.5, "rec_yd": 0.1, "rush_yd": 0.1}),
     )
     monkeypatch.setattr(baseline, "_write_postgres", lambda *a, **k: 0)
+    monkeypatch.setattr(priors, "draft_population", lambda *a, **k: [])
     stats = pd.DataFrame(
         {
             "player_id": ["00-1"] * 3,
@@ -103,8 +106,11 @@ def test_project_week_end_to_end(tmp_root, monkeypatch):
 
 
 def test_project_week_zeroes_a_bye(tmp_root, monkeypatch):
+    from app.projection import priors
+
     monkeypatch.setattr(baseline, "league", lambda season: ("L1", {"rec": 0.5}))
     monkeypatch.setattr(baseline, "_write_postgres", lambda *a, **k: 0)
+    monkeypatch.setattr(priors, "draft_population", lambda *a, **k: [])
     _write_season(
         "player_stats",
         2024,
@@ -139,6 +145,64 @@ def test_project_week_zeroes_a_bye(tmp_root, monkeypatch):
     ).fetchone()
     assert mean == 0.0  # bye-guard
     assert (p20, p50, p80, sd) == (0.0, 0.0, 0.0, 0.0)  # distribution collapses too
+
+
+def test_project_week_writes_a_prior(tmp_root, monkeypatch):
+    """A drafted rookie with no game rows gets a pure-prior projection."""
+    import math
+
+    from app.projection import priors
+
+    monkeypatch.setattr(baseline, "league", lambda season: ("L1", {"rec": 0.5}))
+    monkeypatch.setattr(baseline, "_write_postgres", lambda *a, **k: 0)
+    # a real player with 3 games (gets a Layer 1 projection) …
+    _write_season(
+        "player_stats",
+        2024,
+        pd.DataFrame(
+            {
+                "player_id": ["00-1"] * 3,
+                "player_display_name": ["Vet"] * 3,
+                "position": ["WR"] * 3,
+                "recent_team": ["NE"] * 3,
+                "opponent_team": ["BUF"] * 3,
+                "season": [2024] * 3,
+                "week": [1, 2, 3],
+                "receptions": [10, 10, 10],
+                "attempts": [0, 0, 0],
+                "carries": [0, 0, 0],
+                "targets": [12, 12, 12],
+            }
+        ),
+    )
+    _write_season(
+        "schedules",
+        2024,
+        pd.DataFrame(
+            {"season": [2024], "week": [4], "home_team": ["NE"], "away_team": ["BUF"]}
+        ),
+    )
+    # … plus a drafted rookie who has never played (no player_stats rows).
+    monkeypatch.setattr(
+        priors,
+        "draft_population",
+        lambda league_id, season: [
+            {"gsis_id": "00-ROOKIE", "position": "WR", "name": "Rook", "adp": 10.0}
+        ],
+    )
+
+    baseline.project_week(2024, 4)
+    path = str(
+        parquet.dataset_dir("projections_archive", season=2024, week=4)
+        / "part-0.parquet"
+    )
+    mean, n = duckdb.sql(
+        f"select mean, n_games from read_parquet('{path}') where gsis_id = '00-ROOKIE'"
+    ).fetchone()
+    c = priors.DRAFT_CURVE["WR"]
+    expected = max(c["a"] + c["b"] * math.log(10.0), c["replacement"])
+    assert n == 0  # pure prior, no games
+    assert mean == pytest.approx(round(expected, 2), abs=0.01)
 
 
 def _schedule(season, weeks, gamedays):

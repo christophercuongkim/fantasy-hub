@@ -33,7 +33,7 @@ LAMBDA = 0.85
 LOOKBACK = 8
 MIN_GAMES = 3
 PRIOR_SEASON_DISCOUNT = 0.7
-MODEL_VERSION = "layer3-dist-1"
+MODEL_VERSION = "layer3-priors-1"
 FANTASY_POS = ("QB", "RB", "WR", "TE")
 SEASON_FLOOR = 2019  # nflverse data floor (mirrors ingest.nflverse.MIN_SEASON)
 
@@ -199,12 +199,13 @@ def project_week(season: int, week: int) -> dict:
     """Compute + persist projections for (season, week). Idempotent.
 
     Runs the current model stack — Layer 1 volume×efficiency mean, wrapped in the
-    Layer 3 fitted distribution (p20/p50/p80/sd). Writes both the Parquet archive
-    (keyed on gsis_id; model-version history) and the live Postgres `projections`
-    table the web reads (keyed on players.id)."""
+    Layer 3 fitted distribution (p20/p50/p80/sd) — and adds a draft-informed prior
+    for the league's drafted players with too little history for Layer 1. Writes
+    both the Parquet archive (keyed on gsis_id; model-version history) and the live
+    Postgres `projections` table the web reads (keyed on players.id)."""
     # Local import breaks the baseline<->layer1 cycle (layer1 imports the EWMA
     # from this module); by call time both modules are fully loaded.
-    from app.projection import layer3
+    from app.projection import layer3, priors
     from app.projection.layer1 import OPP_SQL, layer1_projection
 
     league_id, scoring = league(season)
@@ -256,46 +257,79 @@ def project_week(season: int, week: int) -> dict:
         now = datetime.now(UTC).isoformat()
         records: list[dict] = []
         byes = 0
-        for gsis, h in hist.items():
-            proj = layer1_projection(h["games"], season, h["position"], pos_eff)
-            if proj is None:
-                continue
-            mean, n = proj
-            team = h["last"][2]
-            is_playing = playing is None or team in playing
-            # Layer 3: fitted floor/median/ceiling around the mean. On a bye the
-            # whole distribution collapses to 0 alongside the mean bye-guard.
-            ratios = layer3.RATIOS.get(h["position"])
-            if not is_playing:
-                mean = 0.0  # bye-guard
+
+        def make_record(gsis, name, position, team, mean, n):
+            """Wrap a mean in the Layer 3 distribution + bye-guard → a record.
+            team=None (a prior for a player with no game rows) can't be bye-checked,
+            so it's treated as playing."""
+            nonlocal byes
+            is_playing = playing is None or (team in playing if team else True)
+            ratios = layer3.RATIOS.get(position)
+            if team is not None and not is_playing:
+                mean = 0.0  # bye-guard: mean + the whole distribution collapse
                 byes += 1
                 dist = {"p20": 0.0, "p50": 0.0, "p80": 0.0, "sd": 0.0}
             elif ratios:
                 dist = layer3.distribution(mean, ratios)
             else:  # unmapped position → mean only, intervals left null
                 dist = {"p20": None, "p50": None, "p80": None, "sd": None}
-            # bye-guard invariant, asserted before write (app logic, not a CHECK)
-            assert is_playing or mean == 0.0
+            assert is_playing or mean == 0.0  # bye-guard invariant (app logic)
+            return {
+                "league_id": league_id,
+                "gsis_id": gsis,
+                "player_name": name,
+                "position": position,
+                "team": team,
+                "season": season,
+                "week": week,
+                "mean": round(mean, 2),
+                "p20": dist["p20"],
+                "p50": dist["p50"],
+                "p80": dist["p80"],
+                "sd": dist["sd"],
+                "n_games": n,
+                "is_playing": is_playing,
+                "model_version": MODEL_VERSION,
+                "generated_at": now,
+            }
+
+        for gsis, h in hist.items():
+            proj = layer1_projection(h["games"], season, h["position"], pos_eff)
+            if proj is None:
+                continue
+            mean, n = proj
             records.append(
-                {
-                    "league_id": league_id,
-                    "gsis_id": gsis,
-                    "player_name": h["name"],
-                    "position": h["position"],
-                    "team": team,
-                    "season": season,
-                    "week": week,
-                    "mean": round(mean, 2),
-                    "p20": dist["p20"],
-                    "p50": dist["p50"],
-                    "p80": dist["p80"],
-                    "sd": dist["sd"],
-                    "n_games": n,
-                    "is_playing": is_playing,
-                    "model_version": MODEL_VERSION,
-                    "generated_at": now,
-                }
+                make_record(gsis, h["name"], h["position"], h["last"][2], mean, n)
             )
+
+        # Draft-informed priors: the league's drafted players the model projects
+        # nothing for (< MIN_GAMES of history) get a prior from their ADP, shrunk
+        # toward whatever thin sample they do have. n_games < 3 flags a prior row.
+        projected = {r["gsis_id"] for r in records}
+        priors_written = 0
+        for pick in priors.draft_population(league_id, season):
+            gsis = pick["gsis_id"]
+            if gsis in projected:
+                continue
+            prior = priors.prior_ppg(pick["position"], pick["adp"])
+            if prior is None:  # position outside the fitted curve
+                continue
+            h = hist.get(gsis)
+            if h:  # 1-2 games → shrink the observation toward the prior
+                games = h["games"]
+                observed = sum(g["pts"] for g in games) / len(games)
+                mean, team, n = (
+                    priors.blend(observed, len(games), prior),
+                    h["last"][2],
+                    len(games),
+                )
+            else:  # no game rows at all (e.g. a rookie) → the pure prior
+                mean, team, n = prior, None, 0
+            records.append(
+                make_record(gsis, pick["name"], pick["position"], team, mean, n)
+            )
+            projected.add(gsis)
+            priors_written += 1
 
         if not records:
             # Legitimately nothing to project (e.g. early weeks of the floor
@@ -305,6 +339,7 @@ def project_week(season: int, week: int) -> dict:
                 "week": week,
                 "league_id": league_id,
                 "players": 0,
+                "priors": 0,
                 "byes_zeroed": 0,
                 "postgres_rows": 0,
                 "model_version": MODEL_VERSION,
@@ -326,6 +361,7 @@ def project_week(season: int, week: int) -> dict:
         "week": week,
         "league_id": league_id,
         "players": len(records),
+        "priors": priors_written,
         "byes_zeroed": byes,
         "postgres_rows": written,
         "model_version": MODEL_VERSION,
