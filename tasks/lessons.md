@@ -186,3 +186,25 @@ Picking an ADP source, I `curl`'d a FantasyPros page, saw McCaffrey + Tyreek Hil
 ## A pinned data client silently 404s when the upstream restructures — "404" ≠ "no data"
 
 `nfl_data_py 0.3.3` hardcodes nflverse's `player_stats/player_stats_{year}` URL, which nflverse **froze at 2024** when they moved current weekly stats to a new `stats_player` release (`stats_player_week_{year}`, all seasons). Fetching 2025 → HTTP 404, and my first read was "2025 isn't published yet" — wrong: the data existed, at a path the stale client didn't know. **Why:** a pinned/vendored client's URLs rot when the upstream reorganizes its releases; a 404 means *that path* is gone, not that the data doesn't exist — and "the season isn't out yet" is a seductive wrong answer. **How to apply:** when a client 404s on recent data, check the live source's actual layout (GitHub Releases API — `/repos/<org>/<repo>/releases/tags/<tag>`, grep the asset names) for the current file before concluding "no data." Fix by reading the current URL directly + normalizing any renamed columns (here `team→recent_team`, `passing_interceptions→interceptions`) rather than waiting on an unmaintained client. Bonus tell: this hid because the ingest test never mocked the player_stats fetch (a real network call) — mock external fetches so tests run offline and a dead URL fails loudly in CI, not silently in prod.
+
+## Slim container images have no curl — run in-process for scheduled/exec jobs
+
+**What happened:** The `/jobs/refresh-current` runbook told Dokploy to run
+`curl -fsS -X POST http://localhost:4001/jobs/refresh-current` inside the api
+container. It failed: `curl: command not found` — the api image is a slim Python
+base with no curl or wget. (Ironic: I'd been reaching the same api via
+`docker exec … python -c "urllib…"` all along, precisely because there's no curl,
+then wrote `curl` in the runbook anyway.)
+
+**Why it matters:** A container command can only use what's in the image. For an
+app image that's the language runtime + the app — not the shell utilities you have
+on a dev box.
+
+**How to apply:** For a scheduled task or `docker exec` against an app container,
+prefer running the work **in-process** — expose the job as a module
+(`python -m app.<job>`, invoked through the image's runner, e.g. `uv run`) instead
+of an HTTP self-call. No curl dependency, no nested-quote fragility under the
+scheduler's `bash -c`, no network round-trip, and the exit code drives
+success/failure. Only reach for an HTTP client in-container if you've confirmed
+one is installed. Factor the endpoint's logic into a plain function so the HTTP
+route and the module entrypoint share it.
