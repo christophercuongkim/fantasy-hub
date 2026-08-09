@@ -332,8 +332,9 @@ def test_refresh_all_endpoint(monkeypatch):
 
     calls = {"n": 0}
 
-    def fake_backfill():
+    def fake_backfill(force_ingest_all=False):
         calls["n"] += 1
+        calls["force"] = force_ingest_all
         return {}
 
     monkeypatch.setattr(baseline, "backfill_all", fake_backfill)
@@ -342,3 +343,8 @@ def test_refresh_all_endpoint(monkeypatch):
     assert res.status_code == 202
     assert res.json()["status"] == "started"
     assert calls["n"] == 1  # TestClient runs background tasks after the response
+    assert calls["force"] is False  # default refresh doesn't force a full re-ingest
+
+    # the flag threads through when requested
+    TestClient(app).post("/jobs/refresh-all", json={"force_ingest_all": True})
+    assert calls["force"] is True

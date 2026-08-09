@@ -235,27 +235,36 @@ def run_backtest(body: BacktestRequest) -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
 
 
-def _run_backfill_all() -> None:
+def _run_backfill_all(force_ingest_all: bool = False) -> None:
     import logging
 
     from app.projection import baseline
 
     try:
-        baseline.backfill_all()
+        baseline.backfill_all(force_ingest_all=force_ingest_all)
     except Exception:  # noqa: BLE001 — background task; log and move on
         logging.getLogger("uvicorn.error").exception("refresh-all failed")
+
+
+class RefreshAllRequest(BaseModel):
+    # Force a re-pull of every season's datasets (not just the latest) before
+    # projecting — for an nflverse schema change. Optional; defaults to the
+    # normal latest-only refresh.
+    force_ingest_all: bool = False
 
 
 # Fire-and-forget full backfill: ingest every league season + project every week
 # with data, in the background. Returns 202 immediately (the job runs minutes).
 # The one-click "Refresh all" button on /projections calls this.
 @app.post("/jobs/refresh-all")
-def refresh_all(background: BackgroundTasks) -> JSONResponse:
+def refresh_all(
+    background: BackgroundTasks, body: RefreshAllRequest | None = None
+) -> JSONResponse:
     from app.projection import baseline
 
     if baseline.backfill_status()["running"]:
         return JSONResponse(status_code=409, content={"status": "already_running"})
-    background.add_task(_run_backfill_all)
+    background.add_task(_run_backfill_all, bool(body and body.force_ingest_all))
     return JSONResponse(status_code=202, content={"status": "started"})
 
 
