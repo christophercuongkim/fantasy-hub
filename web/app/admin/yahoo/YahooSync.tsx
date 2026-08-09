@@ -36,6 +36,9 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
+  // The selected season, for result messages — so "wk 1" isn't ambiguous.
+  const season = leagues.find((l) => l.key === leagueKey)?.season ?? "?";
+
   return (
     <div
       style={{
@@ -110,7 +113,7 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
               setMsg(
                 r.error
                   ? `Error: ${r.error}`
-                  : `Synced: ${JSON.stringify(r.result)}`,
+                  : `Teams ${season}: ${r.result?.teams_written} written, ${r.result?.managers_linked} linked`,
               );
             })
           }
@@ -184,7 +187,7 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
               setMsg(
                 r.error
                   ? `Error: ${r.error}`
-                  : `Rosters wk ${r.result?.week}: ${r.result?.written} players across ${r.result?.teams} teams`,
+                  : `Rosters ${season} · wk ${r.result?.week}: ${r.result?.written} players across ${r.result?.teams} teams`,
               );
             })
           }
