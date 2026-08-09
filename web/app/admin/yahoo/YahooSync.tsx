@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@seakim/design-system";
-import { saveCookie, syncAll, syncTeams } from "./actions";
+import { saveCookie, syncAll, syncLeague, syncTeams } from "./actions";
 
 const inputStyle: React.CSSProperties = {
   fontFamily: "var(--font-mono)",
@@ -101,6 +101,22 @@ export function YahooSync() {
           }
         >
           Sync teams
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={pending || !leagueKey.trim()}
+          onClick={() =>
+            start(async () => {
+              const r = await syncLeague(leagueKey);
+              setMsg(
+                r.error
+                  ? `Error: ${r.error}`
+                  : `Created/updated ${r.result?.league_key} (${r.result?.season})`,
+              );
+            })
+          }
+        >
+          Sync league (settings + teams)
         </Button>
         <Button
           variant="secondary"

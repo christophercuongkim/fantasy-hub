@@ -3,11 +3,11 @@
 import json
 from pathlib import Path
 
-from app.yahoo.parse_jsonf import parse_league, parse_teams
+from app.yahoo.parse_jsonf import parse_league, parse_settings, parse_teams
 
-FIXTURE = json.loads(
-    (Path(__file__).parent / "fixtures" / "teams_standings.json").read_text()
-)
+_FIX = Path(__file__).parent / "fixtures"
+FIXTURE = json.loads((_FIX / "teams_standings.json").read_text())
+SETTINGS = json.loads((_FIX / "settings.json").read_text())
 
 
 def test_parse_league():
@@ -44,3 +44,27 @@ def test_parse_teams_handles_missing_standings():
     assert kill_bill.rank is None
     assert kill_bill.points_for is None
     assert kill_bill.manager_nickname == "Michael"
+
+
+def test_parse_settings_scoring_and_roster():
+    s = parse_settings(SETTINGS)
+    assert s.league_key == "470.l.735658"
+    assert s.season == 2026
+    assert s.num_teams == 12
+    assert s.slug == "people_can_eat"  # from persistent_url
+
+    mods = s.scoring["stat_modifiers"]
+    assert mods["rec"] == 0.5  # half-PPR
+    assert mods["pass_yd"] == 0.04
+    assert mods["pass_td"] == 4.0
+    assert mods["pass_int"] == -2.0
+    assert len(mods) == 9  # the 9 mapped stats; the K/DEF stat_id 49 is dropped
+    assert s.scoring["fractional_points"] is True
+    assert s.scoring["negative_points"] is True
+
+    assert s.roster_positions["WR"] == 2
+    assert s.roster_positions["BN"] == 6
+    assert s.playoff_start_week == 15
+    assert s.num_playoff_teams == 6
+    assert s.waiver_type == "FAAB"  # uses_faab overrides the ordering type
+    assert s.trade_deadline == "2026-11-28"

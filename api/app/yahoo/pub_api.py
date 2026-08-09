@@ -51,3 +51,8 @@ def get_json_f(path: str) -> dict:
 def teams(league_key: str) -> dict:
     """The league's teams + standings record."""
     return get_json_f(f"league/{league_key}/teams;out=standings")
+
+
+def settings(league_key: str) -> dict:
+    """The league's settings — scoring, roster positions, playoff/waiver/trade."""
+    return get_json_f(f"league/{league_key}/settings")
