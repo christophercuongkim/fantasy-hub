@@ -12,7 +12,6 @@ Everything here is Postgres (hot tier) — the app reads players + the review qu
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from datetime import UTC, datetime
 
@@ -21,10 +20,12 @@ import psycopg
 from psycopg.types.json import Json
 from rapidfuzz import fuzz, process
 
+# normalize + _SUFFIX live in a shared, dep-free module so the Yahoo roster sync
+# can name-match on identical terms. Re-exported here for existing callers.
+from app.crosswalk.names import _SUFFIX, normalize  # noqa: F401
 from app.storage import postgres
 
 FANTASY_POS = ("QB", "RB", "WR", "TE", "K")
-_SUFFIX = {"jr", "sr", "ii", "iii", "iv", "v"}
 # Draft DST picks are team nicknames, not players — skip them (a team-defense
 # value concept is separate). Includes historical Washington names.
 TEAM_DEFENSES = {
@@ -65,15 +66,6 @@ TEAM_DEFENSES = {
 }
 AUTO_FUZZY = 90.0  # >= this (and unambiguous) auto-matches; below -> review
 REVIEW_FLOOR = 80.0  # below this we don't even surface candidates
-
-
-def normalize(name: str) -> str:
-    """Lowercase, drop punctuation + generational suffixes, collapse spaces.
-    Applied to both sides so draft names and registry names compare on equal terms."""
-    n = re.sub(r"[.'`]", "", name.lower())
-    n = re.sub(r"[-]", " ", n)
-    toks = [t for t in re.split(r"\s+", n) if t and t not in _SUFFIX]
-    return " ".join(toks).strip()
 
 
 def _s(v) -> str | None:

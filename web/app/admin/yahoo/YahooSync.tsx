@@ -202,10 +202,13 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           onClick={() =>
             start(async () => {
               const r = await syncRosters(leagueKey, Number(week));
+              const unresolved = Array.isArray(r.result?.unresolved)
+                ? r.result.unresolved.length
+                : 0;
               setMsg(
                 r.error
                   ? `Error: ${r.error}`
-                  : `Rosters ${season} · wk ${r.result?.week}: ${r.result?.written} players across ${r.result?.teams} teams`,
+                  : `Rosters ${season} · wk ${r.result?.week}: ${r.result?.written} players across ${r.result?.teams} teams (+${r.result?.matched_by_name} by name, ${unresolved} unresolved)`,
               );
             })
           }

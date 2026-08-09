@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
+from app.crosswalk.names import normalize
 from app.storage import postgres
 from app.yahoo.parse_jsonf import (
     parse_matchups,
@@ -221,11 +222,52 @@ def sync_league(settings_payload: dict, teams_payload: dict) -> dict:
     }
 
 
+def _resolve_by_name(cur, misses: list) -> tuple[dict[str, str], set[str]]:
+    """Second-chance crosswalk for players nflverse has no yahoo_id for: match on
+    normalized name + position against the registry, accepting only a UNIQUE hit
+    (rosters.player_id is a required FK — a wrong guess corrupts data, so an
+    ambiguous or absent match is left unresolved, never guessed). On a confident
+    match to a registry row with no yahoo_id, backfill it so the next sync is a
+    direct join. Returns {yahoo_player_id: players.id} and the resolved id set."""
+    named = [p for p in misses if p.name]
+    if not named:
+        return {}, set()
+    cur.execute(
+        "SELECT name_normalized, position, id, yahoo_id FROM players "
+        "WHERE name_normalized = ANY(%s)",
+        (list({normalize(p.name) for p in named}),),
+    )
+    by_key: dict[tuple[str, str], list[tuple[str, str | None]]] = {}
+    for nn, pos, pid, yid in cur.fetchall():
+        by_key.setdefault((nn, pos), []).append((pid, yid))
+
+    resolved: dict[str, str] = {}
+    claimed: set[str] = set()  # yahoo ids taken this sync — don't double-assign
+    for p in named:
+        cands = by_key.get((normalize(p.name), p.primary_position or ""))
+        if not cands or len(cands) != 1:
+            continue  # 0 = true rookie / not in registry; >1 = ambiguous
+        pid, existing_yid = cands[0]
+        resolved[p.yahoo_player_id] = pid
+        # Self-heal: fill a null yahoo_id (never clobber a different id, never
+        # reuse one already assigned). `AND yahoo_id IS NULL` guards a race.
+        if existing_yid is None and p.yahoo_player_id not in claimed:
+            cur.execute(
+                "UPDATE players SET yahoo_id = %s, updated_at = now() "
+                "WHERE id = %s AND yahoo_id IS NULL",
+                (p.yahoo_player_id, pid),
+            )
+            claimed.add(p.yahoo_player_id)
+    return resolved, set(resolved)
+
+
 def sync_roster(payload: dict) -> dict:
     """Replace a team's weekly roster snapshot. Crosswalks each Yahoo player to
-    players.id by yahoo_id; unmatched (DST, and any player nflverse lacks a
-    yahoo_id for) are skipped — rosters.player_id is a required FK. Delete-then-
-    insert so a dropped player doesn't linger in the week."""
+    players.id by yahoo_id, with a name+position fallback for the ~quarter of
+    skill players nflverse has no yahoo_id for (see _resolve_by_name). Still
+    unmatched (DST, true rookies with no registry row) are skipped — rosters.
+    player_id is a required FK. Delete-then-insert so a dropped player doesn't
+    linger in the week."""
     r = parse_roster(payload)
     with postgres.connect() as conn, conn.cursor() as cur:
         cur.execute(
@@ -241,15 +283,26 @@ def sync_roster(payload: dict) -> dict:
             ([p.yahoo_player_id for p in r.players],),
         )
         pmap = {y: i for y, i in cur.fetchall()}
+        by_name, named_ids = _resolve_by_name(
+            cur, [p for p in r.players if p.yahoo_player_id not in pmap]
+        )
 
         cur.execute(
             "DELETE FROM rosters WHERE league_team_id = %s AND week = %s",
             (team_id, r.week),
         )
         written = 0
+        unresolved: list[dict] = []
         for p in r.players:
-            pid = pmap.get(p.yahoo_player_id)
+            pid = pmap.get(p.yahoo_player_id) or by_name.get(p.yahoo_player_id)
             if pid is None:
+                unresolved.append(
+                    {
+                        "yahoo_id": p.yahoo_player_id,
+                        "name": p.name,
+                        "pos": p.primary_position,
+                    }
+                )
                 continue
             cur.execute(
                 "INSERT INTO rosters (league_team_id, week, player_id, slot, "
@@ -264,7 +317,9 @@ def sync_roster(payload: dict) -> dict:
         "week": r.week,
         "players": len(r.players),
         "written": written,
+        "matched_by_name": len(named_ids),
         "skipped": len(r.players) - written,
+        "unresolved": unresolved,
     }
 
 
@@ -285,10 +340,14 @@ def sync_rosters(league_key: str, fetch, week: int) -> dict:
             results.append(sync_roster(fetch(tk, week)))
         except ValueError as e:
             results.append({"team_key": tk, "error": str(e)})
+    # Flatten unresolved across teams so the admin sees exactly who dropped out.
+    unresolved = [u for r in results for u in r.get("unresolved", [])]
     return {
         "week": week,
         "teams": len(team_keys),
         "written": sum(r.get("written", 0) for r in results),
+        "matched_by_name": sum(r.get("matched_by_name", 0) for r in results),
+        "unresolved": unresolved,
         "results": results,
     }
 
