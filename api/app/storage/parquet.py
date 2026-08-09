@@ -15,6 +15,7 @@ DATASETS: tuple[str, ...] = (
     "player_stats",  # raw nflverse weekly box score (input to aggregation)
     "kicking",  # derived: kicker box score aggregated from pbp (FG/PAT)
     "team_defense",  # derived: DST box score aggregated from pbp (per defteam)
+    "pass_pbp",  # derived: per-passer pbp stats the box score omits (pick_six)
     "weekly",  # derived: stats_weekly
     "team",  # derived: team_weekly
     "defense_vs_pos",  # derived: defense_vs_pos

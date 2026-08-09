@@ -30,9 +30,11 @@ STAT_ID_MAP: dict[str, str] = {
     "13": "rec_td",
     "15": "ret_td",
     "16": "two_pt",
-    "17": "fum",  # any fumble (stacks with fum_lost); stat 58 pick-six is a
-    "18": "fum_lost",  # separate PR (needs a pbp passer aggregate, not in the box)
+    "17": "fum",  # any fumble (stacks with fum_lost)
+    "18": "fum_lost",
     "57": "fum_ret_td",  # own-fumble recovered for TD (rare)
+    "58": "pick_six",  # INT thrown returned for a TD — from pbp (pass_pbp), not
+    # the box score; LEFT JOINed into the offense read in project_week
     # Kicking (K). Yahoo ships two interchangeable made-FG-by-distance sets —
     # 19-23 ("Field Goals X Yards") and 24-28 ("FGM X") — a league uses one; both
     # map to the same buckets. 29/30 = PAT made/missed, 84 = points-per-FG-yard.
