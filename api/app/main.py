@@ -345,6 +345,27 @@ class SyncRostersRequest(BaseModel):
     week: int
 
 
+class SyncTransactionsRequest(BaseModel):
+    league_key: str
+
+
+# All of a league's adds/drops/trades → the transactions table (paginated).
+@app.post("/jobs/sync-transactions")
+def sync_transactions_job(body: SyncTransactionsRequest) -> JSONResponse:
+    from app.yahoo import pub_api, sync
+
+    try:
+        return JSONResponse(
+            sync.sync_all_transactions(body.league_key, pub_api.transactions)
+        )
+    except pub_api.CookieExpired as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    except (pub_api.NoCookie, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 class SyncMatchupsRequest(BaseModel):
     league_key: str
     week: int

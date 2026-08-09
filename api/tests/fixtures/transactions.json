@@ -1,0 +1,49 @@
+{
+  "fantasy_content": {
+    "league": {
+      "league_key": "449.l.93367",
+      "name": "PeopleCanEat",
+      "transactions": [
+        {
+          "transaction": {
+            "transaction_key": "449.l.93367.tr.399",
+            "transaction_id": "399",
+            "type": "add/drop",
+            "status": "successful",
+            "timestamp": "1735431545",
+            "players": [
+              {
+                "player": {
+                  "player_key": "449.p.40890",
+                  "player_id": "40890",
+                  "name": { "full": "Xavier Legette" },
+                  "transaction_data": {
+                    "type": "add",
+                    "source_type": "freeagents",
+                    "destination_type": "team",
+                    "destination_team_key": "449.l.93367.t.6",
+                    "destination_team_name": "Ben's Surfing Team"
+                  }
+                }
+              },
+              {
+                "player": {
+                  "player_key": "449.p.34088",
+                  "player_id": "34088",
+                  "name": { "full": "Romeo Doubs" },
+                  "transaction_data": {
+                    "type": "drop",
+                    "source_type": "team",
+                    "source_team_key": "449.l.93367.t.6",
+                    "source_team_name": "Ben's Surfing Team",
+                    "destination_type": "waivers"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

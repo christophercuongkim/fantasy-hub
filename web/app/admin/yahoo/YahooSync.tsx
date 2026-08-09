@@ -9,6 +9,7 @@ import {
   syncMatchups,
   syncRosters,
   syncTeams,
+  syncTransactions,
 } from "./actions";
 
 type League = { season: number; key: string };
@@ -152,6 +153,22 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           }
         >
           Sync all seasons
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={pending || !leagueKey.trim()}
+          onClick={() =>
+            start(async () => {
+              const r = await syncTransactions(leagueKey);
+              setMsg(
+                r.error
+                  ? `Error: ${r.error}`
+                  : `Transactions ${season}: ${r.result?.written} movements from ${r.result?.transactions} txns`,
+              );
+            })
+          }
+        >
+          Sync transactions
         </Button>
       </div>
 

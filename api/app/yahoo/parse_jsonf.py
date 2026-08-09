@@ -178,6 +178,51 @@ def parse_roster(payload: dict) -> TeamRoster:
 
 
 @dataclass
+class TxnMovement:
+    transaction_key: str
+    type: str  # add / drop / add_drop / trade / commish
+    status: str | None
+    executed_at: int | None  # unix timestamp
+    yahoo_player_id: str
+    source_team_key: str | None
+    source_type: str | None
+    destination_team_key: str | None
+    destination_type: str | None
+    faab_bid: int | None
+
+
+def parse_transactions(payload: dict) -> tuple[str, list[TxnMovement]]:
+    """(league_key, movements). One movement per player in each transaction — an
+    add/drop yields two, a trade several. Yahoo's transaction 'type' "add/drop" is
+    normalised to add_drop."""
+    lg = payload["fantasy_content"]["league"]
+    out: list[TxnMovement] = []
+    for entry in lg.get("transactions", []):
+        tr = entry["transaction"]
+        ttype = (tr.get("type") or "").replace("/", "_")
+        status = tr.get("status")
+        ts = _to_int(tr.get("timestamp"))
+        for pe in tr.get("players", []):
+            p = pe["player"]
+            td = p.get("transaction_data") or {}
+            out.append(
+                TxnMovement(
+                    transaction_key=tr["transaction_key"],
+                    type=ttype,
+                    status=status,
+                    executed_at=ts,
+                    yahoo_player_id=str(p["player_id"]),
+                    source_team_key=td.get("source_team_key"),
+                    source_type=td.get("source_type"),
+                    destination_team_key=td.get("destination_team_key"),
+                    destination_type=td.get("destination_type"),
+                    faab_bid=_to_int(td.get("faab_bid") or tr.get("faab_bid")),
+                )
+            )
+    return lg["league_key"], out
+
+
+@dataclass
 class MatchupRow:
     team_a_key: str
     team_a_points: float | None
