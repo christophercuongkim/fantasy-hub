@@ -33,7 +33,7 @@ LAMBDA = 0.85
 LOOKBACK = 8
 MIN_GAMES = 3
 PRIOR_SEASON_DISCOUNT = 0.7
-MODEL_VERSION = "dst-1"
+MODEL_VERSION = "offense-1"
 FANTASY_POS = ("QB", "RB", "WR", "TE")
 SEASON_FLOOR = 2019  # nflverse data floor (mirrors ingest.nflverse.MIN_SEASON)
 
@@ -48,6 +48,9 @@ SCORING_COLUMNS: dict[str, str] = {
     "rec": "receptions",
     "rec_yd": "receiving_yards",
     "rec_td": "receiving_tds",
+    "sack": "coalesce(sacks_suffered,0)",  # QB sacks taken (negative)
+    "fum": "coalesce(fumbles_total,0)",  # any fumble; fum_lost stacks on top
+    "fum_ret_td": "coalesce(fumble_recovery_tds,0)",  # own recovery returned for TD
     "fum_lost": (
         "(coalesce(sack_fumbles_lost,0)+coalesce(rushing_fumbles_lost,0)"
         "+coalesce(receiving_fumbles_lost,0))"

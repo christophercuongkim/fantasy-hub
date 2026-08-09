@@ -22,6 +22,14 @@ def test_points_expr_empty_is_zero():
     assert baseline.points_expr({}) == "0"
 
 
+def test_points_expr_maps_sack_and_fumble_penalties():
+    # offense scoring gap fix: sacks taken + all-fumbles + own-fumble return TD
+    e = baseline.points_expr({"sack": -0.5, "fum": -1.0, "fum_ret_td": 6.0})
+    assert "(coalesce(sacks_suffered,0) * -0.5)" in e
+    assert "(coalesce(fumbles_total,0) * -1.0)" in e
+    assert "(coalesce(fumble_recovery_tds,0) * 6.0)" in e
+
+
 def test_weighted_projection_requires_min_games():
     one = [{"season": 2024, "week": 1, "pts": 10.0}]
     assert baseline.weighted_projection(one, 2024) is None
