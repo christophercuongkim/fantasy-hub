@@ -49,6 +49,75 @@ class LeagueRow:
     num_teams: int | None
 
 
+@dataclass
+class LeagueSettings:
+    league_key: str
+    name: str
+    season: int | None
+    num_teams: int | None
+    slug: str | None  # family key, from persistent_url .../league/<slug>
+    scoring: dict  # {stat_modifiers, fractional_points, negative_points}
+    roster_positions: dict  # {position: count}
+    playoff_start_week: int | None
+    num_playoff_teams: int | None
+    waiver_type: str | None  # our enum: FAAB / rolling / reverse
+    trade_deadline: str | None  # ISO date string
+
+
+def _waiver_type(settings: dict) -> str | None:
+    """Map Yahoo's waiver fields to our enum. FAAB overrides the ordering type."""
+    if str(settings.get("uses_faab") or "") == "1":
+        return "FAAB"
+    wt = settings.get("waiver_type")
+    if wt == "R":
+        return "reverse"
+    return "rolling" if wt else None
+
+
+def parse_settings(payload: dict) -> LeagueSettings:
+    """League metadata + scoring (mapped to our stat keys) + roster from a
+    `/settings` payload. Only the stats our model scores (STAT_ID_MAP) enter
+    scoring_json — K/DST/special-teams ids are dropped, matching the bootstrap."""
+    from app.yahoo.parse import STAT_ID_MAP
+
+    lg = payload["fantasy_content"]["league"]
+    s = lg.get("settings") or {}
+
+    mods: dict[str, float] = {}
+    for entry in (s.get("stat_modifiers") or {}).get("stats", []):
+        st = entry["stat"]
+        key = STAT_ID_MAP.get(str(st["stat_id"]))
+        if key is not None:
+            mods[key] = float(st["value"])
+    scoring = {
+        "stat_modifiers": mods,
+        "fractional_points": any(v != int(v) for v in mods.values()),
+        "negative_points": any(v < 0 for v in mods.values()),
+    }
+
+    roster: dict[str, int] = {}
+    for entry in s.get("roster_positions", []):
+        rp = entry["roster_position"]
+        roster[rp["position"]] = _to_int(rp.get("count")) or 0
+
+    purl = s.get("persistent_url") or ""
+    slug = purl.rsplit("/", 1)[-1] if "/league/" in purl else None
+
+    return LeagueSettings(
+        league_key=lg["league_key"],
+        name=lg["name"],
+        season=_to_int(lg.get("season")),
+        num_teams=_to_int(lg.get("num_teams")),
+        slug=slug,
+        scoring=scoring,
+        roster_positions=roster,
+        playoff_start_week=_to_int(s.get("playoff_start_week")),
+        num_playoff_teams=_to_int(s.get("num_playoff_teams")),
+        waiver_type=_waiver_type(s),
+        trade_deadline=s.get("trade_end_date") or None,
+    )
+
+
 def parse_league(payload: dict) -> LeagueRow:
     lg = payload["fantasy_content"]["league"]
     return LeagueRow(

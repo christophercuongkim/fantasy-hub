@@ -8,8 +8,10 @@ fixtures. See parse_jsonf for the shapes.
 
 from __future__ import annotations
 
+import json
+
 from app.storage import postgres
-from app.yahoo.parse_jsonf import parse_teams
+from app.yahoo.parse_jsonf import parse_settings, parse_teams
 
 # Yahoo returns a real GUID but the nickname "--hidden--" for a manager not
 # visible to the logged-in user (pre-membership managers who left / private
@@ -50,9 +52,10 @@ def sync_teams(payload: dict) -> dict:
     by GUID and link league_teams.manager_id — filling in the people the scrape
     couldn't (it only got a GUID where a /user/<guid> href was parseable).
 
-    Matches an existing league_teams row by (league_id, name) — the league must
-    already exist (bootstrap loads it). Returns counts; teams_updated <
-    teams_parsed flags a name that didn't match a known row (a renamed team)."""
+    Upserts each team on (league_id, name), so it both backfills an existing
+    league and creates the rows for a brand-new one. The leagues row must already
+    exist — bootstrap loads the historical seasons; upsert_league creates the
+    current one before this runs (see sync_league)."""
     lg = payload["fantasy_content"]["league"]
     league_key = lg["league_key"]
     teams = parse_teams(payload)
@@ -70,7 +73,6 @@ def sync_teams(payload: dict) -> dict:
             "UPDATE league_teams SET is_mine = false WHERE league_id = %s",
             (league_id,),
         )
-        updated = 0
         linked = 0
         for t in teams:
             manager_id = (
@@ -78,38 +80,113 @@ def sync_teams(payload: dict) -> dict:
                 if _usable_manager(t.manager_guid, t.manager_nickname)
                 else None
             )
+            # Upsert on (league_id, name): updates a known team, and creates the
+            # rows for a brand-new league (e.g. the current season pre-backfill).
             cur.execute(
                 """
-                UPDATE league_teams
-                SET yahoo_team_key = %s, is_mine = %s,
-                    manager_id = COALESCE(%s, manager_id),
-                    wins = %s, losses = %s, ties = %s,
-                    points_for = %s, points_against = %s
-                WHERE league_id = %s AND name = %s
+                INSERT INTO league_teams (league_id, name, is_mine, yahoo_team_key,
+                    manager_id, wins, losses, ties, points_for, points_against)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (league_id, name) DO UPDATE SET
+                    yahoo_team_key = EXCLUDED.yahoo_team_key,
+                    is_mine = EXCLUDED.is_mine,
+                    manager_id = COALESCE(EXCLUDED.manager_id, league_teams.manager_id),
+                    wins = EXCLUDED.wins, losses = EXCLUDED.losses,
+                    ties = EXCLUDED.ties, points_for = EXCLUDED.points_for,
+                    points_against = EXCLUDED.points_against
                 """,
                 (
-                    t.team_key,
+                    league_id,
+                    t.name,
                     t.is_mine,
+                    t.team_key,
                     manager_id,  # COALESCE keeps an existing link when None (hidden)
                     t.wins,
                     t.losses,
                     t.ties,
                     t.points_for,
                     t.points_against,
-                    league_id,
-                    t.name,
                 ),
             )
-            updated += cur.rowcount
-            if manager_id and cur.rowcount:
+            if manager_id:
                 linked += 1
 
     return {
         "league_key": league_key,
-        "teams_parsed": len(teams),
-        "teams_updated": updated,
+        "teams_written": len(teams),
         "managers_linked": linked,
-        "unmatched": len(teams) - updated,
+    }
+
+
+def upsert_league(settings) -> str:
+    """Create or update the leagues row from a parsed /settings. Finds the family
+    by slug (from the settings' persistent_url). Idempotent — re-run after the
+    rules finalise to refresh scoring_json + roster in place. Returns league_id."""
+    if not settings.slug:
+        raise ValueError(
+            f"no persistent_url slug in settings for {settings.league_key}"
+        )
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, sport FROM league_families WHERE yahoo_slug = %s",
+            (settings.slug,),
+        )
+        fam = cur.fetchone()
+        if not fam:
+            raise ValueError(
+                f"no league family for slug '{settings.slug}' — bootstrap it first"
+            )
+        family_id, sport = fam
+        cur.execute(
+            """
+            INSERT INTO leagues (family_id, sport, yahoo_league_key, name, season,
+                num_teams, scoring_json, roster_positions_json,
+                playoff_start_week, num_playoff_teams, waiver_type, trade_deadline,
+                updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, now())
+            ON CONFLICT (yahoo_league_key) DO UPDATE SET
+                name = EXCLUDED.name, num_teams = EXCLUDED.num_teams,
+                scoring_json = EXCLUDED.scoring_json,
+                roster_positions_json = EXCLUDED.roster_positions_json,
+                playoff_start_week = EXCLUDED.playoff_start_week,
+                num_playoff_teams = EXCLUDED.num_playoff_teams,
+                waiver_type = EXCLUDED.waiver_type,
+                trade_deadline = EXCLUDED.trade_deadline,
+                updated_at = now()
+            RETURNING id
+            """,
+            (
+                family_id,
+                sport,
+                settings.league_key,
+                settings.name,
+                settings.season,
+                settings.num_teams,
+                json.dumps(settings.scoring),
+                json.dumps(settings.roster_positions),
+                settings.playoff_start_week,
+                settings.num_playoff_teams,
+                settings.waiver_type,
+                settings.trade_deadline,
+            ),
+        )
+        league_id = cur.fetchone()[0]
+        conn.commit()
+    return str(league_id)
+
+
+def sync_league(settings_payload: dict, teams_payload: dict) -> dict:
+    """Create-or-update a league from its /settings, then its teams. This is how
+    the current season gets created (it isn't bootstrapped); re-run after the
+    rules finalise to refresh scoring."""
+    settings = parse_settings(settings_payload)
+    upsert_league(settings)
+    teams = sync_teams(teams_payload)
+    return {
+        "league_key": settings.league_key,
+        "season": settings.season,
+        "scoring_keys": sorted(settings.scoring["stat_modifiers"]),
+        "teams": teams,
     }
 
 

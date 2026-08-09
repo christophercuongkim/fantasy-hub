@@ -317,6 +317,29 @@ def sync_teams_job(body: SyncTeamsRequest) -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
 
 
+class SyncLeagueRequest(BaseModel):
+    league_key: str
+
+
+# Create-or-update a league from its Yahoo /settings (scoring, roster) + teams.
+# This is how the current season is created — it isn't bootstrapped. Idempotent:
+# re-run after the league's rules finalise to refresh scoring in place.
+@app.post("/jobs/sync-league")
+def sync_league_job(body: SyncLeagueRequest) -> JSONResponse:
+    from app.yahoo import pub_api, sync
+
+    try:
+        settings_payload = pub_api.settings(body.league_key)
+        teams_payload = pub_api.teams(body.league_key)
+        return JSONResponse(sync.sync_league(settings_payload, teams_payload))
+    except pub_api.CookieExpired as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    except (pub_api.NoCookie, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 # Sync teams for every league we hold a Yahoo key for — one cookie, all seasons,
 # no league_key to type.
 @app.post("/jobs/sync-all-teams")

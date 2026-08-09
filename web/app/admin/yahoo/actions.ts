@@ -47,6 +47,27 @@ export async function syncTeams(
   }
 }
 
+// Create-or-update a league from its Yahoo settings (scoring + roster) + teams.
+export async function syncLeague(
+  leagueKey: string,
+): Promise<{ result?: Record<string, unknown>; error?: string }> {
+  try {
+    const res = await fetch(`${apiUrl()}/jobs/sync-league`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ league_key: leagueKey }),
+      cache: "no-store",
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: String(body.error ?? `HTTP ${res.status}`) };
+    return { result: body };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not reach the api.",
+    };
+  }
+}
+
 // Sync every league we hold a Yahoo key for — one cookie, all seasons.
 export async function syncAll(): Promise<{
   result?: Record<string, unknown>;
