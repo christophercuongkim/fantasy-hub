@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button } from "@seakim/design-system";
+import { Button, Select } from "@seakim/design-system";
 import {
   saveCookie,
   syncAll,
@@ -9,6 +9,8 @@ import {
   syncRosters,
   syncTeams,
 } from "./actions";
+
+type League = { season: number; key: string };
 
 const inputStyle: React.CSSProperties = {
   fontFamily: "var(--font-mono)",
@@ -27,9 +29,9 @@ const labelStyle: React.CSSProperties = {
   color: "var(--text-tertiary)",
 };
 
-export function YahooSync() {
+export function YahooSync({ leagues }: { leagues: League[] }) {
   const [cookie, setCookie] = useState("");
-  const [leagueKey, setLeagueKey] = useState("470.l.735658");
+  const [leagueKey, setLeagueKey] = useState(leagues[0]?.key ?? "");
   const [week, setWeek] = useState("1");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -86,11 +88,16 @@ export function YahooSync() {
             gap: "var(--space-2)",
           }}
         >
-          <span style={labelStyle}>League key</span>
-          <input
+          <span style={labelStyle}>Season</span>
+          <Select
+            size="sm"
             value={leagueKey}
+            options={leagues.map((l) => ({
+              value: l.key,
+              label: String(l.season),
+            }))}
+            aria-label="Season"
             onChange={(e) => setLeagueKey(e.target.value)}
-            style={inputStyle}
           />
         </label>
         <Button
