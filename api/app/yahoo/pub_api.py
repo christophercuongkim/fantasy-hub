@@ -61,3 +61,8 @@ def settings(league_key: str) -> dict:
 def roster(team_key: str, week: int) -> dict:
     """A team's roster for a week (players + the slot each was started in)."""
     return get_json_f(f"team/{team_key}/roster;week={week}")
+
+
+def scoreboard(league_key: str, week: int) -> dict:
+    """A week's matchups + scores for the whole league (one call)."""
+    return get_json_f(f"league/{league_key}/scoreboard;week={week}")

@@ -177,6 +177,47 @@ def parse_roster(payload: dict) -> TeamRoster:
     )
 
 
+@dataclass
+class MatchupRow:
+    team_a_key: str
+    team_a_points: float | None
+    team_b_key: str
+    team_b_points: float | None
+    is_playoff: bool
+
+
+@dataclass
+class Scoreboard:
+    league_key: str
+    week: int
+    matchups: list[MatchupRow]
+
+
+def parse_matchups(payload: dict) -> Scoreboard:
+    """A week's matchups — the two teams + their scores, and the playoff flag."""
+    lg = payload["fantasy_content"]["league"]
+    sb = lg.get("scoreboard") or {}
+    out: list[MatchupRow] = []
+    for entry in sb.get("matchups", []):
+        m = entry["matchup"]
+        teams = m.get("teams") or []
+        if len(teams) < 2:
+            continue
+        ta, tb = teams[0]["team"], teams[1]["team"]
+        out.append(
+            MatchupRow(
+                team_a_key=ta["team_key"],
+                team_a_points=_to_float((ta.get("team_points") or {}).get("total")),
+                team_b_key=tb["team_key"],
+                team_b_points=_to_float((tb.get("team_points") or {}).get("total")),
+                is_playoff=str(m.get("is_playoffs") or "0") == "1",
+            )
+        )
+    return Scoreboard(
+        league_key=lg["league_key"], week=_to_int(sb.get("week")) or 0, matchups=out
+    )
+
+
 def parse_teams(payload: dict) -> list[TeamRow]:
     """The league's teams + (when present) their standings record. `is_mine` comes
     from Yahoo flagging the logged-in user's team/manager."""

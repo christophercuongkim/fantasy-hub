@@ -6,6 +6,7 @@ import {
   saveCookie,
   syncAll,
   syncLeague,
+  syncMatchups,
   syncRosters,
   syncTeams,
 } from "./actions";
@@ -193,6 +194,22 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           }
         >
           Sync rosters
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={pending || !leagueKey.trim() || !week.trim()}
+          onClick={() =>
+            start(async () => {
+              const r = await syncMatchups(leagueKey, Number(week));
+              setMsg(
+                r.error
+                  ? `Error: ${r.error}`
+                  : `Matchups ${season} · wk ${r.result?.week}: ${r.result?.written} written`,
+              );
+            })
+          }
+        >
+          Sync matchups
         </Button>
       </div>
 
