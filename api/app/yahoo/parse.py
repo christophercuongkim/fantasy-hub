@@ -30,6 +30,23 @@ STAT_ID_MAP: dict[str, str] = {
     "15": "ret_td",
     "16": "two_pt",
     "18": "fum_lost",
+    # Kicking (K). Yahoo ships two interchangeable made-FG-by-distance sets —
+    # 19-23 ("Field Goals X Yards") and 24-28 ("FGM X") — a league uses one; both
+    # map to the same buckets. 29/30 = PAT made/missed, 84 = points-per-FG-yard.
+    # Derived from pbp (field_goal_result + kick_distance, extra_point_result).
+    "19": "fgm_0_19",
+    "20": "fgm_20_29",
+    "21": "fgm_30_39",
+    "22": "fgm_40_49",
+    "23": "fgm_50",
+    "24": "fgm_0_19",
+    "25": "fgm_20_29",
+    "26": "fgm_30_39",
+    "27": "fgm_40_49",
+    "28": "fgm_50",
+    "29": "pat_made",
+    "30": "pat_miss",
+    "84": "fg_yds",
 }
 
 

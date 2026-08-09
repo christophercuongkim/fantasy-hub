@@ -46,6 +46,10 @@ RATIOS: dict[str, dict[str, float]] = {
     "RB": {"r20": 0.349, "r50": 0.798, "r80": 1.515, "cv": 0.799},
     "WR": {"r20": 0.316, "r50": 0.788, "r80": 1.535, "cv": 0.801},
     "TE": {"r20": 0.317, "r50": 0.778, "r80": 1.543, "cv": 0.823},
+    # Kickers: Layer-0 EWMA mean vs actual, fit on the QA cold tier (kick-1,
+    # 3,607 kicker-weeks). Boom/bust like skill positions — this league's
+    # yardage-based FG scoring spikes on long-FG games.
+    "K": {"r20": 0.4572, "r50": 0.889, "r80": 1.5002, "cv": 0.6636},
 }
 
 

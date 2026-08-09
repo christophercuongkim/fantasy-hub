@@ -61,10 +61,97 @@ def _ingest_player_stats(season: int) -> int:
     return _write("player_stats", season, df)
 
 
+# Made-FG distance buckets → Yahoo's kicking scoring keys (parse.STAT_ID_MAP).
+_FG_BUCKETS = (
+    ("fgm_0_19", 0, 19),
+    ("fgm_20_29", 20, 29),
+    ("fgm_30_39", 30, 39),
+    ("fgm_40_49", 40, 49),
+    ("fgm_50", 50, 999),
+)
+_KICKING_COLUMNS = (
+    "player_id",
+    "player_display_name",
+    "position",
+    "recent_team",
+    "season",
+    "week",
+    *(b[0] for b in _FG_BUCKETS),
+    "fg_yds",
+    "pat_made",
+    "pat_miss",
+)
+
+
+def _aggregate_kicking(df: pd.DataFrame) -> pd.DataFrame:
+    """pbp -> one row per kicker-week with the Yahoo kicking stat columns. Pure
+    (no I/O) so the bucketing is unit-testable against a synthetic frame."""
+    keys = ["kicker_player_id", "season", "week"]
+
+    fg = df[df["field_goal_result"].notna() & df["kicker_player_id"].notna()].copy()
+    made = fg[fg["field_goal_result"] == "made"].copy()
+    dist = made["kick_distance"]
+    for name, lo, hi in _FG_BUCKETS:
+        made[name] = ((dist >= lo) & (dist <= hi)).astype("int64")
+    made["fg_yds"] = dist.fillna(0)
+    fg_agg = made.groupby(keys, as_index=False).agg(
+        {**{b[0]: "sum" for b in _FG_BUCKETS}, "fg_yds": "sum"}
+    )
+
+    xp = df[df["extra_point_result"].notna() & df["kicker_player_id"].notna()].copy()
+    xp["pat_made"] = (xp["extra_point_result"] == "good").astype("int64")
+    xp["pat_miss"] = (
+        xp["extra_point_result"].isin(["failed", "blocked"]).astype("int64")
+    )
+    xp_agg = xp.groupby(keys, as_index=False).agg(
+        {"pat_made": "sum", "pat_miss": "sum"}
+    )
+
+    # A kicker-week with only FGs or only PATs still needs a row → outer merge.
+    out = fg_agg.merge(xp_agg, on=keys, how="outer")
+    # Identity (name/team) from whichever kicking play we saw — first non-null.
+    ident = (
+        pd.concat(
+            [
+                fg[keys + ["kicker_player_name", "posteam"]],
+                xp[keys + ["kicker_player_name", "posteam"]],
+            ]
+        )
+        .dropna(subset=["kicker_player_id"])
+        .groupby(keys, as_index=False)
+        .first()
+    )
+    out = out.merge(ident, on=keys, how="left")
+    for b in _FG_BUCKETS:
+        out[b[0]] = out[b[0]].fillna(0).astype("int64")
+    for c in ("fg_yds", "pat_made", "pat_miss"):
+        out[c] = out[c].fillna(0)
+    out = out.rename(
+        columns={
+            "kicker_player_id": "player_id",
+            "kicker_player_name": "player_display_name",
+            "posteam": "recent_team",
+        }
+    )
+    out["position"] = "K"
+    return out[list(_KICKING_COLUMNS)]
+
+
+def _ingest_kicking(season: int) -> int:
+    """Kicker box score from play-by-play — nflverse ships no kicking weekly
+    table, so aggregate FGs (by distance) + PATs per kicker-week ourselves. The
+    columns match the Yahoo kicking scoring keys so the projection scores them
+    with the league's own modifiers, exactly like the offense box score. Keyed on
+    kicker_player_id, which is a gsis id (joins straight to players)."""
+    df = nfl.import_pbp_data([season], downcast=True, cache=False)
+    return _write("kicking", season, _aggregate_kicking(df))
+
+
 _INGESTORS: dict[str, Callable[[int], int]] = {
     "pbp": _ingest_pbp,
     "schedules": _ingest_schedules,
     "player_stats": _ingest_player_stats,
+    "kicking": _ingest_kicking,
 }
 
 

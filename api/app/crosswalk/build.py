@@ -80,6 +80,10 @@ def _s(v) -> str | None:
 
 def build_players(conn: psycopg.Connection) -> int:
     ids = nfl.import_ids()
+    # import_ids labels kickers "PK"; map to our "K" enum so they pass the
+    # FANTASY_POS filter and land as valid positionEnum rows (was a silent drop —
+    # kickers never entered the registry, so rosters/projections lost them).
+    ids["position"] = ids["position"].replace({"PK": "K"})
     ids = ids[ids["gsis_id"].notna() & ids["position"].isin(FANTASY_POS)]
     ids = ids.sort_values("db_season").drop_duplicates("gsis_id", keep="last")
 
