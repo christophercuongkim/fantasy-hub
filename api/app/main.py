@@ -446,3 +446,21 @@ def sim_matchup_job(body: SimMatchupRequest) -> JSONResponse:
         return JSONResponse(status_code=422, content={"error": str(e)})
     except Exception as e:  # noqa: BLE001 — DuckDB / Postgres failure
         return JSONResponse(status_code=424, content={"error": str(e)})
+
+
+class BuildDraftBoardRequest(BaseModel):
+    league_key: str
+
+
+# Draft assistant Slice 1: compute the preseason value board (VOR from projections
+# + the draft-prior curve, with market ADP) into draft_board. Synchronous.
+@app.post("/jobs/build-draft-board")
+def build_draft_board_job(body: BuildDraftBoardRequest) -> JSONResponse:
+    from app.draft import board
+
+    try:
+        return JSONResponse(board.build_draft_board(body.league_key))
+    except ValueError as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — FFC / DuckDB / Postgres failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
