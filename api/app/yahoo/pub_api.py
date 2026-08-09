@@ -56,3 +56,8 @@ def teams(league_key: str) -> dict:
 def settings(league_key: str) -> dict:
     """The league's settings — scoring, roster positions, playoff/waiver/trade."""
     return get_json_f(f"league/{league_key}/settings")
+
+
+def roster(team_key: str, week: int) -> dict:
+    """A team's roster for a week (players + the slot each was started in)."""
+    return get_json_f(f"team/{team_key}/roster;week={week}")

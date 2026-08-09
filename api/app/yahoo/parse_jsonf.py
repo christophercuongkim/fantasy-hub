@@ -131,6 +131,52 @@ def parse_league(payload: dict) -> LeagueRow:
     )
 
 
+BENCH_SLOTS = {"BN", "IR"}
+
+
+@dataclass
+class RosterSlot:
+    yahoo_player_id: str
+    name: str
+    primary_position: str | None
+    slot: str  # QB/RB/WR/TE/W/R/T/K/DEF/BN/IR — already our rosterSlotEnum values
+    is_starter: bool
+
+
+@dataclass
+class TeamRoster:
+    team_key: str
+    week: int
+    players: list[RosterSlot]
+
+
+def parse_roster(payload: dict) -> TeamRoster:
+    """A team's players for a week, with the slot each was started in. Yahoo's
+    selected_position.position IS our roster-slot vocabulary, so no mapping."""
+    team = payload["fantasy_content"]["team"]
+    roster = team.get("roster") or {}
+    players: list[RosterSlot] = []
+    for entry in roster.get("players", []):
+        p = entry["player"]
+        slot = (p.get("selected_position") or {}).get("position")
+        if not slot:
+            continue
+        players.append(
+            RosterSlot(
+                yahoo_player_id=str(p["player_id"]),
+                name=(p.get("name") or {}).get("full") or "",
+                primary_position=p.get("primary_position"),
+                slot=slot,
+                is_starter=slot not in BENCH_SLOTS,
+            )
+        )
+    return TeamRoster(
+        team_key=team["team_key"],
+        week=_to_int(roster.get("week")) or 0,
+        players=players,
+    )
+
+
 def parse_teams(payload: dict) -> list[TeamRow]:
     """The league's teams + (when present) their standings record. `is_mine` comes
     from Yahoo flagging the logged-in user's team/manager."""

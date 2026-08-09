@@ -340,6 +340,28 @@ def sync_league_job(body: SyncLeagueRequest) -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
 
 
+class SyncRostersRequest(BaseModel):
+    league_key: str
+    week: int
+
+
+# Every team's weekly roster (players + slots) → the rosters table. Post-draft.
+@app.post("/jobs/sync-rosters")
+def sync_rosters_job(body: SyncRostersRequest) -> JSONResponse:
+    from app.yahoo import pub_api, sync
+
+    try:
+        return JSONResponse(
+            sync.sync_rosters(body.league_key, pub_api.roster, body.week)
+        )
+    except pub_api.CookieExpired as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    except (pub_api.NoCookie, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 # Sync teams for every league we hold a Yahoo key for — one cookie, all seasons,
 # no league_key to type.
 @app.post("/jobs/sync-all-teams")

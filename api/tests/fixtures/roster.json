@@ -1,0 +1,51 @@
+{
+  "fantasy_content": {
+    "team": {
+      "team_key": "461.l.328209.t.10",
+      "team_id": "10",
+      "name": "Samuel L. Jackson",
+      "roster": {
+        "coverage_type": "week",
+        "week": "1",
+        "players": [
+          {
+            "player": {
+              "player_key": "461.p.31002",
+              "player_id": "31002",
+              "name": { "full": "Lamar Jackson" },
+              "primary_position": "QB",
+              "selected_position": { "coverage_type": "week", "week": "1", "position": "QB" }
+            }
+          },
+          {
+            "player": {
+              "player_key": "461.p.33398",
+              "player_id": "33398",
+              "name": { "full": "DeVonta Smith" },
+              "primary_position": "WR",
+              "selected_position": { "coverage_type": "week", "week": "1", "position": "W/R/T" }
+            }
+          },
+          {
+            "player": {
+              "player_key": "461.p.28534",
+              "player_id": "28534",
+              "name": { "full": "Stefon Diggs" },
+              "primary_position": "WR",
+              "selected_position": { "coverage_type": "week", "week": "1", "position": "BN" }
+            }
+          },
+          {
+            "player": {
+              "player_key": "461.p.100012",
+              "player_id": "100012",
+              "name": { "full": "Chiefs" },
+              "primary_position": "DEF",
+              "selected_position": { "coverage_type": "week", "week": "1", "position": "DEF" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
