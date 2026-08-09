@@ -226,12 +226,41 @@ def _ingest_team_defense(season: int) -> int:
     return _write("team_defense", season, _aggregate_team_defense(df))
 
 
+_PASS_PBP_COLUMNS = ("player_id", "season", "week", "pick_six")
+
+
+def _aggregate_pass_pbp(df: pd.DataFrame) -> pd.DataFrame:
+    """pbp -> per-passer-week passing stats the nflverse box score omits. Today
+    just pick_six (an interception thrown that was returned for a defensive TD),
+    which has no box-score column but is a scored event (Yahoo stat 58). Keyed on
+    passer_player_id (a gsis id) so it LEFT JOINs the offense projection read.
+    Pure (no I/O) for unit-testing."""
+    px = df[
+        (df["interception"] == 1)
+        & (df["touchdown"] == 1)
+        & (df["td_team"] == df["defteam"])
+        & df["passer_player_id"].notna()
+    ].copy()
+    px["pick_six"] = 1
+    agg = px.groupby(["passer_player_id", "season", "week"], as_index=False)[
+        "pick_six"
+    ].sum()
+    agg = agg.rename(columns={"passer_player_id": "player_id"})
+    return agg[list(_PASS_PBP_COLUMNS)]
+
+
+def _ingest_pass_pbp(season: int) -> int:
+    df = nfl.import_pbp_data([season], downcast=True, cache=False)
+    return _write("pass_pbp", season, _aggregate_pass_pbp(df))
+
+
 _INGESTORS: dict[str, Callable[[int], int]] = {
     "pbp": _ingest_pbp,
     "schedules": _ingest_schedules,
     "player_stats": _ingest_player_stats,
     "kicking": _ingest_kicking,
     "team_defense": _ingest_team_defense,
+    "pass_pbp": _ingest_pass_pbp,
 }
 
 

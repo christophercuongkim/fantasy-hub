@@ -33,7 +33,7 @@ LAMBDA = 0.85
 LOOKBACK = 8
 MIN_GAMES = 3
 PRIOR_SEASON_DISCOUNT = 0.7
-MODEL_VERSION = "offense-1"
+MODEL_VERSION = "offense-2"
 FANTASY_POS = ("QB", "RB", "WR", "TE")
 SEASON_FLOOR = 2019  # nflverse data floor (mirrors ingest.nflverse.MIN_SEASON)
 
@@ -51,6 +51,9 @@ SCORING_COLUMNS: dict[str, str] = {
     "sack": "coalesce(sacks_suffered,0)",  # QB sacks taken (negative)
     "fum": "coalesce(fumbles_total,0)",  # any fumble; fum_lost stacks on top
     "fum_ret_td": "coalesce(fumble_recovery_tds,0)",  # own recovery returned for TD
+    # pick_six is not in the box score — it's LEFT JOINed from pass_pbp (alias px)
+    # in project_week, so it references the joined column (0 when no join row).
+    "pick_six": "coalesce(px.pick_six,0)",
     "fum_lost": (
         "(coalesce(sack_fumbles_lost,0)+coalesce(rushing_fumbles_lost,0)"
         "+coalesce(receiving_fumbles_lost,0))"
@@ -248,6 +251,11 @@ def _team_defense_glob(season: int) -> str | None:
     return f"{d}/*.parquet" if d.is_dir() and any(d.glob("*.parquet")) else None
 
 
+def _pass_pbp_glob(season: int) -> str | None:
+    d = parquet.dataset_dir("pass_pbp", season=season)
+    return f"{d}/*.parquet" if d.is_dir() and any(d.glob("*.parquet")) else None
+
+
 def _teams_playing(con, season: int, week: int) -> set[str] | None:
     """Teams with a game in the target week (bye detection), or None if the
     schedule isn't ingested yet — then byes can't be zeroed."""
@@ -278,7 +286,6 @@ def project_week(season: int, week: int) -> dict:
     from app.projection.layer1 import OPP_SQL, layer1_projection
 
     league_id, scoring = league(season)
-    pts = points_expr(scoring)
 
     globs = [g for s in (season - 1, season) if (g := _season_glob(s))]
     if not globs:
@@ -287,15 +294,31 @@ def project_week(season: int, week: int) -> dict:
         )
     srcs = "[" + ", ".join(f"'{g}'" for g in globs) + "]"
 
+    # pick_six is in a separate pbp aggregate (pass_pbp), LEFT JOINed as `px` and
+    # keyed by the passer's gsis. Only reference it when that dataset is present,
+    # else drop pick_six from scoring so the SQL doesn't name a missing column.
+    px_globs = [g for s in (season - 1, season) if (g := _pass_pbp_glob(s))]
+    if px_globs:
+        px_srcs = "[" + ", ".join(f"'{g}'" for g in px_globs) + "]"
+        px_join = (
+            f"LEFT JOIN read_parquet({px_srcs}) px ON px.player_id = ps.player_id "
+            "AND px.season = ps.season AND px.week = ps.week"
+        )
+    else:
+        scoring = {k: v for k, v in scoring.items() if k != "pick_six"}
+        px_join = ""
+    pts = points_expr(scoring)
+
     with duck.connect() as con:
         rows = con.execute(
             f"""
-            SELECT player_id AS gsis_id, player_display_name AS name, position,
-                   recent_team AS team, season, week, ({pts})::double AS pts,
-                   ({OPP_SQL})::double AS opp
-            FROM read_parquet({srcs})
-            WHERE position IN {FANTASY_POS}
-              AND (season < {season} OR (season = {season} AND week < {week}))
+            SELECT ps.player_id AS gsis_id, ps.player_display_name AS name,
+                   ps.position, ps.recent_team AS team, ps.season, ps.week,
+                   ({pts})::double AS pts, ({OPP_SQL})::double AS opp
+            FROM read_parquet({srcs}) ps
+            {px_join}
+            WHERE ps.position IN {FANTASY_POS}
+              AND (ps.season < {season} OR (ps.season = {season} AND ps.week < {week}))
             """
         ).fetchall()
         playing = _teams_playing(con, season, week)
@@ -629,7 +652,13 @@ def backfill_all(force_ingest_all: bool = False) -> dict:
             try:
                 nflverse.ingest_season(
                     s,
-                    ["player_stats", "schedules", "kicking", "team_defense"],
+                    [
+                        "player_stats",
+                        "schedules",
+                        "kicking",
+                        "team_defense",
+                        "pass_pbp",
+                    ],
                     force=(force_ingest_all or s == latest),
                 )
                 league_id, _ = league(s)
