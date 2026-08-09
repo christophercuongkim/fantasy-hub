@@ -79,6 +79,7 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           display: "flex",
           gap: "var(--space-3)",
           alignItems: "flex-end",
+          flexWrap: "wrap",
         }}
       >
         <label
@@ -86,11 +87,11 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
             display: "flex",
             flexDirection: "column",
             gap: "var(--space-2)",
+            minWidth: "7rem",
           }}
         >
           <span style={labelStyle}>Season</span>
           <Select
-            size="sm"
             value={leagueKey}
             options={leagues.map((l) => ({
               value: l.key,
@@ -155,6 +156,7 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           display: "flex",
           gap: "var(--space-3)",
           alignItems: "flex-end",
+          flexWrap: "wrap",
         }}
       >
         <label
