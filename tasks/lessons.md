@@ -233,3 +233,29 @@ until Refresh-all has run on every env that serves projections (QA *and* prod), 
 just merged.** Treat the Refresh-all as part of the PR's deploy checklist, not an
 optional follow-up. Verify with `SELECT model_version, count(*) FROM projections
 GROUP BY 1` — a lingering old version means stale model output is being served.
+
+## deploy-qa migrates the QA DB — don't hand-create/drop migrated tables
+
+**Symptom:** to validate a new table's api job on QA, I ran `CREATE TABLE ... IF NOT
+EXISTS` then `DROP TABLE` around the build. The table already existed (the migration
+had run), so I dropped a properly-migrated table — leaving QA inconsistent: drizzle's
+journal said the migration was applied, but the table was gone, so a later `db:migrate`
+would NOT recreate it.
+
+**Root cause / the two workflows:**
+- **`deploy-qa.yml`** (`prepare` job) runs `pnpm db:migrate` against `DATABASE_URL_QA`
+  on every PR touching `web/**`/`api/**`, *before* repointing `qa`. So **the QA Neon
+  branch is migrated on every PR deploy** — a new table exists on QA as soon as the
+  PR's deploy-qa runs.
+- **`db.yml`** only touches a throwaway **preview** branch (for the schema-diff review
+  comment) on PR, and **prod** on merge to main. It never touches `qa`.
+
+**How to apply:**
+1. A migration added in a PR is already live on QA once deploy-qa finishes — just use
+   the table; no manual DDL.
+2. Never `DROP` (or hand-`CREATE`) a drizzle-migrated table on QA/prod for a one-off —
+   it desyncs the migration journal from the actual schema. If you must inspect a
+   write path before the table is "supposed" to exist, either wait for the deploy, or
+   write to a scratch table you own, never the real migrated one.
+3. If you do desync it, recreate from the exact migration SQL (same constraint names)
+   so a future schema-diff stays clean.
