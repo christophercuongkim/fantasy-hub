@@ -33,7 +33,7 @@ LAMBDA = 0.85
 LOOKBACK = 8
 MIN_GAMES = 3
 PRIOR_SEASON_DISCOUNT = 0.7
-MODEL_VERSION = "kick-1"
+MODEL_VERSION = "dst-1"
 FANTASY_POS = ("QB", "RB", "WR", "TE")
 SEASON_FLOOR = 2019  # nflverse data floor (mirrors ingest.nflverse.MIN_SEASON)
 
@@ -73,6 +73,48 @@ KICKING_SCORING_COLUMNS: dict[str, str] = {
     "pat_made": "pat_made",
     "pat_miss": "pat_miss",
 }
+
+# Team-defense (DST) additive scoring keys -> `team_defense` dataset columns. The
+# points-allowed brackets (pa_*) are NOT here — they're mutually exclusive, so a
+# CASE picks exactly one (see dst_points_expr), which a flat sum can't express.
+DST_SCORING_COLUMNS: dict[str, str] = {
+    "dst_sack": "dst_sack",
+    "dst_int": "dst_int",
+    "dst_fum_rec": "dst_fum_rec",
+    "dst_td": "dst_td",
+    "dst_ret_td": "dst_ret_td",
+    "dst_safety": "dst_safety",
+    "dst_blk": "dst_blk",
+    "dst_xpr": "dst_xpr",
+}
+
+# Points-allowed brackets in order; the last (pa_35) is the CASE ELSE. Exactly
+# one tier applies per game, so they can't be summed like additive stats.
+_PA_EDGES = (
+    ("pa_0", "<= 0"),
+    ("pa_1_6", "<= 6"),
+    ("pa_7_13", "<= 13"),
+    ("pa_14_20", "<= 20"),
+    ("pa_21_27", "<= 27"),
+    ("pa_28_34", "<= 34"),
+)
+_PA_KEYS = tuple(k for k, _ in _PA_EDGES) + ("pa_35",)
+
+
+def dst_points_expr(scoring: dict[str, float]) -> str:
+    """SQL for DST fantasy points over the `team_defense` dataset: the additive
+    categories plus the points-allowed bracket (a CASE that yields exactly one
+    tier's value). Zero-valued tiers must still be emitted so a middle bracket
+    (e.g. 21-27 = 0) doesn't fall through to the next tier's value."""
+    additive = points_expr(scoring, DST_SCORING_COLUMNS)
+    if not any(k in scoring for k in _PA_KEYS):
+        return additive
+    whens = " ".join(
+        f"WHEN pts_allowed {cond} THEN {scoring.get(key, 0.0)}"
+        for key, cond in _PA_EDGES
+    )
+    case = f"CASE {whens} ELSE {scoring.get('pa_35', 0.0)} END"
+    return f"{additive} + ({case})" if additive != "0" else f"({case})"
 
 
 def league(season: int) -> tuple[str, dict[str, float]]:
@@ -195,6 +237,11 @@ def _season_glob(season: int) -> str | None:
 
 def _kicking_glob(season: int) -> str | None:
     d = parquet.dataset_dir("kicking", season=season)
+    return f"{d}/*.parquet" if d.is_dir() and any(d.glob("*.parquet")) else None
+
+
+def _team_defense_glob(season: int) -> str | None:
+    d = parquet.dataset_dir("team_defense", season=season)
     return f"{d}/*.parquet" if d.is_dir() and any(d.glob("*.parquet")) else None
 
 
@@ -350,43 +397,52 @@ def project_week(season: int, week: int) -> dict:
             projected.add(gsis)
             priors_written += 1
 
-        # Kickers: their own pbp-derived dataset + a Layer-0 EWMA (FG attempts
-        # aren't a stable opportunity, so volume x efficiency doesn't apply).
-        # Scored with the league's own kicking modifiers; skipped when the league
-        # has no kicking scoring or the kicking cold tier isn't built yet.
-        kickers_written = 0
-        kpts = points_expr(scoring, KICKING_SCORING_COLUMNS)
-        kglobs = [g for s in (season - 1, season) if (g := _kicking_glob(s))]
-        if kpts != "0" and kglobs:
-            ksrcs = "[" + ", ".join(f"'{g}'" for g in kglobs) + "]"
-            krows = con.execute(
+        # Kickers + team defenses share a shape: their own pbp-derived dataset,
+        # scored with the league's own modifiers, projected by a Layer-0 EWMA
+        # (neither has a stable per-player "opportunity" for Layer 1). Skipped
+        # when the league has no scoring for them or the cold tier isn't built.
+        def project_layer0(pts: str, glob_fn, position: str) -> int:
+            globs = [g for s in (season - 1, season) if (g := glob_fn(s))]
+            if pts == "0" or not globs:
+                return 0
+            srcs = "[" + ", ".join(f"'{g}'" for g in globs) + "]"
+            drows = con.execute(
                 f"""
-                SELECT player_id AS gsis_id, player_display_name AS name,
-                       recent_team AS team, season, week, ({kpts})::double AS pts
-                FROM read_parquet({ksrcs})
+                SELECT player_id AS gsis, player_display_name AS name,
+                       recent_team AS team, season, week, ({pts})::double AS pts
+                FROM read_parquet({srcs})
                 WHERE (season < {season} OR (season = {season} AND week < {week}))
                 """
             ).fetchall()
-            khist: dict[str, dict] = {}
-            for gsis, name, team, s, w, p in krows:
-                kh = khist.setdefault(
+            dh: dict[str, dict] = {}
+            for gsis, name, team, s, w, p in drows:
+                g = dh.setdefault(
                     gsis, {"name": name, "games": [], "last": (0, 0, None)}
                 )
-                kh["games"].append({"season": s, "week": w, "pts": float(p or 0.0)})
-                if (s, w) > (kh["last"][0], kh["last"][1]):
-                    kh["last"] = (s, w, team)
-            for gsis, kh in khist.items():
+                g["games"].append({"season": s, "week": w, "pts": float(p or 0.0)})
+                if (s, w) > (g["last"][0], g["last"][1]):
+                    g["last"] = (s, w, team)
+            n_written = 0
+            for gsis, g in dh.items():
                 if gsis in projected:
                     continue
-                proj = weighted_projection(kh["games"], season)  # Layer-0 EWMA
+                proj = weighted_projection(g["games"], season)
                 if proj is None:
                     continue
                 mean, n = proj
                 records.append(
-                    make_record(gsis, kh["name"], "K", kh["last"][2], mean, n)
+                    make_record(gsis, g["name"], position, g["last"][2], mean, n)
                 )
                 projected.add(gsis)
-                kickers_written += 1
+                n_written += 1
+            return n_written
+
+        kickers_written = project_layer0(
+            points_expr(scoring, KICKING_SCORING_COLUMNS), _kicking_glob, "K"
+        )
+        dst_written = project_layer0(
+            dst_points_expr(scoring), _team_defense_glob, "DST"
+        )
 
         if not records:
             # Legitimately nothing to project (e.g. early weeks of the floor
@@ -420,6 +476,7 @@ def project_week(season: int, week: int) -> dict:
         "players": len(records),
         "priors": priors_written,
         "kickers": kickers_written,
+        "dst": dst_written,
         "byes_zeroed": byes,
         "postgres_rows": written,
         "model_version": MODEL_VERSION,
@@ -562,7 +619,9 @@ def backfill_all() -> dict:
         for s in seasons:
             try:
                 nflverse.ingest_season(
-                    s, ["player_stats", "schedules", "kicking"], force=(s == latest)
+                    s,
+                    ["player_stats", "schedules", "kicking", "team_defense"],
+                    force=(s == latest),
                 )
                 league_id, _ = league(s)
                 done = _projected_weeks(league_id, s)

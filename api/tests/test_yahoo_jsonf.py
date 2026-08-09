@@ -68,7 +68,8 @@ def test_parse_settings_scoring_and_roster():
     assert mods["pass_yd"] == 0.04
     assert mods["pass_td"] == 4.0
     assert mods["pass_int"] == -2.0
-    assert len(mods) == 9  # the 9 mapped stats; the K/DEF stat_id 49 is dropped
+    assert mods["dst_ret_td"] == 6.0  # stat_id 49 (DST return TD) is now captured
+    assert len(mods) == 10  # 9 offense + the DST return-TD key
     assert s.scoring["fractional_points"] is True
     assert s.scoring["negative_points"] is True
 
@@ -89,7 +90,7 @@ def test_parse_roster_slots_and_starters():
     assert by_id["31002"].slot == "QB" and by_id["31002"].is_starter is True
     assert by_id["33398"].slot == "W/R/T" and by_id["33398"].is_starter is True
     assert by_id["28534"].slot == "BN" and by_id["28534"].is_starter is False
-    assert by_id["100012"].slot == "DEF"  # DST parses; the crosswalk skips it later
+    assert by_id["100012"].slot == "DEF"  # DST parses; links to a synthesized DST
 
 
 def test_parse_matchups():

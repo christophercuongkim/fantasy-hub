@@ -147,11 +147,91 @@ def _ingest_kicking(season: int) -> int:
     return _write("kicking", season, _aggregate_kicking(df))
 
 
+_TEAM_DEF_STATS = (
+    "dst_sack",
+    "dst_int",
+    "dst_fum_rec",
+    "dst_td",
+    "dst_ret_td",
+    "dst_safety",
+    "dst_blk",
+    "dst_xpr",
+)
+_TEAM_DEF_COLUMNS = (
+    "player_id",
+    "player_display_name",
+    "position",
+    "recent_team",
+    "season",
+    "week",
+    *_TEAM_DEF_STATS,
+    "pts_allowed",
+)
+
+
+def _points_allowed(df: pd.DataFrame) -> pd.DataFrame:
+    """[defteam, season, week, pts_allowed] — the points a team's defense gave up,
+    i.e. the opponent's final score, one row per team per game."""
+    g = df.dropna(subset=["home_team", "away_team"]).groupby(
+        ["game_id", "season", "week", "home_team", "away_team"], as_index=False
+    )
+    finals = g.agg(home=("total_home_score", "max"), away=("total_away_score", "max"))
+    home = finals[["home_team", "season", "week", "away"]].rename(
+        columns={"home_team": "defteam", "away": "pts_allowed"}
+    )
+    away = finals[["away_team", "season", "week", "home"]].rename(
+        columns={"away_team": "defteam", "home": "pts_allowed"}
+    )
+    return pd.concat([home, away], ignore_index=True)
+
+
+def _aggregate_team_defense(df: pd.DataFrame) -> pd.DataFrame:
+    """pbp -> one row per team-defense per week with the Yahoo DST stat columns.
+    Categories are credited to the defending team (defteam); defensive vs return
+    TDs are split by play_type. Keyed on a synthetic gsis 'DST-{ABBR}' matching
+    the synthesized DST players. Pure (no I/O) so it's unit-testable."""
+    d = df[df["defteam"].notna()].copy()
+    keys = ["defteam", "season", "week"]
+    d["dst_sack"] = d["sack"].fillna(0)
+    d["dst_int"] = d["interception"].fillna(0)
+    d["dst_fum_rec"] = (d["fumble_recovery_1_team"] == d["defteam"]).astype("int64")
+    d["dst_safety"] = d["safety"].fillna(0)
+    scored = (d["touchdown"] == 1) & (d["td_team"] == d["defteam"])
+    d["dst_td"] = (scored & d["play_type"].isin(["pass", "run"])).astype("int64")
+    d["dst_ret_td"] = (scored & d["play_type"].isin(["punt", "kickoff"])).astype(
+        "int64"
+    )
+    d["dst_blk"] = (
+        (d["punt_blocked"] == 1)
+        | (d["field_goal_result"] == "blocked")
+        | (d["extra_point_result"] == "blocked")
+    ).astype("int64")
+    d["dst_xpr"] = (d["defensive_two_point_conv"] == 1).astype("int64")
+
+    agg = d.groupby(keys, as_index=False)[list(_TEAM_DEF_STATS)].sum()
+    agg = agg.merge(_points_allowed(df), on=keys, how="left")
+    agg["pts_allowed"] = agg["pts_allowed"].fillna(0)
+    agg["player_id"] = "DST-" + agg["defteam"]
+    agg["player_display_name"] = agg["defteam"] + " DST"
+    agg["position"] = "DST"
+    agg["recent_team"] = agg["defteam"]
+    return agg[list(_TEAM_DEF_COLUMNS)]
+
+
+def _ingest_team_defense(season: int) -> int:
+    """Team-defense (DST) box score from play-by-play — the counterpart to the
+    kicking aggregate. Scored with the league's DST modifiers (additive cats +
+    points-allowed brackets) and projected like a Layer-0 player."""
+    df = nfl.import_pbp_data([season], downcast=True, cache=False)
+    return _write("team_defense", season, _aggregate_team_defense(df))
+
+
 _INGESTORS: dict[str, Callable[[int], int]] = {
     "pbp": _ingest_pbp,
     "schedules": _ingest_schedules,
     "player_stats": _ingest_player_stats,
     "kicking": _ingest_kicking,
+    "team_defense": _ingest_team_defense,
 }
 
 
