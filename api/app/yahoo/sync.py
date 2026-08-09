@@ -11,6 +11,21 @@ from __future__ import annotations
 from app.storage import postgres
 from app.yahoo.parse_jsonf import parse_teams
 
+# Yahoo returns a real GUID but the nickname "--hidden--" for a manager not
+# visible to the logged-in user (pre-membership managers who left / private
+# profiles). We can't name them, so we don't mint a person — the team falls back
+# to its own name, which is the pre-2022 unclaimed-era behaviour the pages intend.
+HIDDEN_NICKNAME = "--hidden--"
+
+
+def _usable_manager(guid: str | None, nickname: str | None) -> bool:
+    return (
+        bool(guid)
+        and len(guid) > 2  # a real GUID is 26 chars; skips junk like "--"
+        and bool(nickname)
+        and nickname != HIDDEN_NICKNAME
+    )
+
 
 def _upsert_manager(cur, guid: str, nickname: str | None) -> str:
     """Upsert the canonical person by Yahoo GUID → managers.id. display_name
@@ -60,7 +75,7 @@ def sync_teams(payload: dict) -> dict:
         for t in teams:
             manager_id = (
                 _upsert_manager(cur, t.manager_guid, t.manager_nickname)
-                if t.manager_guid
+                if _usable_manager(t.manager_guid, t.manager_nickname)
                 else None
             )
             cur.execute(
@@ -75,7 +90,7 @@ def sync_teams(payload: dict) -> dict:
                 (
                     t.team_key,
                     t.is_mine,
-                    manager_id,  # COALESCE keeps an existing link if this has no guid
+                    manager_id,  # COALESCE keeps an existing link when None (hidden)
                     t.wins,
                     t.losses,
                     t.ties,
