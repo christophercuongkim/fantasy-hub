@@ -70,6 +70,14 @@ export default async function Home() {
             meta="Review Yahoo ↔ nflverse matches"
           />
         )}
+        {admin && (
+          <NavCard
+            href="/admin/yahoo"
+            eyebrow="ADMIN"
+            title="Yahoo sync"
+            meta="Cookie + league team sync"
+          />
+        )}
         {!session && (
           <NavCard
             href="/login"
