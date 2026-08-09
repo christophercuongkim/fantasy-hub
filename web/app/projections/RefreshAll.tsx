@@ -73,11 +73,11 @@ export function RefreshAll() {
     };
   }, [running, router]);
 
-  const onClick = () =>
+  const run = (forceIngestAll: boolean) =>
     start(async () => {
       setError(null);
       setNote(null);
-      const r = await refreshAll();
+      const r = await refreshAll(forceIngestAll);
       if (r.error) {
         setError(r.error);
         return;
@@ -100,18 +100,34 @@ export function RefreshAll() {
         alignItems: "flex-end",
       }}
     >
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        iconLeft="arrows-clockwise"
-        loading={starting || running}
-        loadingLabel={loadingLabel}
-        disabled={starting || running}
-        onClick={onClick}
-      >
-        Refresh all
-      </Button>
+      <div style={{ display: "flex", gap: "var(--space-2)" }}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          iconLeft="arrows-clockwise"
+          loading={starting || running}
+          loadingLabel={loadingLabel}
+          disabled={starting || running}
+          onClick={() => run(false)}
+        >
+          Refresh all
+        </Button>
+        {/* Forces a re-pull of every season's datasets before projecting — for an
+            nflverse schema change. Slower; the normal Refresh all suffices otherwise. */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          iconLeft="database"
+          loading={starting || running}
+          loadingLabel={loadingLabel}
+          disabled={starting || running}
+          onClick={() => run(true)}
+        >
+          Re-ingest + refresh
+        </Button>
+      </div>
       {error ? (
         <span
           style={{ font: "var(--type-caption)", color: "var(--text-danger)" }}

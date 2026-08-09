@@ -593,11 +593,17 @@ def backfill_status() -> dict:
     return {**_STATUS, "errors": list(_STATUS["errors"])}
 
 
-def backfill_all() -> dict:
-    """Ingest every league season (player_stats + schedules) then project every
-    week that has data. Long-running — intended to run in the background. A
-    failing week is recorded and skipped so one bad week can't abort the run.
-    Updates _STATUS as it goes for the progress poll."""
+def backfill_all(force_ingest_all: bool = False) -> dict:
+    """Ingest every league season's datasets then project every week that has
+    data. Long-running — intended to run in the background. A failing week is
+    recorded and skipped so one bad week can't abort the run. Updates _STATUS as
+    it goes for the progress poll.
+
+    Normally only the latest season is re-pulled (older Parquet is assumed
+    stable). `force_ingest_all=True` re-pulls EVERY season's datasets — needed
+    after an nflverse schema change adds columns a new scoring rule references,
+    since project_week reads the prior season's Parquet too (a stale one throws a
+    binder error). This is the "Re-ingest + refresh" button."""
     import logging
 
     from app.ingest import nflverse
@@ -624,7 +630,7 @@ def backfill_all() -> dict:
                 nflverse.ingest_season(
                     s,
                     ["player_stats", "schedules", "kicking", "team_defense"],
-                    force=(s == latest),
+                    force=(force_ingest_all or s == latest),
                 )
                 league_id, _ = league(s)
                 done = _projected_weeks(league_id, s)

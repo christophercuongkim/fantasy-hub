@@ -20,10 +20,16 @@ const apiUrl = () => process.env.API_URL ?? "http://localhost:4001";
 // Kick off the backfill (ingest all seasons + project every week). The api runs
 // it in the background and returns immediately; the client then polls
 // refreshStatus() for progress. Never throws — a failure surfaces inline.
-export async function refreshAll(): Promise<RefreshResult> {
+// `forceIngestAll` re-pulls every season's datasets (for an nflverse schema
+// change), not just the latest — the "Re-ingest + refresh" path.
+export async function refreshAll(
+  forceIngestAll = false,
+): Promise<RefreshResult> {
   try {
     const res = await fetch(`${apiUrl()}/jobs/refresh-all`, {
       method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ force_ingest_all: forceIngestAll }),
       cache: "no-store",
     });
     if (res.status === 409) return { alreadyRunning: true };
