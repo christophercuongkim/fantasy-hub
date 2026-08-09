@@ -11,7 +11,12 @@ from __future__ import annotations
 import json
 
 from app.storage import postgres
-from app.yahoo.parse_jsonf import parse_roster, parse_settings, parse_teams
+from app.yahoo.parse_jsonf import (
+    parse_matchups,
+    parse_roster,
+    parse_settings,
+    parse_teams,
+)
 
 # Yahoo returns a real GUID but the nickname "--hidden--" for a manager not
 # visible to the logged-in user (pre-membership managers who left / private
@@ -283,6 +288,59 @@ def sync_rosters(league_key: str, fetch, week: int) -> dict:
         "teams": len(team_keys),
         "written": sum(r.get("written", 0) for r in results),
         "results": results,
+    }
+
+
+def sync_matchups(payload: dict) -> dict:
+    """Upsert a week's matchups from a scoreboard payload. Stored once per pair in
+    canonical order (lower league_team uuid = team_a), matching the table's
+    (league_id, week, team_a_id) key. Skips a matchup whose teams aren't synced."""
+    sb = parse_matchups(payload)
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM leagues WHERE yahoo_league_key = %s", (sb.league_key,)
+        )
+        row = cur.fetchone()
+        if not row:
+            raise ValueError(f"no league for {sb.league_key} — sync teams first")
+        league_id = row[0]
+
+        keys = [k for m in sb.matchups for k in (m.team_a_key, m.team_b_key)]
+        cur.execute(
+            "SELECT yahoo_team_key, id FROM league_teams "
+            "WHERE yahoo_team_key = ANY(%s)",
+            (keys,),
+        )
+        tmap = {k: i for k, i in cur.fetchall()}
+
+        written = 0
+        for m in sb.matchups:
+            a, b = tmap.get(m.team_a_key), tmap.get(m.team_b_key)
+            if a is None or b is None:
+                continue
+            ap, bp = m.team_a_points, m.team_b_points
+            if a > b:  # canonical: lower uuid is team_a
+                a, b, ap, bp = b, a, bp, ap
+            cur.execute(
+                """
+                INSERT INTO matchups (league_id, week, team_a_id, team_b_id,
+                    team_a_score, team_b_score, is_playoff)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (league_id, week, team_a_id) DO UPDATE SET
+                    team_b_id = EXCLUDED.team_b_id,
+                    team_a_score = EXCLUDED.team_a_score,
+                    team_b_score = EXCLUDED.team_b_score,
+                    is_playoff = EXCLUDED.is_playoff
+                """,
+                (league_id, sb.week, a, b, ap, bp, m.is_playoff),
+            )
+            written += 1
+        conn.commit()
+    return {
+        "league_key": sb.league_key,
+        "week": sb.week,
+        "matchups": len(sb.matchups),
+        "written": written,
     }
 
 

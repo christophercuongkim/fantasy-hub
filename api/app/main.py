@@ -345,6 +345,27 @@ class SyncRostersRequest(BaseModel):
     week: int
 
 
+class SyncMatchupsRequest(BaseModel):
+    league_key: str
+    week: int
+
+
+# A week's matchups + scores → the matchups table (one call for the whole league).
+@app.post("/jobs/sync-matchups")
+def sync_matchups_job(body: SyncMatchupsRequest) -> JSONResponse:
+    from app.yahoo import pub_api, sync
+
+    try:
+        payload = pub_api.scoreboard(body.league_key, body.week)
+        return JSONResponse(sync.sync_matchups(payload))
+    except pub_api.CookieExpired as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    except (pub_api.NoCookie, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 # Every team's weekly roster (players + slots) → the rosters table. Post-draft.
 @app.post("/jobs/sync-rosters")
 def sync_rosters_job(body: SyncRostersRequest) -> JSONResponse:

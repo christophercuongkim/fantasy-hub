@@ -1,0 +1,60 @@
+{
+  "fantasy_content": {
+    "league": {
+      "league_key": "449.l.93367",
+      "name": "PeopleCanEat",
+      "season": "2024",
+      "scoreboard": {
+        "week": "1",
+        "matchups": [
+          {
+            "matchup": {
+              "week": "1",
+              "is_playoffs": "0",
+              "winner_team_key": "449.l.93367.t.1",
+              "teams": [
+                {
+                  "team": {
+                    "team_key": "449.l.93367.t.1",
+                    "name": "Napoleon Kyrenite",
+                    "team_points": { "coverage_type": "week", "week": "1", "total": "109.52" }
+                  }
+                },
+                {
+                  "team": {
+                    "team_key": "449.l.93367.t.11",
+                    "name": "Stephen Asian Smith",
+                    "team_points": { "coverage_type": "week", "week": "1", "total": "101.46" }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "matchup": {
+              "week": "1",
+              "is_playoffs": "0",
+              "winner_team_key": "449.l.93367.t.10",
+              "teams": [
+                {
+                  "team": {
+                    "team_key": "449.l.93367.t.10",
+                    "name": "Samuel L. Jackson",
+                    "team_points": { "coverage_type": "week", "week": "1", "total": "120.30" }
+                  }
+                },
+                {
+                  "team": {
+                    "team_key": "449.l.93367.t.4",
+                    "name": "DJ JD",
+                    "team_points": { "coverage_type": "week", "week": "1", "total": "95.10" }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

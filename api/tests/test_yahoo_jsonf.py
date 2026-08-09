@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.yahoo.parse_jsonf import (
     parse_league,
+    parse_matchups,
     parse_roster,
     parse_settings,
     parse_teams,
@@ -14,6 +15,7 @@ _FIX = Path(__file__).parent / "fixtures"
 FIXTURE = json.loads((_FIX / "teams_standings.json").read_text())
 SETTINGS = json.loads((_FIX / "settings.json").read_text())
 ROSTER = json.loads((_FIX / "roster.json").read_text())
+SCOREBOARD = json.loads((_FIX / "scoreboard.json").read_text())
 
 
 def test_parse_league():
@@ -86,3 +88,16 @@ def test_parse_roster_slots_and_starters():
     assert by_id["33398"].slot == "W/R/T" and by_id["33398"].is_starter is True
     assert by_id["28534"].slot == "BN" and by_id["28534"].is_starter is False
     assert by_id["100012"].slot == "DEF"  # DST parses; the crosswalk skips it later
+
+
+def test_parse_matchups():
+    sb = parse_matchups(SCOREBOARD)
+    assert sb.league_key == "449.l.93367"
+    assert sb.week == 1
+    assert len(sb.matchups) == 2
+    m = sb.matchups[0]
+    assert m.team_a_key == "449.l.93367.t.1"
+    assert m.team_a_points == 109.52
+    assert m.team_b_key == "449.l.93367.t.11"
+    assert m.team_b_points == 101.46
+    assert m.is_playoff is False

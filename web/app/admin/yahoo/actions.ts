@@ -90,6 +90,28 @@ export async function syncRosters(
   }
 }
 
+// A week's matchups + scores → the matchups table.
+export async function syncMatchups(
+  leagueKey: string,
+  week: number,
+): Promise<{ result?: Record<string, unknown>; error?: string }> {
+  try {
+    const res = await fetch(`${apiUrl()}/jobs/sync-matchups`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ league_key: leagueKey, week }),
+      cache: "no-store",
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: String(body.error ?? `HTTP ${res.status}`) };
+    return { result: body };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not reach the api.",
+    };
+  }
+}
+
 // Sync every league we hold a Yahoo key for — one cookie, all seasons.
 export async function syncAll(): Promise<{
   result?: Record<string, unknown>;
