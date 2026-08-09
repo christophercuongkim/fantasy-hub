@@ -47,3 +47,12 @@
     animation: none;
   }
 }
+
+/* Native <select> dropdowns: the DS gives the control a custom background, which
+   makes Chrome render the option popup with a default (light) surface — so under
+   `color-scheme: dark` the text is light too and it reads white-on-white. Pin the
+   options to DS surfaces so the popup is dark in dark mode, light in light. */
+option {
+  background-color: var(--surface-card);
+  color: var(--text-primary);
+}
