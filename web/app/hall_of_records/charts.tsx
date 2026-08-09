@@ -708,10 +708,16 @@ function LuckSkill({
         ctx.active === d.manager ? (
           <text
             key={`lbl-${i}`}
-            x={x(d.pointsFor) + 8}
+            x={x(d.pointsFor) + 7}
             y={y(d.wins) + 3}
-            fontSize="10"
+            fontSize="11"
+            fontWeight={600}
             fill={INK}
+            // halo: paint a surface-coloured stroke behind the glyph so the year
+            // stays legible over dots + gridlines when a manager's seasons cluster.
+            stroke="var(--surface-card)"
+            strokeWidth={3}
+            paintOrder="stroke"
             style={{ ...FIG, pointerEvents: "none" }}
           >
             {`'${String(d.season).slice(2)}`}
