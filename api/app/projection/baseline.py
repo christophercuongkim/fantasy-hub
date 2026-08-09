@@ -33,7 +33,7 @@ LAMBDA = 0.85
 LOOKBACK = 8
 MIN_GAMES = 3
 PRIOR_SEASON_DISCOUNT = 0.7
-MODEL_VERSION = "layer3-priors-1"
+MODEL_VERSION = "kick-1"
 FANTASY_POS = ("QB", "RB", "WR", "TE")
 SEASON_FLOOR = 2019  # nflverse data floor (mirrors ingest.nflverse.MIN_SEASON)
 
@@ -57,6 +57,21 @@ SCORING_COLUMNS: dict[str, str] = {
         "+coalesce(receiving_2pt_conversions,0))"
     ),
     "ret_td": "coalesce(special_teams_tds,0)",
+}
+
+# Kicking scoring key -> column in the `kicking` cold-tier dataset (pbp-derived).
+# Separate from SCORING_COLUMNS because kickers live in their own dataset with
+# their own columns; scored the same way (league modifier x stat) via the league
+# scoring_json, so any Yahoo kicking rule the league sets is honoured exactly.
+KICKING_SCORING_COLUMNS: dict[str, str] = {
+    "fgm_0_19": "fgm_0_19",
+    "fgm_20_29": "fgm_20_29",
+    "fgm_30_39": "fgm_30_39",
+    "fgm_40_49": "fgm_40_49",
+    "fgm_50": "fgm_50",
+    "fg_yds": "fg_yds",
+    "pat_made": "pat_made",
+    "pat_miss": "pat_miss",
 }
 
 
@@ -135,18 +150,17 @@ def _write_postgres(records: list[dict], league_id: str, season: int, week: int)
     return len(rows)
 
 
-def points_expr(scoring: dict[str, float]) -> str:
-    """SQL expression for league fantasy points from player_stats columns.
+def points_expr(
+    scoring: dict[str, float], columns: dict[str, str] = SCORING_COLUMNS
+) -> str:
+    """SQL expression for league fantasy points from a stat dataset's columns.
 
-    Scoring keys with no column mapping are skipped — a Layer-0 baseline over the
-    mapped stats is close enough; the unmapped tail (e.g. return TDs on a
-    non-ST player) is rare.
+    `columns` maps scoring keys -> column expressions (offense box score by
+    default; pass KICKING_SCORING_COLUMNS for the kicking dataset). Scoring keys
+    with no mapping are skipped — a Layer-0 baseline over the mapped stats is
+    close enough; the unmapped tail (e.g. return TDs on a non-ST player) is rare.
     """
-    terms = [
-        f"({SCORING_COLUMNS[k]} * {m})"
-        for k, m in scoring.items()
-        if k in SCORING_COLUMNS and m
-    ]
+    terms = [f"({columns[k]} * {m})" for k, m in scoring.items() if k in columns and m]
     return " + ".join(terms) if terms else "0"
 
 
@@ -176,6 +190,11 @@ def weighted_projection(
 
 def _season_glob(season: int) -> str | None:
     d = parquet.dataset_dir("player_stats", season=season)
+    return f"{d}/*.parquet" if d.is_dir() and any(d.glob("*.parquet")) else None
+
+
+def _kicking_glob(season: int) -> str | None:
+    d = parquet.dataset_dir("kicking", season=season)
     return f"{d}/*.parquet" if d.is_dir() and any(d.glob("*.parquet")) else None
 
 
@@ -331,6 +350,44 @@ def project_week(season: int, week: int) -> dict:
             projected.add(gsis)
             priors_written += 1
 
+        # Kickers: their own pbp-derived dataset + a Layer-0 EWMA (FG attempts
+        # aren't a stable opportunity, so volume x efficiency doesn't apply).
+        # Scored with the league's own kicking modifiers; skipped when the league
+        # has no kicking scoring or the kicking cold tier isn't built yet.
+        kickers_written = 0
+        kpts = points_expr(scoring, KICKING_SCORING_COLUMNS)
+        kglobs = [g for s in (season - 1, season) if (g := _kicking_glob(s))]
+        if kpts != "0" and kglobs:
+            ksrcs = "[" + ", ".join(f"'{g}'" for g in kglobs) + "]"
+            krows = con.execute(
+                f"""
+                SELECT player_id AS gsis_id, player_display_name AS name,
+                       recent_team AS team, season, week, ({kpts})::double AS pts
+                FROM read_parquet({ksrcs})
+                WHERE (season < {season} OR (season = {season} AND week < {week}))
+                """
+            ).fetchall()
+            khist: dict[str, dict] = {}
+            for gsis, name, team, s, w, p in krows:
+                kh = khist.setdefault(
+                    gsis, {"name": name, "games": [], "last": (0, 0, None)}
+                )
+                kh["games"].append({"season": s, "week": w, "pts": float(p or 0.0)})
+                if (s, w) > (kh["last"][0], kh["last"][1]):
+                    kh["last"] = (s, w, team)
+            for gsis, kh in khist.items():
+                if gsis in projected:
+                    continue
+                proj = weighted_projection(kh["games"], season)  # Layer-0 EWMA
+                if proj is None:
+                    continue
+                mean, n = proj
+                records.append(
+                    make_record(gsis, kh["name"], "K", kh["last"][2], mean, n)
+                )
+                projected.add(gsis)
+                kickers_written += 1
+
         if not records:
             # Legitimately nothing to project (e.g. early weeks of the floor
             # season — no prior games). Not an error; a 0-player result.
@@ -362,6 +419,7 @@ def project_week(season: int, week: int) -> dict:
         "league_id": league_id,
         "players": len(records),
         "priors": priors_written,
+        "kickers": kickers_written,
         "byes_zeroed": byes,
         "postgres_rows": written,
         "model_version": MODEL_VERSION,
@@ -504,7 +562,7 @@ def backfill_all() -> dict:
         for s in seasons:
             try:
                 nflverse.ingest_season(
-                    s, ["player_stats", "schedules"], force=(s == latest)
+                    s, ["player_stats", "schedules", "kicking"], force=(s == latest)
                 )
                 league_id, _ = league(s)
                 done = _projected_weeks(league_id, s)

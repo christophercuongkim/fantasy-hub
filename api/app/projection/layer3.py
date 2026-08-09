@@ -46,6 +46,8 @@ RATIOS: dict[str, dict[str, float]] = {
     "RB": {"r20": 0.349, "r50": 0.798, "r80": 1.515, "cv": 0.799},
     "WR": {"r20": 0.316, "r50": 0.788, "r80": 1.535, "cv": 0.801},
     "TE": {"r20": 0.317, "r50": 0.778, "r80": 1.543, "cv": 0.823},
+    # Kickers: Layer-0 EWMA mean vs actual, fit on the QA cold tier (kick-1).
+    "K": {"r20": 0.548, "r50": 0.923, "r80": 1.386, "cv": 0.408},
 }
 
 
