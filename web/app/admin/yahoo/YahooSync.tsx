@@ -2,7 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@seakim/design-system";
-import { saveCookie, syncAll, syncLeague, syncTeams } from "./actions";
+import {
+  saveCookie,
+  syncAll,
+  syncLeague,
+  syncRosters,
+  syncTeams,
+} from "./actions";
 
 const inputStyle: React.CSSProperties = {
   fontFamily: "var(--font-mono)",
@@ -24,6 +30,7 @@ const labelStyle: React.CSSProperties = {
 export function YahooSync() {
   const [cookie, setCookie] = useState("");
   const [leagueKey, setLeagueKey] = useState("470.l.735658");
+  const [week, setWeek] = useState("1");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -133,6 +140,47 @@ export function YahooSync() {
           }
         >
           Sync all seasons
+        </Button>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "var(--space-3)",
+          alignItems: "flex-end",
+        }}
+      >
+        <label
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-2)",
+            maxWidth: "5rem",
+          }}
+        >
+          <span style={labelStyle}>Week</span>
+          <input
+            value={week}
+            onChange={(e) => setWeek(e.target.value)}
+            inputMode="numeric"
+            style={inputStyle}
+          />
+        </label>
+        <Button
+          variant="secondary"
+          disabled={pending || !leagueKey.trim() || !week.trim()}
+          onClick={() =>
+            start(async () => {
+              const r = await syncRosters(leagueKey, Number(week));
+              setMsg(
+                r.error
+                  ? `Error: ${r.error}`
+                  : `Rosters wk ${r.result?.week}: ${r.result?.written} players across ${r.result?.teams} teams`,
+              );
+            })
+          }
+        >
+          Sync rosters
         </Button>
       </div>
 

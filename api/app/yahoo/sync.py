@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 
 from app.storage import postgres
-from app.yahoo.parse_jsonf import parse_settings, parse_teams
+from app.yahoo.parse_jsonf import parse_roster, parse_settings, parse_teams
 
 # Yahoo returns a real GUID but the nickname "--hidden--" for a manager not
 # visible to the logged-in user (pre-membership managers who left / private
@@ -211,6 +211,78 @@ def sync_league(settings_payload: dict, teams_payload: dict) -> dict:
         "season": settings.season,
         "scoring_keys": sorted(settings.scoring["stat_modifiers"]),
         "teams": teams,
+    }
+
+
+def sync_roster(payload: dict) -> dict:
+    """Replace a team's weekly roster snapshot. Crosswalks each Yahoo player to
+    players.id by yahoo_id; unmatched (DST, and any player nflverse lacks a
+    yahoo_id for) are skipped — rosters.player_id is a required FK. Delete-then-
+    insert so a dropped player doesn't linger in the week."""
+    r = parse_roster(payload)
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM league_teams WHERE yahoo_team_key = %s", (r.team_key,)
+        )
+        row = cur.fetchone()
+        if not row:
+            raise ValueError(f"no league_team for {r.team_key} — sync teams first")
+        team_id = row[0]
+
+        cur.execute(
+            "SELECT yahoo_id, id FROM players WHERE yahoo_id = ANY(%s)",
+            ([p.yahoo_player_id for p in r.players],),
+        )
+        pmap = {y: i for y, i in cur.fetchall()}
+
+        cur.execute(
+            "DELETE FROM rosters WHERE league_team_id = %s AND week = %s",
+            (team_id, r.week),
+        )
+        written = 0
+        for p in r.players:
+            pid = pmap.get(p.yahoo_player_id)
+            if pid is None:
+                continue
+            cur.execute(
+                "INSERT INTO rosters (league_team_id, week, player_id, slot, "
+                "is_starter, fetched_at) VALUES (%s, %s, %s, %s, %s, now()) "
+                "ON CONFLICT DO NOTHING",
+                (team_id, r.week, pid, p.slot, p.is_starter),
+            )
+            written += cur.rowcount
+        conn.commit()
+    return {
+        "team_key": r.team_key,
+        "week": r.week,
+        "players": len(r.players),
+        "written": written,
+        "skipped": len(r.players) - written,
+    }
+
+
+def sync_rosters(league_key: str, fetch, week: int) -> dict:
+    """Every team's roster for a week — one call per team. `fetch(team_key, week)
+    -> payload` (pub_api.roster live)."""
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT lt.yahoo_team_key FROM league_teams lt "
+            "JOIN leagues l ON l.id = lt.league_id "
+            "WHERE l.yahoo_league_key = %s AND lt.yahoo_team_key IS NOT NULL",
+            (league_key,),
+        )
+        team_keys = [r[0] for r in cur.fetchall()]
+    results: list[dict] = []
+    for tk in team_keys:
+        try:
+            results.append(sync_roster(fetch(tk, week)))
+        except ValueError as e:
+            results.append({"team_key": tk, "error": str(e)})
+    return {
+        "week": week,
+        "teams": len(team_keys),
+        "written": sum(r.get("written", 0) for r in results),
+        "results": results,
     }
 
 

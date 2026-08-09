@@ -3,11 +3,17 @@
 import json
 from pathlib import Path
 
-from app.yahoo.parse_jsonf import parse_league, parse_settings, parse_teams
+from app.yahoo.parse_jsonf import (
+    parse_league,
+    parse_roster,
+    parse_settings,
+    parse_teams,
+)
 
 _FIX = Path(__file__).parent / "fixtures"
 FIXTURE = json.loads((_FIX / "teams_standings.json").read_text())
 SETTINGS = json.loads((_FIX / "settings.json").read_text())
+ROSTER = json.loads((_FIX / "roster.json").read_text())
 
 
 def test_parse_league():
@@ -68,3 +74,15 @@ def test_parse_settings_scoring_and_roster():
     assert s.num_playoff_teams == 6
     assert s.waiver_type == "FAAB"  # uses_faab overrides the ordering type
     assert s.trade_deadline == "2026-11-28"
+
+
+def test_parse_roster_slots_and_starters():
+    r = parse_roster(ROSTER)
+    assert r.team_key == "461.l.328209.t.10"
+    assert r.week == 1
+    by_id = {p.yahoo_player_id: p for p in r.players}
+    # a real starter, a real flex start, a real bench, a real DST
+    assert by_id["31002"].slot == "QB" and by_id["31002"].is_starter is True
+    assert by_id["33398"].slot == "W/R/T" and by_id["33398"].is_starter is True
+    assert by_id["28534"].slot == "BN" and by_id["28534"].is_starter is False
+    assert by_id["100012"].slot == "DEF"  # DST parses; the crosswalk skips it later
