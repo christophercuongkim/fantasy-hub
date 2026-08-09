@@ -397,3 +397,22 @@ def sync_all_teams_job() -> JSONResponse:
         return JSONResponse(status_code=422, content={"error": str(e)})
     except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
         return JSONResponse(status_code=424, content={"error": str(e)})
+
+
+class SimMatchupRequest(BaseModel):
+    league_key: str
+    week: int
+
+
+# Layer 4: Monte Carlo win probability for every matchup in a league-week, from
+# the real starting lineups + their projections. Synchronous (a couple seconds).
+@app.post("/jobs/sim-matchup")
+def sim_matchup_job(body: SimMatchupRequest) -> JSONResponse:
+    from app.projection import sim
+
+    try:
+        return JSONResponse(sim.sim_week(body.league_key, body.week))
+    except ValueError as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — DuckDB / Postgres failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
