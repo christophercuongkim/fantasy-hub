@@ -46,3 +46,23 @@ export async function syncTeams(
     };
   }
 }
+
+// Sync every league we hold a Yahoo key for — one cookie, all seasons.
+export async function syncAll(): Promise<{
+  result?: Record<string, unknown>;
+  error?: string;
+}> {
+  try {
+    const res = await fetch(`${apiUrl()}/jobs/sync-all-teams`, {
+      method: "POST",
+      cache: "no-store",
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: String(body.error ?? `HTTP ${res.status}`) };
+    return { result: body };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not reach the api.",
+    };
+  }
+}
