@@ -13,6 +13,12 @@ export function RefreshAll() {
   const router = useRouter();
   const [starting, start] = useTransition();
   const [running, setRunning] = useState(false);
+  // Which button kicked off the current run, so only it shows "Processing…"
+  // (the other is disabled but keeps its label). null = not us / picked up on
+  // mount, in which case the caption carries the running state.
+  const [activeMode, setActiveMode] = useState<"refresh" | "rebuild" | null>(
+    null,
+  );
   const [status, setStatus] = useState<RefreshStatus | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +47,7 @@ export function RefreshAll() {
       setStatus(s);
       if (!s.running) {
         setRunning(false);
+        setActiveMode(null);
         if (s.error) {
           setError(s.error);
         } else if (s.weeksDone > 0) {
@@ -73,17 +80,22 @@ export function RefreshAll() {
     };
   }, [running, router]);
 
-  const run = (forceIngestAll: boolean) =>
+  const run = (forceIngestAll: boolean) => {
+    setActiveMode(forceIngestAll ? "rebuild" : "refresh");
     start(async () => {
       setError(null);
       setNote(null);
       const r = await refreshAll(forceIngestAll);
       if (r.error) {
         setError(r.error);
+        setActiveMode(null);
         return;
       }
       setRunning(true); // started (or already running) → enter the poll loop
     });
+  };
+
+  const busy = starting || running; // disables both buttons
 
   const loadingLabel = running
     ? status
@@ -107,9 +119,9 @@ export function RefreshAll() {
           variant="secondary"
           size="sm"
           iconLeft="arrows-clockwise"
-          loading={starting || running}
+          loading={busy && activeMode === "refresh"}
           loadingLabel={loadingLabel}
-          disabled={starting || running}
+          disabled={busy}
           onClick={() => run(false)}
         >
           Refresh
@@ -122,9 +134,9 @@ export function RefreshAll() {
           variant="secondary"
           size="sm"
           iconLeft="database"
-          loading={starting || running}
+          loading={busy && activeMode === "rebuild"}
           loadingLabel={loadingLabel}
-          disabled={starting || running}
+          disabled={busy}
           onClick={() => run(true)}
         >
           Full rebuild
