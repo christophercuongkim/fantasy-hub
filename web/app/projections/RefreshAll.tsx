@@ -101,6 +101,7 @@ export function RefreshAll() {
       }}
     >
       <div style={{ display: "flex", gap: "var(--space-2)" }}>
+        {/* Refresh: re-score stored data (fast, the normal case). */}
         <Button
           type="button"
           variant="secondary"
@@ -111,10 +112,10 @@ export function RefreshAll() {
           disabled={starting || running}
           onClick={() => run(false)}
         >
-          Refresh all
+          Refresh
         </Button>
-        {/* Forces a re-pull of every season's datasets before projecting — for an
-            nflverse schema change. Slower; the normal Refresh all suffices otherwise. */}
+        {/* Full rebuild: re-fetch every season's source data first, then re-score
+            — for an nflverse schema change / a new dataset. Slower. */}
         <Button
           type="button"
           variant="ghost"
@@ -125,7 +126,7 @@ export function RefreshAll() {
           disabled={starting || running}
           onClick={() => run(true)}
         >
-          Re-ingest + refresh
+          Full rebuild
         </Button>
       </div>
       {error ? (
@@ -146,7 +147,18 @@ export function RefreshAll() {
         >
           {note}
         </span>
-      ) : null}
+      ) : (
+        <span
+          style={{
+            font: "var(--type-caption)",
+            color: "var(--text-tertiary)",
+            textAlign: "right",
+          }}
+        >
+          Refresh re-scores stored data · Full rebuild re-fetches every season
+          first
+        </span>
+      )}
     </div>
   );
 }
