@@ -208,3 +208,28 @@ scheduler's `bash -c`, no network round-trip, and the exit code drives
 success/failure. Only reach for an HTTP client in-container if you've confirmed
 one is installed. Factor the endpoint's logic into a plain function so the HTTP
 route and the module entrypoint share it.
+
+## MODEL_VERSION bump requires a Refresh-all — or projections silently serve stale
+
+**Symptom:** the matchup sim showed teams with 5–7 projected starters even after the
+roster crosswalk fix filled all 12 teams to 7 real starters. The gap was 2025
+rookies (Jeanty, Henderson, Hunter, McMillan…) rostered-and-started with no
+projection — despite the draft-priors model (#77, `layer3-priors-1`) being merged
+specifically to project no-history drafted players from their ADP.
+
+**Root cause:** the 2025 projections on QA/prod were still `layer3-dist-1` (10,182
+rows) — the priors model *never ran* against them. When #77 merged, its post-merge
+"click Refresh all" step was deferred as "offseason", so the `MODEL_VERSION` bump
+(`layer3-dist-1 → layer3-priors-1`) never triggered a re-projection. The code was
+correct: `draft_population(league, 2025)` returns the rookies (180 picks, 158
+resolved, 139 ADP), and `_projected_weeks` is MODEL_VERSION-scoped so Refresh-all
+*would* re-project — it just was never run.
+
+**Why + how to apply:** a `MODEL_VERSION` bump only takes effect after a re-projection
+— the invalidation is lazy (weeks not at the current version get re-projected on the
+next backfill), not eager. Bumping the constant in a PR does nothing to already-stored
+rows until Refresh-all runs. **So: any PR that changes `MODEL_VERSION` is not "done"
+until Refresh-all has run on every env that serves projections (QA *and* prod), not
+just merged.** Treat the Refresh-all as part of the PR's deploy checklist, not an
+optional follow-up. Verify with `SELECT model_version, count(*) FROM projections
+GROUP BY 1` — a lingering old version means stale model output is being served.
