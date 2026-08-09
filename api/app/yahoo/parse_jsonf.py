@@ -55,7 +55,8 @@ class LeagueSettings:
     name: str
     season: int | None
     num_teams: int | None
-    slug: str | None  # family key, from persistent_url .../league/<slug>
+    slug: str | None  # family key, from persistent_url .../league/<slug> (current only)
+    renew: str | None  # "<game>_<league_id>" of the prior season's league
     scoring: dict  # {stat_modifiers, fractional_points, negative_points}
     roster_positions: dict  # {position: count}
     playoff_start_week: int | None
@@ -109,6 +110,7 @@ def parse_settings(payload: dict) -> LeagueSettings:
         season=_to_int(lg.get("season")),
         num_teams=_to_int(lg.get("num_teams")),
         slug=slug,
+        renew=lg.get("renew") or None,
         scoring=scoring,
         roster_positions=roster,
         playoff_start_week=_to_int(s.get("playoff_start_week")),

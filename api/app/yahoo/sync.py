@@ -118,25 +118,49 @@ def sync_teams(payload: dict) -> dict:
     }
 
 
-def upsert_league(settings) -> str:
-    """Create or update the leagues row from a parsed /settings. Finds the family
-    by slug (from the settings' persistent_url). Idempotent — re-run after the
-    rules finalise to refresh scoring_json + roster in place. Returns league_id."""
-    if not settings.slug:
-        raise ValueError(
-            f"no persistent_url slug in settings for {settings.league_key}"
-        )
-    with postgres.connect() as conn, conn.cursor() as cur:
+def _resolve_family_id(cur, settings) -> str | None:
+    """Find the league's family. In order: this exact league already in the DB
+    (re-sync), the renewed-from prior season's league (renew chain), then the
+    persistent_url slug (only the current league exposes one)."""
+    cur.execute(
+        "SELECT family_id FROM leagues WHERE yahoo_league_key = %s",
+        (settings.league_key,),
+    )
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    if settings.renew:  # "461_328209" → the 461.l.328209 league
+        prior = settings.renew.replace("_", ".l.")
         cur.execute(
-            "SELECT id, sport FROM league_families WHERE yahoo_slug = %s",
-            (settings.slug,),
+            "SELECT family_id FROM leagues WHERE yahoo_league_key = %s", (prior,)
         )
-        fam = cur.fetchone()
-        if not fam:
+        row = cur.fetchone()
+        if row:
+            return row[0]
+    if settings.slug:
+        cur.execute(
+            "SELECT id FROM league_families WHERE yahoo_slug = %s", (settings.slug,)
+        )
+        row = cur.fetchone()
+        if row:
+            return row[0]
+    return None
+
+
+def upsert_league(settings) -> str:
+    """Create or update the leagues row from a parsed /settings. The family is
+    resolved from an existing season / the renew chain / the slug (see
+    _resolve_family_id). Idempotent — re-run after the rules finalise to refresh
+    scoring_json + roster in place. Returns league_id."""
+    with postgres.connect() as conn, conn.cursor() as cur:
+        family_id = _resolve_family_id(cur, settings)
+        if family_id is None:
             raise ValueError(
-                f"no league family for slug '{settings.slug}' — bootstrap it first"
+                f"couldn't resolve a family for {settings.league_key} "
+                "(no existing season, renew chain, or persistent_url slug)"
             )
-        family_id, sport = fam
+        cur.execute("SELECT sport FROM league_families WHERE id = %s", (family_id,))
+        sport = cur.fetchone()[0]
         cur.execute(
             """
             INSERT INTO leagues (family_id, sport, yahoo_league_key, name, season,

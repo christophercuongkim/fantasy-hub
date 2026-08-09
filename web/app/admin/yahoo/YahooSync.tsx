@@ -23,7 +23,7 @@ const labelStyle: React.CSSProperties = {
 
 export function YahooSync() {
   const [cookie, setCookie] = useState("");
-  const [leagueKey, setLeagueKey] = useState("449.l.93367");
+  const [leagueKey, setLeagueKey] = useState("470.l.735658");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
