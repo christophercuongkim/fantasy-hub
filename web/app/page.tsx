@@ -64,6 +64,14 @@ export default async function Home() {
         )}
         {admin && (
           <NavCard
+            href="/matchup"
+            eyebrow="ADMIN"
+            title="Matchup sim"
+            meta="Win probability per pairing"
+          />
+        )}
+        {admin && (
+          <NavCard
             href="/admin/crosswalk"
             eyebrow="ADMIN"
             title="Player crosswalk"
