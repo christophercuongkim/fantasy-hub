@@ -67,3 +67,34 @@ def sync_teams(payload: dict) -> dict:
         "teams_updated": updated,
         "unmatched": len(teams) - updated,
     }
+
+
+def _league_keys() -> list[str]:
+    """Every league we hold a Yahoo key for, oldest first — all bootstrapped
+    seasons of the renewed league."""
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT yahoo_league_key FROM leagues "
+            "WHERE yahoo_league_key IS NOT NULL ORDER BY season"
+        )
+        return [r[0] for r in cur.fetchall()]
+
+
+def sync_all_teams(fetch, keys: list[str] | None = None) -> dict:
+    """Sync teams for every league we know — one cookie, all seasons. `fetch` is
+    the injected source `fetch(league_key) -> payload` (pub_api.teams live).
+    Per-league ValueErrors (e.g. an unmatched name) are recorded and the loop
+    continues; a cookie/network failure propagates so the whole run aborts
+    loudly rather than logging the same error a dozen times."""
+    keys = keys if keys is not None else _league_keys()
+    results: list[dict] = []
+    for key in keys:
+        try:
+            results.append(sync_teams(fetch(key)))
+        except ValueError as e:
+            results.append({"league_key": key, "error": str(e)})
+    return {
+        "leagues": len(keys),
+        "synced": sum(1 for r in results if "error" not in r),
+        "results": results,
+    }

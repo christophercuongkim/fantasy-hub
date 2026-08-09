@@ -315,3 +315,19 @@ def sync_teams_job(body: SyncTeamsRequest) -> JSONResponse:
         return JSONResponse(status_code=422, content={"error": str(e)})
     except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
         return JSONResponse(status_code=424, content={"error": str(e)})
+
+
+# Sync teams for every league we hold a Yahoo key for — one cookie, all seasons,
+# no league_key to type.
+@app.post("/jobs/sync-all-teams")
+def sync_all_teams_job() -> JSONResponse:
+    from app.yahoo import pub_api, sync
+
+    try:
+        return JSONResponse(sync.sync_all_teams(pub_api.teams))
+    except pub_api.CookieExpired as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    except pub_api.NoCookie as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
