@@ -50,6 +50,8 @@ RATIOS: dict[str, dict[str, float]] = {
     # 3,607 kicker-weeks). Boom/bust like skill positions — this league's
     # yardage-based FG scoring spikes on long-FG games.
     "K": {"r20": 0.4572, "r50": 0.889, "r80": 1.5002, "cv": 0.6636},
+    # Team defense: Layer-0 EWMA mean vs actual, fit on the QA cold tier (dst-1).
+    "DST": {"r20": 0.4, "r50": 0.85, "r80": 1.55, "cv": 0.7},
 }
 
 

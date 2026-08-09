@@ -222,6 +222,32 @@ def sync_league(settings_payload: dict, teams_payload: dict) -> dict:
     }
 
 
+# Yahoo editorial_team_abbr -> nflverse `defteam` vocabulary — only the few that
+# differ (Yahoo keeps legacy/alt abbrevs). Everything else matches once uppercased.
+_YAHOO_TEAM_FIXUP = {"LAR": "LA", "OAK": "LV", "SD": "LAC", "STL": "LA", "WSH": "WAS"}
+
+
+def _nfl_abbr(yahoo_abbr: str | None) -> str:
+    a = (yahoo_abbr or "").upper()
+    return _YAHOO_TEAM_FIXUP.get(a, a)
+
+
+def _resolve_defense(cur, players: list) -> dict[str, str]:
+    """DEF roster entries -> synthesized DST players.id, linked by NFL team abbrev.
+    A DST's Yahoo player_id is season-varying and its name is a nickname, so team
+    (editorial_team_abbr -> our 'DST-{ABBR}' sentinel gsis) is the stable key."""
+    defs = [p for p in players if p.primary_position == "DEF" and p.team_abbr]
+    if not defs:
+        return {}
+    want = {p.yahoo_player_id: f"DST-{_nfl_abbr(p.team_abbr)}" for p in defs}
+    cur.execute(
+        "SELECT gsis_id, id FROM players WHERE gsis_id = ANY(%s)",
+        (list(set(want.values())),),
+    )
+    idmap = {g: str(i) for g, i in cur.fetchall()}
+    return {yid: idmap[g] for yid, g in want.items() if g in idmap}
+
+
 def _resolve_by_name(cur, misses: list) -> tuple[dict[str, str], set[str]]:
     """Second-chance crosswalk for players nflverse has no yahoo_id for: match on
     normalized name + position against the registry, accepting only a UNIQUE hit
@@ -283,8 +309,14 @@ def sync_roster(payload: dict) -> dict:
             ([p.yahoo_player_id for p in r.players],),
         )
         pmap = {y: i for y, i in cur.fetchall()}
+        by_def = _resolve_defense(cur, r.players)  # DEF -> synthesized DST players
         by_name, named_ids = _resolve_by_name(
-            cur, [p for p in r.players if p.yahoo_player_id not in pmap]
+            cur,
+            [
+                p
+                for p in r.players
+                if p.yahoo_player_id not in pmap and p.yahoo_player_id not in by_def
+            ],
         )
 
         cur.execute(
@@ -294,7 +326,11 @@ def sync_roster(payload: dict) -> dict:
         written = 0
         unresolved: list[dict] = []
         for p in r.players:
-            pid = pmap.get(p.yahoo_player_id) or by_name.get(p.yahoo_player_id)
+            pid = (
+                pmap.get(p.yahoo_player_id)
+                or by_def.get(p.yahoo_player_id)
+                or by_name.get(p.yahoo_player_id)
+            )
             if pid is None:
                 unresolved.append(
                     {
@@ -318,6 +354,7 @@ def sync_roster(payload: dict) -> dict:
         "players": len(r.players),
         "written": written,
         "matched_by_name": len(named_ids),
+        "matched_by_def": len(by_def),
         "skipped": len(r.players) - written,
         "unresolved": unresolved,
     }
@@ -347,6 +384,7 @@ def sync_rosters(league_key: str, fetch, week: int) -> dict:
         "teams": len(team_keys),
         "written": sum(r.get("written", 0) for r in results),
         "matched_by_name": sum(r.get("matched_by_name", 0) for r in results),
+        "matched_by_def": sum(r.get("matched_by_def", 0) for r in results),
         "unresolved": unresolved,
         "results": results,
     }

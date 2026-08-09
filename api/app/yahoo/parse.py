@@ -47,6 +47,24 @@ STAT_ID_MAP: dict[str, str] = {
     "29": "pat_made",
     "30": "pat_miss",
     "84": "fg_yds",
+    # Team defense (DST). Additive categories + the mutually-exclusive
+    # points-allowed brackets (50-56 — exactly one applies per game). Derived
+    # from pbp (sacks/INT/fumble-rec/TDs/safety/blocks/2pt-return + opp points).
+    "32": "dst_sack",
+    "33": "dst_int",
+    "34": "dst_fum_rec",
+    "35": "dst_td",  # defensive TD (pick-six / fumble return)
+    "36": "dst_safety",
+    "37": "dst_blk",  # blocked punt/FG/XP
+    "49": "dst_ret_td",  # special-teams return TD
+    "82": "dst_xpr",  # 2-pt return (defensive extra point)
+    "50": "pa_0",
+    "51": "pa_1_6",
+    "52": "pa_7_13",
+    "53": "pa_14_20",
+    "54": "pa_21_27",
+    "55": "pa_28_34",
+    "56": "pa_35",
 }
 
 

@@ -141,6 +141,9 @@ class RosterSlot:
     primary_position: str | None
     slot: str  # QB/RB/WR/TE/W/R/T/K/DEF/BN/IR — already our rosterSlotEnum values
     is_starter: bool
+    team_abbr: str | None = (
+        None  # NFL team (Yahoo editorial_team_abbr); DST links by it
+    )
 
 
 @dataclass
@@ -168,6 +171,7 @@ def parse_roster(payload: dict) -> TeamRoster:
                 primary_position=p.get("primary_position"),
                 slot=slot,
                 is_starter=slot not in BENCH_SLOTS,
+                team_abbr=p.get("editorial_team_abbr"),
             )
         )
     return TeamRoster(

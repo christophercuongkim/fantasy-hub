@@ -26,6 +26,42 @@ from app.crosswalk.names import _SUFFIX, normalize  # noqa: F401
 from app.storage import postgres
 
 FANTASY_POS = ("QB", "RB", "WR", "TE", "K")
+# 32 current NFL teams (nflverse `defteam` vocabulary — Rams = "LA"). DST are
+# synthesized one per team so a Yahoo team defense can link to a projectable row.
+DST_TEAMS = (
+    "ARI",
+    "ATL",
+    "BAL",
+    "BUF",
+    "CAR",
+    "CHI",
+    "CIN",
+    "CLE",
+    "DAL",
+    "DEN",
+    "DET",
+    "GB",
+    "HOU",
+    "IND",
+    "JAX",
+    "KC",
+    "LA",
+    "LAC",
+    "LV",
+    "MIA",
+    "MIN",
+    "NE",
+    "NO",
+    "NYG",
+    "NYJ",
+    "PHI",
+    "PIT",
+    "SEA",
+    "SF",
+    "TB",
+    "TEN",
+    "WAS",
+)  # noqa: E501
 # Draft DST picks are team nicknames, not players — skip them (a team-defense
 # value concept is separate). Includes historical Washington names.
 TEAM_DEFENSES = {
@@ -113,6 +149,25 @@ def build_players(conn: psycopg.Connection) -> int:
             _i(r.draft_year),
         )
         for r in ids.itertuples()
+    ]
+    # Synthesize one DST "player" per NFL team — nflverse has no DST entity, but a
+    # rostered team defense needs a projectable players row. Keyed by a sentinel
+    # gsis 'DST-{ABBR}' (no yahoo_id — it's season-varying for DST; rosters link
+    # by team abbreviation instead). Matches the `team_defense` aggregate's ids.
+    rows += [
+        (
+            f"DST-{t}",
+            None,
+            None,
+            None,
+            None,
+            f"{t} DST",
+            normalize(f"{t} DST"),
+            "DST",
+            t,
+            None,
+        )
+        for t in DST_TEAMS
     ]
     with conn.cursor() as cur:
         cur.execute(
