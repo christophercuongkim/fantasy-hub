@@ -75,6 +75,16 @@ export const waiverTypeEnum = pgEnum("waiver_type", [
   "reverse",
 ]);
 
+// Yahoo transaction types. "add/drop" (a combined add+drop) is normalised to
+// add_drop; a pure add or drop keeps its own value.
+export const transactionTypeEnum = pgEnum("transaction_type", [
+  "add",
+  "drop",
+  "add_drop",
+  "trade",
+  "commish",
+]);
+
 // nflverse injury report status (injuries.report_status).
 export const reportStatusEnum = pgEnum("report_status", [
   "Out",

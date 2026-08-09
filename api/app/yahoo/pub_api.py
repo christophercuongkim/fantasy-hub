@@ -66,3 +66,11 @@ def roster(team_key: str, week: int) -> dict:
 def scoreboard(league_key: str, week: int) -> dict:
     """A week's matchups + scores for the whole league (one call)."""
     return get_json_f(f"league/{league_key}/scoreboard;week={week}")
+
+
+def transactions(league_key: str, start: int = 0, count: int = 25) -> dict:
+    """A page of the league's adds/drops/trades (paginate with start)."""
+    return get_json_f(
+        f"league/{league_key}/transactions;types=add,drop,trade,commish;"
+        f"start={start};count={count}"
+    )

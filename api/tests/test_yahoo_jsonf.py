@@ -9,6 +9,7 @@ from app.yahoo.parse_jsonf import (
     parse_roster,
     parse_settings,
     parse_teams,
+    parse_transactions,
 )
 
 _FIX = Path(__file__).parent / "fixtures"
@@ -16,6 +17,7 @@ FIXTURE = json.loads((_FIX / "teams_standings.json").read_text())
 SETTINGS = json.loads((_FIX / "settings.json").read_text())
 ROSTER = json.loads((_FIX / "roster.json").read_text())
 SCOREBOARD = json.loads((_FIX / "scoreboard.json").read_text())
+TRANSACTIONS = json.loads((_FIX / "transactions.json").read_text())
 
 
 def test_parse_league():
@@ -101,3 +103,18 @@ def test_parse_matchups():
     assert m.team_b_key == "449.l.93367.t.11"
     assert m.team_b_points == 101.46
     assert m.is_playoff is False
+
+
+def test_parse_transactions():
+    league_key, moves = parse_transactions(TRANSACTIONS)
+    assert league_key == "449.l.93367"
+    assert len(moves) == 2  # an add/drop = two movements
+    add = next(m for m in moves if m.destination_type == "team")
+    assert add.yahoo_player_id == "40890"  # Legette, added off free agents
+    assert add.type == "add_drop"  # "add/drop" normalized
+    assert add.destination_team_key == "449.l.93367.t.6"
+    assert add.source_type == "freeagents"
+    assert add.executed_at == 1735431545
+    drop = next(m for m in moves if m.destination_type == "waivers")
+    assert drop.yahoo_player_id == "34088"  # Doubs, dropped to waivers
+    assert drop.source_team_key == "449.l.93367.t.6"

@@ -9,6 +9,7 @@ fixtures. See parse_jsonf for the shapes.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 from app.storage import postgres
 from app.yahoo.parse_jsonf import (
@@ -16,6 +17,7 @@ from app.yahoo.parse_jsonf import (
     parse_roster,
     parse_settings,
     parse_teams,
+    parse_transactions,
 )
 
 # Yahoo returns a real GUID but the nickname "--hidden--" for a manager not
@@ -342,6 +344,93 @@ def sync_matchups(payload: dict) -> dict:
         "matchups": len(sb.matchups),
         "written": written,
     }
+
+
+def sync_transactions(payload: dict) -> dict:
+    """Upsert one page of transactions as player-movement rows. Crosswalks players
+    by yahoo_id + teams by yahoo_team_key; a movement whose player can't be matched
+    is skipped (player_id is a required FK). Returns the transaction count on the
+    page so the caller can paginate."""
+    league_key, moves = parse_transactions(payload)
+    n_txns = len(payload["fantasy_content"]["league"].get("transactions", []))
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute("SELECT id FROM leagues WHERE yahoo_league_key = %s", (league_key,))
+        row = cur.fetchone()
+        if not row:
+            raise ValueError(f"no league for {league_key} — sync teams first")
+        league_id = row[0]
+
+        yids = list({m.yahoo_player_id for m in moves})
+        cur.execute(
+            "SELECT yahoo_id, id FROM players WHERE yahoo_id = ANY(%s)", (yids,)
+        )
+        pmap = {y: i for y, i in cur.fetchall()}
+
+        tkeys = list(
+            {k for m in moves for k in (m.source_team_key, m.destination_team_key) if k}
+        )
+        cur.execute(
+            "SELECT yahoo_team_key, id FROM league_teams "
+            "WHERE yahoo_team_key = ANY(%s)",
+            (tkeys,),
+        )
+        tmap = {k: i for k, i in cur.fetchall()}
+
+        written = 0
+        for m in moves:
+            pid = pmap.get(m.yahoo_player_id)
+            if pid is None:
+                continue
+            executed = (
+                datetime.fromtimestamp(m.executed_at, UTC) if m.executed_at else None
+            )
+            cur.execute(
+                """
+                INSERT INTO transactions (league_id, yahoo_transaction_key, type,
+                    status, executed_at, player_id, source_team_id, source_type,
+                    destination_team_id, destination_type, faab_bid)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (league_id, yahoo_transaction_key, player_id)
+                DO UPDATE SET type = EXCLUDED.type, status = EXCLUDED.status,
+                    executed_at = EXCLUDED.executed_at,
+                    source_team_id = EXCLUDED.source_team_id,
+                    source_type = EXCLUDED.source_type,
+                    destination_team_id = EXCLUDED.destination_team_id,
+                    destination_type = EXCLUDED.destination_type,
+                    faab_bid = EXCLUDED.faab_bid
+                """,
+                (
+                    league_id,
+                    m.transaction_key,
+                    m.type,
+                    m.status,
+                    executed,
+                    pid,
+                    tmap.get(m.source_team_key),
+                    m.source_type,
+                    tmap.get(m.destination_team_key),
+                    m.destination_type,
+                    m.faab_bid,
+                ),
+            )
+            written += 1
+        conn.commit()
+    return {"transactions": n_txns, "movements": len(moves), "written": written}
+
+
+def sync_all_transactions(league_key: str, fetch, page: int = 25) -> dict:
+    """All of a league's transactions, paginated — `fetch(league_key, start,
+    count) -> payload`. Stops when a page returns fewer than a full count."""
+    start = 0
+    totals = {"transactions": 0, "movements": 0, "written": 0}
+    while True:
+        r = sync_transactions(fetch(league_key, start, page))
+        for k in totals:
+            totals[k] += r[k]
+        if r["transactions"] < page:
+            break
+        start += page
+    return {"league_key": league_key, **totals}
 
 
 def _league_keys() -> list[str]:

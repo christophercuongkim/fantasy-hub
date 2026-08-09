@@ -16,6 +16,7 @@ import {
   claimStatusEnum,
   rosterSlotEnum,
   sportEnum,
+  transactionTypeEnum,
   waiverTypeEnum,
 } from "./enums";
 import { leagueFamilies, managers } from "./families";
@@ -131,4 +132,33 @@ export const matchups = pgTable(
     isPlayoff: boolean().notNull().default(false),
   },
   (t) => [primaryKey({ columns: [t.leagueId, t.week, t.teamAId] })],
+);
+
+// One row per PLAYER MOVEMENT: an add/drop is two rows, a trade several. The
+// source/destination pair unifies the types — add = freeagents→team, drop =
+// team→waivers, trade = team→team. Written by the Yahoo transaction sync.
+export const transactions = pgTable(
+  "transactions",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    leagueId: uuid()
+      .notNull()
+      .references(() => leagues.id),
+    yahooTransactionKey: text().notNull(), // {league_key}.tr.{id}
+    type: transactionTypeEnum().notNull(),
+    status: text(), // "successful", etc.
+    executedAt: timestamp({ withTimezone: true }), // from Yahoo's unix timestamp
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id),
+    // The team losing the player (null when from free agents / waivers).
+    sourceTeamId: uuid().references(() => leagueTeams.id),
+    sourceType: text(), // team / freeagents / waivers
+    // The team gaining the player (null when to waivers / free agents).
+    destinationTeamId: uuid().references(() => leagueTeams.id),
+    destinationType: text(),
+    faabBid: integer(), // FAAB spent on a waiver add, when present
+  },
+  // Idempotent re-sync: one row per (transaction, player).
+  (t) => [unique().on(t.leagueId, t.yahooTransactionKey, t.playerId)],
 );
