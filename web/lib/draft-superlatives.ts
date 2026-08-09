@@ -28,7 +28,7 @@ export async function valueBoard(season?: number): Promise<ValuePick[]> {
   const db = getDb();
   const seasonCond = season != null ? sql`and dp.season = ${season}` : sql``;
   const rows = await db.execute(sql`
-    select coalesce(mgr.display_name, lt.name) as who,
+    select coalesce(nullif(mgr.display_name, '--hidden--'), lt.name) as who,
            l.season, dp.overall, dp.round,
            coalesce(p.full_name, dp.player_name) as player,
            p.position as pos,
@@ -70,7 +70,7 @@ export async function earliestKicker(
   const db = getDb();
   const seasonCond = season != null ? sql`and dp.season = ${season}` : sql``;
   const rows = (await db.execute(sql`
-    select coalesce(mgr.display_name, lt.name) as who,
+    select coalesce(nullif(mgr.display_name, '--hidden--'), lt.name) as who,
            l.season, dp.overall,
            coalesce(p.full_name, dp.player_name) as player
     from draft_picks dp

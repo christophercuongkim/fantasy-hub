@@ -59,7 +59,7 @@ export type ScatterPoint = {
 // label (manager if known, else team name) — the backbone for record queries.
 const WEEK_SCORES = sql`
   select l.season, m.week, m.is_playoff,
-         coalesce(mgr.display_name, lt.name) as team,
+         coalesce(nullif(mgr.display_name, '--hidden--'), lt.name) as team,
          side.score::float as score, side.opp::float as opp
   from matchups m
   join leagues l on l.id = m.league_id
