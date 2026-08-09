@@ -115,10 +115,11 @@ export function RefreshAll() {
           Refresh
         </Button>
         {/* Full rebuild: re-fetch every season's source data first, then re-score
-            — for an nflverse schema change / a new dataset. Slower. */}
+            — for an nflverse schema change / a new dataset. Slower. Same
+            (secondary) weight as Refresh — ghost read as a link, not a button. */}
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           size="sm"
           iconLeft="database"
           loading={starting || running}
