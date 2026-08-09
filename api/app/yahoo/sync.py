@@ -12,14 +12,32 @@ from app.storage import postgres
 from app.yahoo.parse_jsonf import parse_teams
 
 
+def _upsert_manager(cur, guid: str, nickname: str | None) -> str:
+    """Upsert the canonical person by Yahoo GUID → managers.id. display_name
+    follows latest-season-wins: sync_all runs oldest→newest, so the newest sync's
+    nickname is the one that sticks. Falls back to the GUID if no nickname."""
+    cur.execute(
+        """
+        INSERT INTO managers (yahoo_guid, display_name, updated_at)
+        VALUES (%s, %s, now())
+        ON CONFLICT (yahoo_guid)
+        DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()
+        RETURNING id
+        """,
+        (guid, nickname or guid),
+    )
+    return cur.fetchone()[0]
+
+
 def sync_teams(payload: dict) -> dict:
     """Backfill the league's teams from a `teams;out=standings` payload: set each
-    row's yahoo_team_key + is_mine, and the regular-season record when present.
-    Matches an existing league_teams row by (league_id, name) — the league must
-    already exist (bootstrap loads it); this fills in what the scrape lacked.
+    row's yahoo_team_key + is_mine + regular-season record, AND upsert the manager
+    by GUID and link league_teams.manager_id — filling in the people the scrape
+    couldn't (it only got a GUID where a /user/<guid> href was parseable).
 
-    Returns counts; teams_updated < teams_parsed flags a name that didn't match a
-    known row (a renamed team), which is the thing to eyeball."""
+    Matches an existing league_teams row by (league_id, name) — the league must
+    already exist (bootstrap loads it). Returns counts; teams_updated <
+    teams_parsed flags a name that didn't match a known row (a renamed team)."""
     lg = payload["fantasy_content"]["league"]
     league_key = lg["league_key"]
     teams = parse_teams(payload)
@@ -38,11 +56,18 @@ def sync_teams(payload: dict) -> dict:
             (league_id,),
         )
         updated = 0
+        linked = 0
         for t in teams:
+            manager_id = (
+                _upsert_manager(cur, t.manager_guid, t.manager_nickname)
+                if t.manager_guid
+                else None
+            )
             cur.execute(
                 """
                 UPDATE league_teams
                 SET yahoo_team_key = %s, is_mine = %s,
+                    manager_id = COALESCE(%s, manager_id),
                     wins = %s, losses = %s, ties = %s,
                     points_for = %s, points_against = %s
                 WHERE league_id = %s AND name = %s
@@ -50,6 +75,7 @@ def sync_teams(payload: dict) -> dict:
                 (
                     t.team_key,
                     t.is_mine,
+                    manager_id,  # COALESCE keeps an existing link if this has no guid
                     t.wins,
                     t.losses,
                     t.ties,
@@ -60,11 +86,14 @@ def sync_teams(payload: dict) -> dict:
                 ),
             )
             updated += cur.rowcount
+            if manager_id and cur.rowcount:
+                linked += 1
 
     return {
         "league_key": league_key,
         "teams_parsed": len(teams),
         "teams_updated": updated,
+        "managers_linked": linked,
         "unmatched": len(teams) - updated,
     }
 
