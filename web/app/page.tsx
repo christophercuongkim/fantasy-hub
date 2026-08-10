@@ -72,6 +72,14 @@ export default async function Home() {
         )}
         {admin && (
           <NavCard
+            href="/draft-assistant"
+            eyebrow="ADMIN"
+            title="Draft assistant"
+            meta="Value board for the draft"
+          />
+        )}
+        {admin && (
+          <NavCard
             href="/admin/crosswalk"
             eyebrow="ADMIN"
             title="Player crosswalk"
