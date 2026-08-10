@@ -35,13 +35,10 @@ export function DraftBoard({
 
   const shown = pos === "All" ? rows : rows.filter((r) => r.pos === pos);
 
-  // The single largest positive value in view = the standout sleeper. It's the
-  // one accent hero on the board (one accent per section — DS conformance).
-  const heroRank = shown.reduce<number | null>((best, r) => {
-    if (r.value == null || r.value <= 0) return best;
-    const bv = shown.find((x) => x.overallRank === best)?.value ?? -Infinity;
-    return r.value > bv ? r.overallRank : best;
-  }, null);
+  // Best available in the current view (top of the board / the filtered position)
+  // = the one accent hero. It's always the first row, so the accent is visible at
+  // the top rather than hidden somewhere down a long list (one accent per section).
+  const heroRank = shown[0]?.overallRank ?? null;
 
   const rebuild = () =>
     start(async () => {
@@ -142,7 +139,20 @@ export function DraftBoard({
           caption={`${season} draft value board — ranked by value over replacement`}
           columns={[
             { key: "overallRank", label: "#", identifying: true },
-            { key: "player", label: "Player", secondary: true },
+            {
+              // Best available in view is the one accent hero (top row).
+              key: "player",
+              label: "Player",
+              secondary: true,
+              render: (r) =>
+                r.overallRank === heroRank ? (
+                  <span style={{ color: "var(--text-accent)" }}>
+                    {r.player}
+                  </span>
+                ) : (
+                  r.player
+                ),
+            },
             {
               key: "pos",
               label: "Pos",
@@ -177,9 +187,9 @@ export function DraftBoard({
               render: (r) => (r.adp == null ? "—" : one(r.adp)),
             },
             {
-              // ADP − our rank: value (we like more than the market) reads in
-              // ink, a reach stays muted, and the single biggest value is the
-              // one accent hero. Sign glyph carries it when colour can't.
+              // ADP − our rank: a value (we rate higher than the market) reads
+              // in ink, a reach stays muted. Sign glyph carries it when colour
+              // can't. Achromatic — the accent hero is the top row's name.
               key: "value",
               label: "Value",
               numeric: true,
@@ -191,11 +201,9 @@ export function DraftBoard({
                   <span
                     style={{
                       color:
-                        r.overallRank === heroRank
-                          ? "var(--text-accent)"
-                          : r.value > 0
-                            ? "var(--text-primary)"
-                            : "var(--text-tertiary)",
+                        r.value > 0
+                          ? "var(--text-primary)"
+                          : "var(--text-tertiary)",
                     }}
                   >
                     {signed(r.value)}
