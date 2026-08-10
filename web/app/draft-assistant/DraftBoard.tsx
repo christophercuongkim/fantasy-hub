@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Badge,
   Button,
   EmptyState,
   Select,
@@ -17,6 +18,14 @@ import {
   useMeasuredBreakpoint,
 } from "@seakim/design-system";
 import type { DraftBoardRow, RosterPick } from "@/lib/draft-board";
+import {
+  bestAvailable,
+  computeNeeds,
+  isTierCliff,
+  type Needs,
+  pickClock,
+  type PickClock,
+} from "@/lib/draft-recs";
 import { rebuildBoard, syncDraft } from "./actions";
 
 const POSITIONS = ["All", "QB", "RB", "WR", "TE", "K", "DST"];
@@ -31,12 +40,20 @@ export function DraftBoard({
   season,
   myRoster,
   draftedCount,
+  rosterSlots,
+  numTeams,
+  myDraftPosition,
+  myPickOveralls,
 }: {
   leagueKey: string;
   rows: DraftBoardRow[];
   season: number;
   myRoster: RosterPick[];
   draftedCount: number;
+  rosterSlots: Record<string, number>;
+  numTeams: number;
+  myDraftPosition: number | null;
+  myPickOveralls: number[];
 }) {
   const router = useRouter();
   const { ref, bp } = useMeasuredBreakpoint();
@@ -76,6 +93,16 @@ export function DraftBoard({
   const shown = hideDrafted ? byPos.filter((r) => !r.drafted) : byPos;
   // Best available in view = the accent hero (first undrafted row).
   const heroRank = shown.find((r) => !r.drafted)?.overallRank ?? null;
+
+  // Recommendations: what to take now, given my roster + the draft state.
+  const needs = computeNeeds(rosterSlots, myRoster);
+  const recs = bestAvailable(rows, needs, 5);
+  const clock = pickClock(
+    numTeams,
+    draftedCount,
+    myDraftPosition,
+    myPickOveralls,
+  );
 
   const rebuild = () =>
     start(async () => {
@@ -189,6 +216,14 @@ export function DraftBoard({
         {rebuildControl}
       </div>
 
+      <Recommendations
+        recs={recs}
+        needs={needs}
+        clock={clock}
+        rows={rows}
+        draftedCount={draftedCount}
+      />
+
       {myRoster.length > 0 && <MyRoster picks={myRoster} />}
 
       <div ref={ref as RefObject<HTMLDivElement | null>}>
@@ -275,6 +310,116 @@ export function DraftBoard({
         />
       </div>
     </div>
+  );
+}
+
+const NEED_ORDER = ["QB", "RB", "WR", "TE", "K", "DST"];
+
+// "What to take now": the pick clock, my open needs, and the best available for
+// them (with tier-cliff flags). The one actionable panel during a live draft.
+function Recommendations({
+  recs,
+  needs,
+  clock,
+  rows,
+  draftedCount,
+}: {
+  recs: DraftBoardRow[];
+  needs: Needs;
+  clock: PickClock | null;
+  rows: DraftBoardRow[];
+  draftedCount: number;
+}) {
+  const needLabels = NEED_ORDER.filter((p) => needs.base[p] > 0).map((p) =>
+    needs.base[p] > 1 ? `${p}×${needs.base[p]}` : p,
+  );
+  if (needs.flexOpen > 0) needLabels.push("FLEX");
+
+  const clockLine = clock
+    ? clock.onClock
+      ? "You're on the clock"
+      : `Pick ${clock.nextPick} — you're up in ${clock.picksUntil}`
+    : `${draftedCount} drafted`;
+
+  return (
+    <section
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--space-3)",
+        padding: "var(--space-4)",
+        border: "1px solid var(--border-subtle)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: "var(--space-3)",
+          flexWrap: "wrap",
+        }}
+      >
+        <span
+          style={{
+            font: "var(--type-eyebrow)",
+            textTransform: "uppercase",
+            letterSpacing: "var(--tracking-caps)",
+            color: "var(--text-tertiary)",
+          }}
+        >
+          {clockLine}
+        </span>
+        <span
+          style={{
+            font: "var(--type-body-sm)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          {needLabels.length
+            ? `Need ${needLabels.join(" · ")}`
+            : "Starters full"}
+        </span>
+      </div>
+
+      <ol
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-1)",
+          listStyle: "none",
+        }}
+      >
+        {recs.map((r) => {
+          const cliff = isTierCliff(rows, r);
+          return (
+            <li
+              key={r.overallRank}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-2)",
+                font: "var(--type-body-sm)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <span style={{ color: "var(--text-tertiary)" }}>
+                {r.pos}
+                {r.posRank}
+              </span>
+              <span>{r.player}</span>
+              <span style={{ color: "var(--text-tertiary)" }}>
+                VOR {r.vor.toFixed(0)} · T{r.tier}
+              </span>
+              {cliff && (
+                <Badge tone="warning" variant="subtle">
+                  last in tier
+                </Badge>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 

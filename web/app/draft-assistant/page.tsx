@@ -44,6 +44,10 @@ export default async function DraftAssistant() {
           season={board.season}
           myRoster={board.myRoster}
           draftedCount={board.draftedCount}
+          rosterSlots={board.rosterSlots}
+          numTeams={board.numTeams}
+          myDraftPosition={board.myDraftPosition}
+          myPickOveralls={board.myPickOveralls}
         />
       ) : (
         <EmptyState
