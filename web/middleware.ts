@@ -4,7 +4,12 @@ import { auth, isAdmin } from "@/auth";
 // including the hall of records — requires sign-in (any Google account). Admin
 // areas (/admin/*, /projections, /matchup) additionally require an admin
 // (ADMIN_EMAILS) — non-admins bounce to the landing.
-const ADMIN_PREFIXES = ["/admin", "/projections", "/matchup"];
+const ADMIN_PREFIXES = [
+  "/admin",
+  "/projections",
+  "/matchup",
+  "/draft-assistant",
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
