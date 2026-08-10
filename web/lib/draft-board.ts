@@ -29,6 +29,10 @@ export type DraftBoardSet = {
   rows: DraftBoardRow[];
   myRoster: RosterPick[]; // what I've drafted, in pick order
   draftedCount: number; // total picks made league-wide
+  rosterSlots: Record<string, number>; // starter/bench requirements
+  numTeams: number;
+  myDraftPosition: number | null; // snake slot; null until Yahoo draws the order
+  myPickOveralls: number[]; // overall numbers of my picks (for the pick clock)
 };
 
 // The newest league (the current predraft season) + its board, if built. Returns
@@ -37,11 +41,30 @@ export type DraftBoardSet = {
 export async function latestDraftBoard(): Promise<DraftBoardSet | null> {
   const db = getDb();
   const head = (await db.execute(sql`
-    select id, season, yahoo_league_key as key
+    select id, season, yahoo_league_key as key, num_teams,
+           roster_positions_json as slots
     from leagues order by season desc limit 1
-  `)) as unknown as { id: string; season: number; key: string }[];
+  `)) as unknown as {
+    id: string;
+    season: number;
+    key: string;
+    num_teams: number;
+    slots: Record<string, number>;
+  }[];
   if (!head.length) return null;
-  const { id, season, key } = head[0];
+  const { id, season, key, num_teams, slots } = head[0];
+
+  // My draft slot (null until Yahoo draws the order) + my pick overalls.
+  const meRows = (await db.execute(sql`
+    select draft_position from league_teams
+    where league_id = ${id} and is_mine = true limit 1
+  `)) as unknown as { draft_position: number | null }[];
+  const myPickRows = (await db.execute(sql`
+    select dp.overall from draft_picks dp
+    join league_teams lt on lt.id = dp.league_team_id
+    where dp.league_id = ${id} and dp.season = ${season} and lt.is_mine = true
+    order by dp.overall
+  `)) as unknown as { overall: number }[];
 
   // Live draft state: which board players are gone, and which are mine.
   const picks = (await db.execute(sql`
@@ -78,6 +101,10 @@ export async function latestDraftBoard(): Promise<DraftBoardSet | null> {
     leagueKey: String(key),
     season: Number(season),
     draftedCount: picks.length,
+    rosterSlots: slots ?? {},
+    numTeams: Number(num_teams),
+    myDraftPosition: meRows[0]?.draft_position ?? null,
+    myPickOveralls: myPickRows.map((r) => Number(r.overall)),
     myRoster: roster.map((r) => ({
       player: String(r.player),
       pos: String(r.pos),
