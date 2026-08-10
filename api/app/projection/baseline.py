@@ -623,10 +623,14 @@ def backfill_all(force_ingest_all: bool = False) -> dict:
     it goes for the progress poll.
 
     Normally only the latest season is re-pulled (older Parquet is assumed
-    stable). `force_ingest_all=True` re-pulls EVERY season's datasets — needed
-    after an nflverse schema change adds columns a new scoring rule references,
-    since project_week reads the prior season's Parquet too (a stale one throws a
-    binder error). This is the "Re-ingest + refresh" button."""
+    stable) and only weeks not already at the current model are projected.
+    `force_ingest_all=True` is the "Full rebuild": it also (1) refreshes the
+    player registry (crosswalk — kickers via PK->K, synthesized DST) so
+    newly-admitted positions exist before projecting, (2) re-pulls EVERY season's
+    datasets (an nflverse schema change adds columns a new scoring rule needs, and
+    project_week reads the prior season's Parquet too), and (3) re-projects EVERY
+    week — because a registry/scoring change isn't captured by MODEL_VERSION, so
+    the usual already-projected skip would leave the change unapplied."""
     import logging
 
     from app.ingest import nflverse
@@ -642,6 +646,21 @@ def backfill_all(force_ingest_all: bool = False) -> dict:
     )
     _STATUS["errors"] = []
     try:
+        # Full rebuild refreshes the registry first, so kickers/DST (and any new
+        # players) exist before projecting — otherwise their projections are
+        # computed but dropped on write (no players row) and can't be rostered.
+        if force_ingest_all:
+            try:
+                from app.crosswalk import build
+
+                with postgres.connect() as conn:
+                    build.build_players(conn)
+                    conn.commit()
+            except Exception as e:  # noqa: BLE001 — a crosswalk failure isn't fatal
+                log.warning("crosswalk during rebuild failed: %s", e)
+                if len(_STATUS["errors"]) < _ERROR_CAP:
+                    _STATUS["errors"].append(f"crosswalk: {e}")
+
         seasons = _league_seasons()
         # Only the latest season still gains weeks → force-re-pull it; older
         # seasons skip ingest if their Parquet is already present. And skip any
@@ -664,7 +683,9 @@ def backfill_all(force_ingest_all: bool = False) -> dict:
                 league_id, _ = league(s)
                 done = _projected_weeks(league_id, s)
                 for w in _weeks_with_data(s):
-                    if w in done:
+                    # Full rebuild re-projects everything (a registry/scoring
+                    # change doesn't bump MODEL_VERSION, so the skip would hide it).
+                    if w in done and not force_ingest_all:
                         continue
                     try:
                         if project_week(s, w)["players"] > 0:
