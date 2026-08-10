@@ -139,20 +139,7 @@ export function DraftBoard({
           caption={`${season} draft value board — ranked by value over replacement`}
           columns={[
             { key: "overallRank", label: "#", identifying: true },
-            {
-              // Best available in view is the one accent hero (top row).
-              key: "player",
-              label: "Player",
-              secondary: true,
-              render: (r) =>
-                r.overallRank === heroRank ? (
-                  <span style={{ color: "var(--text-accent)" }}>
-                    {r.player}
-                  </span>
-                ) : (
-                  r.player
-                ),
-            },
+            { key: "player", label: "Player", secondary: true },
             {
               key: "pos",
               label: "Pos",
@@ -172,12 +159,23 @@ export function DraftBoard({
               render: (r) => one(r.seasonPts),
             },
             {
+              // The ranking figure — survives to sm. The best-available (top
+              // row of the view) is the one accent hero; it renders as a real
+              // node here (unlike the string-joined secondary line), so the
+              // accent is safe across breakpoints.
               key: "vor",
               label: "VOR",
               numeric: true,
-              survives: true, // the ranking figure — stays at sm
+              survives: true,
               subLabel: (r) => `${r.pos}${r.posRank} · T${r.tier}`,
-              render: (r) => one(r.vor),
+              render: (r) =>
+                r.overallRank === heroRank ? (
+                  <span style={{ color: "var(--text-accent)" }}>
+                    {one(r.vor)}
+                  </span>
+                ) : (
+                  one(r.vor)
+                ),
             },
             {
               key: "adp",
@@ -211,10 +209,12 @@ export function DraftBoard({
                 ),
             },
             {
+              // priority 2 so Tier survives to md (at sm it rides the VOR
+              // subLabel; priority 3 would leave it invisible at md).
               key: "tier",
               label: "Tier",
               numeric: true,
-              priority: 3,
+              priority: 2,
               render: (r) => `T${r.tier}`,
             },
           ]}
