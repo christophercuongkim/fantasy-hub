@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from app.yahoo.parse_jsonf import (
+    parse_draftresults,
     parse_league,
     parse_matchups,
     parse_roster,
@@ -91,6 +92,48 @@ def test_parse_roster_slots_and_starters():
     assert by_id["33398"].slot == "W/R/T" and by_id["33398"].is_starter is True
     assert by_id["28534"].slot == "BN" and by_id["28534"].is_starter is False
     assert by_id["100012"].slot == "DEF"  # DST parses; links to a synthesized DST
+
+
+def test_parse_draftresults():
+    payload = {
+        "fantasy_content": {
+            "league": {
+                "league_key": "470.l.735658",
+                "draft_results": [
+                    {
+                        "draft_result": {
+                            "pick": 1,
+                            "round": 1,
+                            "team_key": "470.l.735658.t.3",
+                            "player_key": "470.p.100",
+                            "cost": None,
+                        }
+                    },
+                    {
+                        "draft_result": {
+                            "pick": 13,
+                            "round": 2,
+                            "team_key": "470.l.735658.t.7",
+                            "player_key": "470.p.200",
+                        }
+                    },
+                    # an unfilled slot in a predraft/partial board — skipped
+                    {"draft_result": {"pick": "", "player_key": None}},
+                ],
+            }
+        }
+    }
+    lk, picks = parse_draftresults(payload)
+    assert lk == "470.l.735658"
+    assert len(picks) == 2
+    assert picks[0].pick == 1 and picks[0].player_key == "470.p.100"
+    assert picks[1].round == 2 and picks[1].cost is None
+
+
+def test_parse_draftresults_empty_predraft():
+    payload = {"fantasy_content": {"league": {"league_key": "x", "draft_results": []}}}
+    lk, picks = parse_draftresults(payload)
+    assert lk == "x" and picks == []
 
 
 def test_parse_matchups():

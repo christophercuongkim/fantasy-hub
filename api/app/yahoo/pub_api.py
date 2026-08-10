@@ -68,6 +68,11 @@ def scoreboard(league_key: str, week: int) -> dict:
     return get_json_f(f"league/{league_key}/scoreboard;week={week}")
 
 
+def draftresults(league_key: str) -> dict:
+    """Every pick made so far — polled live during the draft, empty predraft."""
+    return get_json_f(f"league/{league_key}/draftresults")
+
+
 def transactions(league_key: str, start: int = 0, count: int = 25) -> dict:
     """A page of the league's adds/drops/trades (paginate with start)."""
     return get_json_f(

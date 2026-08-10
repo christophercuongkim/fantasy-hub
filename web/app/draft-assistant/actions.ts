@@ -7,8 +7,22 @@ const apiUrl = () => process.env.API_URL ?? "http://localhost:4001";
 export async function rebuildBoard(
   leagueKey: string,
 ): Promise<{ result?: Record<string, unknown>; error?: string }> {
+  return post("build-draft-board", leagueKey);
+}
+
+// Poll Yahoo draft-results into draft_picks — called on a timer during the draft.
+export async function syncDraft(
+  leagueKey: string,
+): Promise<{ result?: Record<string, unknown>; error?: string }> {
+  return post("sync-draft", leagueKey);
+}
+
+async function post(
+  job: string,
+  leagueKey: string,
+): Promise<{ result?: Record<string, unknown>; error?: string }> {
   try {
-    const res = await fetch(`${apiUrl()}/jobs/build-draft-board`, {
+    const res = await fetch(`${apiUrl()}/jobs/${job}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ league_key: leagueKey }),
