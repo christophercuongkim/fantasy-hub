@@ -168,8 +168,8 @@ export function RefreshAll() {
             textAlign: "right",
           }}
         >
-          Refresh re-scores stored data · Full rebuild re-fetches every season
-          first
+          Refresh re-scores stored data · Full rebuild refreshes the registry +
+          all data, then re-projects every week
         </span>
       )}
     </div>

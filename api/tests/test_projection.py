@@ -348,3 +348,50 @@ def test_refresh_all_endpoint(monkeypatch):
     # the flag threads through when requested
     TestClient(app).post("/jobs/refresh-all", json={"force_ingest_all": True})
     assert calls["force"] is True
+
+
+class _DummyConn:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def commit(self):
+        pass
+
+
+def test_full_rebuild_crosswalks_and_reprojects(monkeypatch):
+    """force_ingest_all refreshes the registry + re-projects every week (even ones
+    already at the current model); a plain refresh does neither."""
+    import app.crosswalk.build as build
+    from app.ingest import nflverse
+
+    calls = {"crosswalk": 0, "projected": []}
+    monkeypatch.setattr(
+        build,
+        "build_players",
+        lambda conn: calls.__setitem__("crosswalk", calls["crosswalk"] + 1),
+    )
+    monkeypatch.setattr(baseline.postgres, "connect", lambda: _DummyConn())
+    monkeypatch.setattr(nflverse, "ingest_season", lambda *a, **k: {})
+    monkeypatch.setattr(baseline, "_league_seasons", lambda: [2024])
+    monkeypatch.setattr(baseline, "league", lambda s: ("L1", {}))
+    monkeypatch.setattr(
+        baseline, "_projected_weeks", lambda lid, s: {1, 2}
+    )  # both done
+    monkeypatch.setattr(baseline, "_weeks_with_data", lambda s: [1, 2])
+    monkeypatch.setattr(
+        baseline,
+        "project_week",
+        lambda s, w: calls["projected"].append(w) or {"players": 1},
+    )
+
+    baseline.backfill_all(force_ingest_all=True)
+    assert calls["crosswalk"] == 1
+    assert calls["projected"] == [1, 2]  # re-projected despite being "done"
+
+    calls["crosswalk"], calls["projected"] = 0, []
+    baseline.backfill_all(force_ingest_all=False)
+    assert calls["crosswalk"] == 0  # plain refresh leaves the registry alone
+    assert calls["projected"] == []  # both weeks already done → skipped
