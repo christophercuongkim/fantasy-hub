@@ -448,6 +448,26 @@ def sim_matchup_job(body: SimMatchupRequest) -> JSONResponse:
         return JSONResponse(status_code=424, content={"error": str(e)})
 
 
+class SyncDraftRequest(BaseModel):
+    league_key: str
+
+
+# Draft assistant Slice 3: poll Yahoo draft-results into draft_picks. Idempotent
+# per overall pick — the live board calls this on a timer during the draft.
+@app.post("/jobs/sync-draft")
+def sync_draft_job(body: SyncDraftRequest) -> JSONResponse:
+    from app.yahoo import pub_api, sync
+
+    try:
+        return JSONResponse(sync.sync_draft(body.league_key, pub_api.draftresults))
+    except pub_api.CookieExpired as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    except (pub_api.NoCookie, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 class BuildDraftBoardRequest(BaseModel):
     league_key: str
 

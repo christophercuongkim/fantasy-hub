@@ -109,3 +109,98 @@ def test_sync_all_teams_records_per_league_error(monkeypatch):
     out = sync.sync_all_teams(fetch=lambda k: k, keys=["good", "bad"])
     assert out["synced"] == 1  # one succeeded, one recorded its error and continued
     assert out["results"][1]["error"] == "no league row for bad"
+
+
+class _DraftCursor:
+    """Returns canned rows per SELECT and records draft_picks inserts."""
+
+    def __init__(self, league, teams, players):
+        self._league, self._teams, self._players = league, teams, players
+        self.inserts: list[tuple] = []
+        self._armed: list = []
+
+    def execute(self, sql, params=()):
+        s = sql.lstrip()
+        if s.startswith("SELECT id, season, num_teams"):
+            self._armed = [self._league]
+        elif s.startswith("SELECT yahoo_team_key"):
+            self._armed = self._teams
+        elif s.startswith("SELECT yahoo_id"):
+            self._armed = self._players
+        elif s.startswith("INSERT INTO draft_picks"):
+            self.inserts.append(params)
+
+    def fetchone(self):
+        return self._armed[0] if self._armed else None
+
+    def fetchall(self):
+        return self._armed
+
+
+class _DraftConn:
+    def __init__(self, cur):
+        self._cur = cur
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def cursor(self):
+        cur = self._cur
+
+        class _CM:
+            def __enter__(self):
+                return cur
+
+            def __exit__(self, *a):
+                return False
+
+        return _CM()
+
+    def commit(self):
+        pass
+
+
+def test_sync_draft_maps_and_computes_pick_in_round(monkeypatch):
+    payload = {
+        "fantasy_content": {
+            "league": {
+                "league_key": "470.l.735658",
+                "draft_results": [
+                    {
+                        "draft_result": {
+                            "pick": 1,
+                            "round": 1,
+                            "team_key": "470.l.735658.t.3",
+                            "player_key": "470.p.100",
+                        }
+                    },
+                    {
+                        "draft_result": {
+                            "pick": 13,
+                            "round": 2,
+                            "team_key": "470.l.735658.t.7",
+                            "player_key": "470.p.200",
+                        }
+                    },
+                ],
+            }
+        }
+    }
+    cur = _DraftCursor(
+        league=("L1", 2026, 12),
+        teams=[("470.l.735658.t.3", "team-3"), ("470.l.735658.t.7", "team-7")],
+        players=[("100", "player-100")],  # 200 is an unresolved rookie
+    )
+    monkeypatch.setattr(sync.postgres, "connect", lambda: _DraftConn(cur))
+    out = sync.sync_draft("470.l.735658", lambda lk: payload)
+
+    assert out["picks"] == 2 and out["written"] == 2
+    assert out["unresolved"] == 1  # player 200 had no yahoo_id match
+    # (league_id, season, overall, round, pick_in_round, team_id, player_id, key, cost)
+    first, second = cur.inserts
+    assert first[2] == 1 and first[4] == 1 and first[6] == "player-100"
+    # overall 13, round 2, 12 teams → pick_in_round 13 - 12 = 1; player unresolved
+    assert second[2] == 13 and second[4] == 1 and second[6] is None

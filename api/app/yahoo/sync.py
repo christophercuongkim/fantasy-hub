@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from app.crosswalk.names import normalize
 from app.storage import postgres
 from app.yahoo.parse_jsonf import (
+    parse_draftresults,
     parse_matchups,
     parse_roster,
     parse_settings,
@@ -387,6 +388,78 @@ def sync_rosters(league_key: str, fetch, week: int) -> dict:
         "matched_by_def": sum(r.get("matched_by_def", 0) for r in results),
         "unresolved": unresolved,
         "results": results,
+    }
+
+
+def sync_draft(league_key: str, fetch) -> dict:
+    """Sync the live draft from Yahoo draft-results into draft_picks (upsert per
+    overall pick — idempotent, so poll it during the draft). team_key resolves to
+    a league_team; player_key resolves to a player by yahoo_id. An unresolved
+    player still records the pick (player_id null) so the board knows that slot's
+    gone. `fetch(league_key) -> payload` is pub_api.draftresults."""
+    _, picks = parse_draftresults(fetch(league_key))
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, season, num_teams FROM leagues WHERE yahoo_league_key = %s",
+            (league_key,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise ValueError(f"no league for {league_key} — sync teams first")
+        league_id, season, num_teams = row
+
+        cur.execute(
+            "SELECT yahoo_team_key, id FROM league_teams WHERE league_id = %s",
+            (league_id,),
+        )
+        tmap = {k: i for k, i in cur.fetchall()}
+        yids = [p.player_key.split(".p.")[-1] for p in picks]
+        cur.execute(
+            "SELECT yahoo_id, id FROM players WHERE yahoo_id = ANY(%s)", (yids,)
+        )
+        pmap = {y: i for y, i in cur.fetchall()}
+
+        written = unresolved = 0
+        for p in picks:
+            team_id = tmap.get(p.team_key)
+            if team_id is None:
+                continue  # a team we don't hold (shouldn't happen post sync-teams)
+            pid = pmap.get(p.player_key.split(".p.")[-1])
+            if pid is None:
+                unresolved += 1
+            pir = p.pick - (p.round - 1) * num_teams if num_teams else p.pick
+            cur.execute(
+                """
+                INSERT INTO draft_picks (league_id, season, overall, round,
+                    pick_in_round, league_team_id, player_id, player_key, cost)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (league_id, season, overall) DO UPDATE SET
+                    round = EXCLUDED.round,
+                    pick_in_round = EXCLUDED.pick_in_round,
+                    league_team_id = EXCLUDED.league_team_id,
+                    player_id = EXCLUDED.player_id,
+                    player_key = EXCLUDED.player_key, cost = EXCLUDED.cost
+                """,
+                (
+                    league_id,
+                    season,
+                    p.pick,
+                    p.round,
+                    pir,
+                    team_id,
+                    pid,
+                    p.player_key,
+                    p.cost,
+                ),
+            )
+            written += 1
+        conn.commit()
+    return {
+        "league_key": league_key,
+        "season": season,
+        "picks": len(picks),
+        "written": written,
+        "unresolved": unresolved,
     }
 
 

@@ -267,6 +267,37 @@ def parse_matchups(payload: dict) -> Scoreboard:
     )
 
 
+@dataclass
+class DraftPickRow:
+    pick: int  # overall
+    round: int
+    team_key: str
+    player_key: str  # {game}.p.{yahoo_id}
+    cost: int | None  # auction dollars; None in a snake draft
+
+
+def parse_draftresults(payload: dict) -> tuple[str, list[DraftPickRow]]:
+    """(league_key, picks) from a live/completed draft. Empty predraft. Each
+    pick carries the overall number, the team that made it, and the player."""
+    lg = payload["fantasy_content"]["league"]
+    out: list[DraftPickRow] = []
+    for entry in lg.get("draft_results") or []:
+        d = entry.get("draft_result") or {}
+        pick = _to_int(d.get("pick"))
+        if pick is None or not d.get("player_key"):
+            continue  # an empty slot (predraft placeholder) — skip
+        out.append(
+            DraftPickRow(
+                pick=pick,
+                round=_to_int(d.get("round")) or 0,
+                team_key=d.get("team_key"),
+                player_key=d["player_key"],
+                cost=_to_int(d.get("cost")),
+            )
+        )
+    return lg["league_key"], out
+
+
 def parse_teams(payload: dict) -> list[TeamRow]:
     """The league's teams + (when present) their standings record. `is_mine` comes
     from Yahoo flagging the logged-in user's team/manager."""

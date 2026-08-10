@@ -42,6 +42,8 @@ export default async function DraftAssistant() {
           leagueKey={board.leagueKey}
           rows={board.rows}
           season={board.season}
+          myRoster={board.myRoster}
+          draftedCount={board.draftedCount}
         />
       ) : (
         <EmptyState
