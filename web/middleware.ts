@@ -9,6 +9,7 @@ const ADMIN_PREFIXES = [
   "/projections",
   "/matchup",
   "/draft-assistant",
+  "/keeper",
 ];
 
 export default auth((req) => {
