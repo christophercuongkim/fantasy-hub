@@ -80,6 +80,14 @@ export default async function Home() {
         )}
         {admin && (
           <NavCard
+            href="/keeper"
+            eyebrow="ADMIN"
+            title="Keeper valuator"
+            meta="Value keepers vs the pick they cost"
+          />
+        )}
+        {admin && (
+          <NavCard
             href="/admin/crosswalk"
             eyebrow="ADMIN"
             title="Player crosswalk"
