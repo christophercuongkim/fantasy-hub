@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import urllib.request
+from datetime import date
 
 from app.crosswalk.names import normalize
 from app.projection import baseline, priors
@@ -33,6 +34,40 @@ _UA = "fantasy-hub/1.0"
 # FLEX (W/R/T) slots split across the three eligible positions — typical usage.
 _FLEX_SPLIT = {"RB": 0.5, "WR": 0.4, "TE": 0.1}
 _POOL_POS = ("QB", "RB", "WR", "TE", "K", "DST")
+
+# --- age adjustment ---------------------------------------------------------
+# The base value is last-season per-game × a flat 17 — no decline term, so a
+# 30-yo RB is projected at his 29-yo rate. An age multiplier on ppg corrects it.
+# (A durability/expected-games term was tried too but regressed the 2023–25
+# backtest — past availability doesn't predict next-year games — so it was cut.)
+#
+# Per-position aging curve: flat to `knee`, then a linear %/yr decline, floored.
+# K/DST are ageless here (no reliable curve, and they barely move the board).
+_AGE_CURVE = {  # pos -> (knee_age, slope_per_year, floor)
+    "RB": (27, 0.04, 0.80),
+    "WR": (28, 0.03, 0.82),
+    "TE": (29, 0.03, 0.85),
+    "QB": (35, 0.03, 0.85),
+}
+
+
+def _age_at(birthdate: date | None, season: int) -> int | None:
+    """Age in whole years at the season's ~Sep 1 kickoff, or None if unknown."""
+    if birthdate is None:
+        return None
+    kickoff = date(season, 9, 1)
+    age = kickoff.year - birthdate.year
+    if (kickoff.month, kickoff.day) < (birthdate.month, birthdate.day):
+        age -= 1
+    return age
+
+
+def _age_mult(pos: str, age: int | None) -> float:
+    curve = _AGE_CURVE.get(pos)
+    if curve is None or age is None:
+        return 1.0
+    knee, slope, floor = curve
+    return max(floor, 1.0 - slope * max(0, age - knee))
 
 
 def _league(cur, league_key: str) -> tuple[str, int, dict, dict, int]:
@@ -172,15 +207,19 @@ def build_draft_board(league_key: str) -> dict:
         observed = _observed_ppg(scoring, prior_season)
         adp = _fetch_adp(season, scoring.get("rec", 0.0))
 
-        # Resolve each ADP player to our registry by normalized name + position.
+        # Resolve each ADP player to our registry by normalized name + position,
+        # carrying birthdate for the age multiplier.
         cur.execute(
-            "SELECT name_normalized, position, id, gsis_id FROM players "
+            "SELECT name_normalized, position, id, gsis_id, birthdate FROM players "
             "WHERE position = ANY(%s)",
             (list(_POOL_POS),),
         )
         by_key: dict[tuple[str, str], tuple[str, str]] = {}
-        for nn, pos, pid, gsis in cur.fetchall():
+        birthdates: dict[str, date | None] = {}
+        for nn, pos, pid, gsis, bd in cur.fetchall():
             by_key.setdefault((nn, pos), (pid, gsis))
+            if gsis is not None:
+                birthdates[gsis] = bd
 
         players: list[dict] = []
         for name, pos, a in adp:
@@ -200,6 +239,7 @@ def build_draft_board(league_key: str) -> dict:
                 ppg = prior  # rookie / no prior-season rows → pure ADP prior
             else:
                 continue  # K/DST with no history and no curve — can't value
+            ppg *= _age_mult(pos, _age_at(birthdates.get(gsis), season))
             players.append(
                 {
                     "pid": pid,

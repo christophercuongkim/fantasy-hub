@@ -1,5 +1,7 @@
 """Offline tests for the draft value-board pure helpers (no DB / network)."""
 
+from datetime import date
+
 from app.draft import board
 
 
@@ -24,3 +26,27 @@ def test_tiers_break_on_vor_gaps():
 def test_tiers_single_and_empty():
     assert board._tiers([]) == []
     assert board._tiers([10.0]) == [1]
+
+
+def test_age_at_uses_sep1_kickoff():
+    # Born Jun 7 1996 → already 30 by the Sep 1 2026 kickoff.
+    assert board._age_at(date(1996, 6, 7), 2026) == 30
+    # Born Oct 1 → hasn't had the birthday yet at Sep 1.
+    assert board._age_at(date(1996, 10, 1), 2026) == 29
+    assert board._age_at(None, 2026) is None
+
+
+def test_age_mult_plateau_slope_and_floor():
+    # In the plateau (age <= knee) → no haircut.
+    assert board._age_mult("RB", 27) == 1.0
+    assert board._age_mult("WR", 25) == 1.0
+    # Past the knee → linear decline (RB: 4%/yr past 27).
+    assert board._age_mult("RB", 30) == 1.0 - 0.04 * 3  # 0.88
+    # Floored (RB floor 0.80 reached at age 32).
+    assert board._age_mult("RB", 32) == 0.80
+    assert board._age_mult("RB", 40) == 0.80
+    # QB plateau runs to 35, so a 30-yo QB is untouched.
+    assert board._age_mult("QB", 30) == 1.0
+    # No curve for K/DST, and unknown age is a no-op.
+    assert board._age_mult("K", 40) == 1.0
+    assert board._age_mult("RB", None) == 1.0
