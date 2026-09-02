@@ -1,78 +1,50 @@
-# Integration: seakim design system — "bench" theme
+# Draft board — age + durability adjustments (#2 + #3)
 
-> **✅ COMPLETE 2026-08-07.** All four PRs merged — PR A landing (#45), PR B
-> `/hall_of_records` (#47), PR C `/admin/crosswalk` (#53), PR D `/login` +
-> **Tailwind removed entirely** (#54) — plus a full DS-conformance audit pass
-> (#55: `--type-*` roles, `--tracking-tight`, DS `Button` for sign-out, tooltip
-> `pointer-events` regression). No page uses Tailwind; DS v3.1.0 vendored with
-> governance docs. Next: **draft superlatives** (see `resume-point` memory). The
-> original plan is preserved below.
+Branch: `feat/draft-age-durability` off main. Code PR → stops for review.
 
+## Design (signed off 2026-09-02)
+- **Durability (#3):** replace flat GAMES=17 with per-player expected games =
+  clamp(Σ w·(games_s/possible_s), 10, 17), weights last-2 seasons {0.65, 0.35},
+  possible=17 (16 pre-2021). Established-guard: only apply if a recent season had
+  games ≥ 10; else stay 17 (no backup confound). Floor 10.
+- **Age (#2):** ppg multiplier, piecewise-linear from a per-pos knee, floored.
+  RB knee 27 / −4%/yr / floor .80; WR 28 / −3 / .82; TE 29 / −3 / .85;
+  QB 35 / −3 / .85; K/DST none. Age at Sep 1 kickoff from players.birthdate.
+- Both multiply into season_pts = base_ppg · age_mult · expected_games.
+- **Gate:** backtest 2025 board (2024 obs + 2025 ADP) four ways
+  (flat / +dur / +age / +both) vs actual 2025 pts. Ship only variants that beat
+  flat. Metrics: Spearman, top-24/36 hit rate, points captured by top-N.
 
-Adopt `@seakim/design-system` v3.0.1 (the **bench** fantasy-sport theme,
-`data-app="bench"`, turf hue 145) as fantasy-hub's UI. Next 15 App Router /
-React 19 / pnpm — the DS's supported target.
+## Tasks
+- [x] Branch off main
+- [x] birthdate through build_players (import_ids carries it; upsert by gsis) + backfill prod+QA
+- [x] board.py: `_age_at`, `_age_mult`; age multiplier folded into build_draft_board
+- [x] Backtest script (scratchpad): 4 combos × 3 seasons, scored vs actual pts
+- [x] Unit tests for the age helpers
+- [ ] Rebuild real 2026 board (prod+QA) — POST-MERGE (needs deployed code)
+- [ ] PR with backtest numbers; self-review; STOP for review
 
-## Decisions (locked with Chris)
-1. **Vendor**, don't install. Copy the published surface into `web/vendor/seakim`,
-   alias `@seakim/design-system` → it. Zero private-repo auth in CI/Docker/Dokploy
-   (sidesteps the unverified Dokploy build-secret question). Re-vendor on version
-   bumps via a script. ✅
-2. **Remove Tailwind** (phased). Coexist with `preflight:false` during rollout;
-   convert pages PR-by-PR; delete Tailwind in the last PR. Pure DS components +
-   `var(--…)` for layout — **no Tailwind token bridge.** ✅
-3. **Dark** default theme; no-flash localStorage script wired regardless. ✅
+## Review
+Backtest (2023–25, one fixed ruleset, VOR vs actual season pts):
 
-## PR sequence (each QA-verifiable via deploy-qa before merge)
-- **PR A — plumbing + proof** (this branch, `feat/design-system-bench`)
-  - `web/scripts/vendor-seakim.sh` — copies the DS surface from the sibling repo
-    into `web/vendor/seakim`; strips the Google-fonts `@import` from the vendored
-    `tokens/fonts.css` (we self-host via `next/font`, so no double-fetch).
-  - Vendor the surface: `index.js`, `index.d.ts`, `styles.css`, `components/`,
-    `tokens/`, `ui_kits/shared/`.
-  - `tsconfig.json` path alias `@seakim/design-system` (+ `/*`) → vendor; exclude
-    vendor from our typecheck (upstream, conformance-tested there — Next still
-    compiles it when imported).
-  - eslint/prettier ignore `vendor/`.
-  - `pnpm add @phosphor-icons/web` (public npm, no auth).
-  - `app/fonts.ts` (next/font: Outfit / Plus Jakarta Sans / IBM Plex Mono → the
-    CSS vars the DS reads).
-  - `app/layout.tsx`: DS token CSS + phosphor CSS + font vars + `data-app="bench"`
-    + `data-theme="dark"` + no-flash script + `suppressHydrationWarning`.
-  - `tailwind.config.ts`: `corePlugins: { preflight: false }` so the DS base wins
-    while Tailwind still works during migration.
-  - Convert **landing (`app/page.tsx`)** to DS components — the proof it renders.
-  - Verify: `pnpm build` + `typecheck` + `lint`, then QA deploy.
-- **PR B — `/hall_of_records`** → `Stat`/`Card`/`Table`; restyle the d3 charts to
-  read DS tokens (keep d3, recolor via `var(--…)`).
-- **PR C — `/admin/crosswalk`** → `Table` (client wrapper for its function props),
-  `Field`/`Button`/`Badge`.
-- **PR D — `/login` + sign-out** → DS; then **remove Tailwind** entirely
-  (`tailwind`, `autoprefixer`, `postcss` config, `globals.css`).
+    season  flat→+age spearman   +dur
+    2025    0.418 → 0.433        0.394  ✗
+    2024    0.422 → 0.442        0.399  ✗
+    2023    0.448 → 0.452        0.457  (helps once)
 
-## Gotchas handled
-- **Font double-fetch:** strip the `@import` in the vendored `tokens/fonts.css`;
-  `next/font` self-hosts to the same CSS vars.
-- **Client boundary:** import from the barrel (`@seakim/design-system`) — one
-  `"use client"` covers all. Function-prop components (`Table`, `Slider`,
-  `DatePicker`) need a `"use client"` wrapper (PR C).
-- **Vendored code isn't ours:** excluded from lint/format/typecheck; Next compiles
-  it on import.
+Age beats flat on rank-corr all 3 yrs + captures more deep value (vor@36 up
+every year). Durability regressed 2024/25 (past availability doesn't predict
+next-year games) → **cut per the pre-agreed gate**. Shipped: age only.
 
-## Review — PR A implemented
-Branch `feat/design-system-bench`:
-- `web/scripts/vendor-seakim.sh` + vendored surface `web/vendor/seakim` (v3.0.1,
-  524 KB); Google-fonts `@import` stripped from the vendored `fonts.css`.
-- `tsconfig` alias `@seakim/design-system` (+`/*`) → vendor, vendor excluded from
-  typecheck; eslint + prettier ignore `vendor/`.
-- `@phosphor-icons/web` added; `app/fonts.ts` (next/font).
-- `app/layout.tsx`: DS styles + phosphor + fonts + `data-app="bench"` +
-  `data-theme="dark"` + no-flash script; sign-out button re-styled with DS tokens.
-- `tailwind.config.ts`: `corePlugins.preflight = false` (coexist).
-- `app/page.tsx` landing → DS `Card`s in `Link`s.
+birthdate backfill: 3347/3354 (prod), 3348/3355 (QA) skill-pos covered (the
+handful missing are DST sentinels). Age preview on the live 2026 board: CMC
+0.88, Henry 0.80 (floor), Saquon 0.92, Jacobs 0.96; young studs + QBs 1.00.
 
-**Verified:** `typecheck` ✓, `build` ✓ (Next compiles the vendored `.jsx`; `/`
-= 4.51 kB), `lint` ✓ (vendor ignored), `format` ✓. Dev-server render shows
-`data-app="bench"`, `data-theme="dark"`, the no-flash script, the DS `Card`; built
-CSS contains DS tokens (`--surface-card`, `--space-5`) and the `[data-app=bench]`
-accent block. QA deploy is the visual confirmation.
+Decisions: age curve/knees per the signed-off table; durability code removed
+rather than left flag-off (backtest rejected it — revisit only with real
+injury-report data). birthdate rides the existing registry build (import_ids
+carries it), so no separate ingest job or migration (column already existed).
+
+Note: build_draft_board changes rankings but the live board won't reflect age
+until this merges + deploys and the board is rebuilt (birthdate data is already
+backfilled and survives old-code registry runs).

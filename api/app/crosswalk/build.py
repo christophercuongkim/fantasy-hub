@@ -13,9 +13,10 @@ Everything here is Postgres (hot tier) — the app reads players + the review qu
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import nfl_data_py as nfl
+import pandas as pd
 import psycopg
 from psycopg.types.json import Json
 from rapidfuzz import fuzz, process
@@ -114,6 +115,18 @@ def _s(v) -> str | None:
     return s or None
 
 
+def _d(v) -> date | None:
+    """import_ids birthdate -> a date or None (handles NaT / Timestamp / str)."""
+    if v is None or pd.isna(v):
+        return None
+    if hasattr(v, "date"):  # pandas Timestamp / datetime
+        return v.date()
+    try:
+        return date.fromisoformat(str(v)[:10])
+    except ValueError:
+        return None
+
+
 def build_players(conn: psycopg.Connection) -> int:
     ids = nfl.import_ids()
     # import_ids labels kickers "PK"; map to our "K" enum so they pass the
@@ -134,6 +147,7 @@ def build_players(conn: psycopg.Connection) -> int:
         "position",
         "team",
         "draft_year",
+        "birthdate",
     )
     rows = [
         (
@@ -147,6 +161,7 @@ def build_players(conn: psycopg.Connection) -> int:
             r.position,
             _s(r.team),
             _i(r.draft_year),
+            _d(r.birthdate),
         )
         for r in ids.itertuples()
     ]
@@ -166,6 +181,7 @@ def build_players(conn: psycopg.Connection) -> int:
             "DST",
             t,
             None,
+            None,
         )
         for t in DST_TEAMS
     ]
@@ -173,23 +189,27 @@ def build_players(conn: psycopg.Connection) -> int:
         cur.execute(
             "CREATE TEMP TABLE _px (gsis_id text, pfr_id text, espn_id text, "
             "yahoo_id text, sleeper_id text, full_name text, name_normalized text, "
-            '"position" "position", team text, draft_year integer) ON COMMIT DROP'
+            '"position" "position", team text, draft_year integer, '
+            "birthdate date) ON COMMIT DROP"
         )
     postgres.copy_rows(conn, "_px", cols, rows)
     with conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO players (gsis_id, pfr_id, espn_id, yahoo_id, sleeper_id,
-                full_name, name_normalized, "position", team, draft_year, updated_at)
+                full_name, name_normalized, "position", team, draft_year,
+                birthdate, updated_at)
             SELECT gsis_id, pfr_id, espn_id, yahoo_id, sleeper_id, full_name,
-                name_normalized, "position", team, draft_year, now() FROM _px
+                name_normalized, "position", team, draft_year, birthdate, now()
+                FROM _px
             ON CONFLICT (gsis_id) DO UPDATE SET
                 pfr_id = EXCLUDED.pfr_id, espn_id = EXCLUDED.espn_id,
                 yahoo_id = EXCLUDED.yahoo_id, sleeper_id = EXCLUDED.sleeper_id,
                 full_name = EXCLUDED.full_name,
                 name_normalized = EXCLUDED.name_normalized,
                 "position" = EXCLUDED."position", team = EXCLUDED.team,
-                draft_year = EXCLUDED.draft_year, updated_at = now()
+                draft_year = EXCLUDED.draft_year,
+                birthdate = EXCLUDED.birthdate, updated_at = now()
             """
         )
     return len(rows)
