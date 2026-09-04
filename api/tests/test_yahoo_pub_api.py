@@ -115,3 +115,51 @@ def test_sync_teams_endpoint_not_connected(monkeypatch):
     monkeypatch.setattr(oauth_api, "teams", _raise)
     res = TestClient(app).post("/jobs/sync-teams", json={"league_key": "x"})
     assert res.status_code == 422
+
+
+def test_discover_leagues_endpoint(monkeypatch):
+    """discover-leagues is OAuth-only: enumerates via oauth_api, creates missing."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.yahoo import oauth_api, sync
+
+    payload = {
+        "fantasy_content": {
+            "users": [
+                {
+                    "user": {
+                        "games": [
+                            {
+                                "game": {
+                                    "code": "nfl",
+                                    "leagues": [
+                                        {
+                                            "league": {
+                                                "league_key": "470.l.735658",
+                                                "name": "PCE",
+                                                "season": "2026",
+                                                "num_teams": 12,
+                                            }
+                                        }
+                                    ],
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+    monkeypatch.setattr(oauth_api, "user_leagues", lambda gk="nfl": payload)
+    monkeypatch.setattr(sync, "_known_league_keys", lambda: set())
+    monkeypatch.setattr(oauth_api, "settings", lambda lk: {"s": lk})
+    monkeypatch.setattr(oauth_api, "teams", lambda lk: {"t": lk})
+    monkeypatch.setattr(sync, "sync_league", lambda s, t: {"season": 2026})
+
+    res = TestClient(app).post("/jobs/discover-leagues", json={"game_keys": "nfl"})
+    assert res.status_code == 200
+    body = res.json()
+    assert len(body["discovered"]) == 1
+    assert body["created"][0]["league_key"] == "470.l.735658"
+    assert body["existing"] == []

@@ -57,3 +57,11 @@ def transactions(league_key: str, start: int = 0, count: int = 25) -> dict:
         f"league/{league_key}/transactions;types=add,drop,trade,commish;"
         f"start={start};count={count}"
     )
+
+
+def user_leagues(game_keys: str = "nfl") -> dict:
+    """Every league the token's owner is in for the given game(s). `use_login=1`
+    means "whoever the token belongs to" — no guid needed. `game_keys` filters by
+    sport ("nfl", "nba", "nhl", or a comma list); default nfl. OAuth-only: the
+    cookie source has no equivalent self-scoped call."""
+    return _get(f"users;use_login=1/games;game_keys={game_keys}/leagues")

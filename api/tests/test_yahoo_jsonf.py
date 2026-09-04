@@ -11,6 +11,7 @@ from app.yahoo.parse_jsonf import (
     parse_settings,
     parse_teams,
     parse_transactions,
+    parse_user_leagues,
 )
 
 _FIX = Path(__file__).parent / "fixtures"
@@ -162,3 +163,62 @@ def test_parse_transactions():
     drop = next(m for m in moves if m.destination_type == "waivers")
     assert drop.yahoo_player_id == "34088"  # Doubs, dropped to waivers
     assert drop.source_team_key == "449.l.93367.t.6"
+
+
+# users;use_login=1/games;game_keys=nfl/leagues — the discovery shape: user ->
+# games[] -> game.leagues[] -> league. A game with no `leagues` node is skipped.
+USER_LEAGUES = {
+    "fantasy_content": {
+        "users": [
+            {
+                "user": {
+                    "guid": "OJP3ANS4PWZCN2H4IV5PZ6PAT4",
+                    "games": [
+                        {
+                            "game": {
+                                "code": "nfl",
+                                "leagues": [
+                                    {
+                                        "league": {
+                                            "league_key": "470.l.735658",
+                                            "name": "PeopleCanEat",
+                                            "season": "2026",
+                                            "num_teams": 12,
+                                            "renew": "461_328209",
+                                        }
+                                    },
+                                    {
+                                        "league": {
+                                            "league_key": "470.l.999999",
+                                            "name": "Second League",
+                                            "season": "2026",
+                                            "num_teams": 10,
+                                        }
+                                    },
+                                ],
+                            }
+                        },
+                        {"game": {"code": "nba"}},  # no leagues node -> skipped
+                    ],
+                }
+            }
+        ]
+    }
+}
+
+
+def test_parse_user_leagues():
+    leagues = parse_user_leagues(USER_LEAGUES)
+    assert [x.league_key for x in leagues] == ["470.l.735658", "470.l.999999"]
+    first = leagues[0]
+    assert first.name == "PeopleCanEat"
+    assert first.season == 2026  # coerced from "2026"
+    assert first.num_teams == 12
+    assert first.renew == "461_328209"
+    assert first.game_code == "nfl"
+    assert leagues[1].renew is None  # absent -> None
+
+
+def test_parse_user_leagues_empty():
+    assert parse_user_leagues({"fantasy_content": {"users": []}}) == []
+    assert parse_user_leagues({}) == []

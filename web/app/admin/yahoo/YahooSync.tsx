@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button, Select } from "@seakim/design-system";
 import {
+  discoverLeagues,
   saveCookie,
   syncAll,
   syncLeague,
@@ -137,6 +138,31 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           }
         >
           Sync league (settings + teams)
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const r = await discoverLeagues();
+              const created = Array.isArray(r.result?.created)
+                ? r.result.created.length
+                : 0;
+              const discovered = Array.isArray(r.result?.discovered)
+                ? r.result.discovered.length
+                : 0;
+              const existing = Array.isArray(r.result?.existing)
+                ? r.result.existing.length
+                : 0;
+              setMsg(
+                r.error
+                  ? `Error: ${r.error}`
+                  : `Discovered ${discovered} league(s): ${created} new, ${existing} existing`,
+              );
+            })
+          }
+        >
+          Discover my leagues
         </Button>
         <Button
           variant="secondary"

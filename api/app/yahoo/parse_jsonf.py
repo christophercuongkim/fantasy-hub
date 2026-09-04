@@ -131,6 +131,43 @@ def parse_league(payload: dict) -> LeagueRow:
     )
 
 
+@dataclass
+class DiscoveredLeague:
+    league_key: str
+    name: str
+    season: int | None
+    num_teams: int | None
+    renew: str | None  # prior season's "<game>_<league_id>" (renew chain)
+    game_code: str  # "nfl" / "nba" / "nhl" — the sport, for cross-sport grouping
+
+
+def parse_user_leagues(payload: dict) -> list[DiscoveredLeague]:
+    """The logged-in user's leagues from a `users;use_login=1/games/leagues`
+    payload: user -> games[] -> game.leagues[] -> league. Identity only (no
+    scoring/roster — that needs a per-league /settings call). A game with no
+    `leagues` sub-node (none for that sport/season) is simply skipped."""
+    users = payload.get("fantasy_content", {}).get("users") or []
+    out: list[DiscoveredLeague] = []
+    for u in users:
+        user = u.get("user") or {}
+        for g in user.get("games") or []:
+            game = g.get("game") or {}
+            code = game.get("code") or ""
+            for entry in game.get("leagues") or []:
+                lg = entry.get("league") or {}
+                out.append(
+                    DiscoveredLeague(
+                        league_key=lg["league_key"],
+                        name=lg["name"],
+                        season=_to_int(lg.get("season")),
+                        num_teams=_to_int(lg.get("num_teams")),
+                        renew=lg.get("renew") or None,
+                        game_code=code,
+                    )
+                )
+    return out
+
+
 BENCH_SLOTS = {"BN", "IR"}
 
 
