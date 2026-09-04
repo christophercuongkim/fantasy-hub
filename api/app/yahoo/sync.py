@@ -616,6 +616,19 @@ def _league_keys() -> list[str]:
         return [r[0] for r in cur.fetchall()]
 
 
+def season_league_keys(season: int) -> list[str]:
+    """Yahoo league keys for a single season — all of them, so a user with more
+    than one team that season gets each league synced. Order is irrelevant."""
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT yahoo_league_key FROM leagues "
+            "WHERE season = %s AND yahoo_league_key IS NOT NULL "
+            "ORDER BY yahoo_league_key",
+            (season,),
+        )
+        return [r[0] for r in cur.fetchall()]
+
+
 def sync_all_teams(fetch, keys: list[str] | None = None) -> dict:
     """Sync teams for every league we know — one cookie, all seasons. `fetch` is
     the injected source `fetch(league_key) -> payload` (pub_api.teams live).
