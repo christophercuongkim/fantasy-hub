@@ -363,3 +363,35 @@ def parse_teams(payload: dict) -> list[TeamRow]:
             )
         )
     return out
+
+
+@dataclass
+class PlayerStatusRow:
+    yahoo_player_id: str
+    status: str  # raw Yahoo code: Q/D/O/IR/PUP/SUSP/IR-R/PUP-R/NA/…
+    status_full: str | None  # e.g. "Questionable"
+    injury_note: str | None  # e.g. "Hamstring"
+
+
+def parse_player_statuses(payload: dict) -> list[PlayerStatusRow]:
+    """Injured players from a league `/players` page. Healthy players carry a
+    null `status` and are skipped — only those with a designation get a row."""
+    lg = payload.get("fantasy_content", {}).get("league") or {}
+    players = lg.get("players")
+    out: list[PlayerStatusRow] = []
+    if not isinstance(players, list):
+        return out
+    for entry in players:
+        p = entry.get("player") or entry
+        status = p.get("status")
+        if not status:
+            continue
+        out.append(
+            PlayerStatusRow(
+                yahoo_player_id=str(p["player_id"]),
+                status=status,
+                status_full=p.get("status_full") or None,
+                injury_note=p.get("injury_note") or None,
+            )
+        )
+    return out

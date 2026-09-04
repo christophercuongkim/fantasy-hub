@@ -222,3 +222,43 @@ def test_parse_user_leagues():
 def test_parse_user_leagues_empty():
     assert parse_user_leagues({"fantasy_content": {"users": []}}) == []
     assert parse_user_leagues({}) == []
+
+
+def test_parse_player_statuses_skips_healthy():
+    from app.yahoo.parse_jsonf import parse_player_statuses
+
+    payload = {
+        "fantasy_content": {
+            "league": {
+                "players": [
+                    {
+                        "player": {
+                            "player_id": "100",
+                            "status": "Q",
+                            "status_full": "Questionable",
+                            "injury_note": "Hamstring",
+                        }
+                    },
+                    {"player": {"player_id": "200", "status": None}},  # healthy → skip
+                    {
+                        "player": {
+                            "player_id": "300",
+                            "status": "IR",
+                            "status_full": "Injured Reserve",
+                            "injury_note": None,
+                        }
+                    },
+                ]
+            }
+        }
+    }
+    out = parse_player_statuses(payload)
+    assert [(s.yahoo_player_id, s.status) for s in out] == [("100", "Q"), ("300", "IR")]
+    assert out[0].injury_note == "Hamstring"
+    assert out[1].injury_note is None
+
+
+def test_parse_player_statuses_empty():
+    from app.yahoo.parse_jsonf import parse_player_statuses
+
+    assert parse_player_statuses({"fantasy_content": {"league": {}}}) == []

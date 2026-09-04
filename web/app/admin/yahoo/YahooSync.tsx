@@ -8,6 +8,7 @@ import {
   syncAll,
   syncLeague,
   syncMatchups,
+  syncPlayerStatus,
   syncRosters,
   syncTeams,
   syncTransactions,
@@ -195,6 +196,22 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           }
         >
           Sync transactions
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={pending || !leagueKey.trim()}
+          onClick={() =>
+            start(async () => {
+              const r = await syncPlayerStatus(leagueKey);
+              setMsg(
+                r.error
+                  ? `Error: ${r.error}`
+                  : `Injury status ${season}: ${r.result?.written} flagged of ${r.result?.injured} injured (${r.result?.unmatched} unmatched)`,
+              );
+            })
+          }
+        >
+          Sync injury status
         </Button>
       </div>
 

@@ -163,3 +163,25 @@ def test_discover_leagues_endpoint(monkeypatch):
     assert len(body["discovered"]) == 1
     assert body["created"][0]["league_key"] == "470.l.735658"
     assert body["existing"] == []
+
+
+def test_sync_player_status_endpoint(monkeypatch):
+    """OAuth-only injury sync: fetches via oauth_api.players, writes player_status."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.yahoo import oauth_api, sync
+
+    monkeypatch.setattr(
+        oauth_api, "players", lambda lk, start=0, count=25: {"p": start}
+    )
+    monkeypatch.setattr(
+        sync,
+        "sync_player_status",
+        lambda lk, fetch: {"league_key": lk, "season": 2026, "written": 4},
+    )
+    res = TestClient(app).post(
+        "/jobs/sync-player-status", json={"league_key": "470.l.735658"}
+    )
+    assert res.status_code == 200
+    assert res.json()["written"] == 4

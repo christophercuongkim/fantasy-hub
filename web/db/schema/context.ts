@@ -52,3 +52,24 @@ export const injuries = pgTable(
   },
   (t) => [primaryKey({ columns: [t.playerId, t.season, t.week] })],
 );
+
+// The player's CURRENT Yahoo injury designation (one row per player per season),
+// synced from the league players collection. Separate from `injuries` (weekly,
+// nflverse game-day) so it refreshes without a board rebuild and feeds both the
+// preseason draft board and in-season start/sit. `status` is the raw Yahoo code
+// (Q/D/O/IR/PUP/SUSP and wider ones like IR-R/PUP-R/NA) as text, not the narrow
+// yahooInjuryStatusEnum, so an unexpected code never fails the write.
+export const playerStatus = pgTable(
+  "player_status",
+  {
+    playerId: uuid()
+      .notNull()
+      .references(() => players.id),
+    season: integer().notNull(),
+    status: text().notNull(), // raw Yahoo code; only injured players get a row
+    statusFull: text(), // human label, e.g. "Questionable"
+    injuryNote: text(), // e.g. "Hamstring"
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.playerId, t.season] })],
+);

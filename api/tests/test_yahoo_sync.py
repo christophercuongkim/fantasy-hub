@@ -271,3 +271,92 @@ def test_discover_leagues_records_create_error(monkeypatch):
     bad = next(c for c in out["created"] if c["league_key"] == "470.l.999999")
     assert "error" not in ok  # one league failing doesn't abort the others
     assert bad["error"] == "couldn't resolve a family"
+
+
+class _StatusCursor:
+    """Canned SELECTs; records the DELETE + player_status INSERTs."""
+
+    def __init__(self, season, players):
+        self._season = season
+        self._players = players  # [(yahoo_id, players_id), ...]
+        self.inserts: list[tuple] = []
+        self.deletes: list[tuple] = []
+        self._armed: list = []
+
+    def execute(self, sql, params=()):
+        s = sql.lstrip()
+        if s.startswith("SELECT season FROM leagues"):
+            self._armed = [(self._season,)]
+        elif s.startswith("SELECT yahoo_id, id FROM players"):
+            self._armed = self._players
+        elif s.startswith("DELETE FROM player_status"):
+            self.deletes.append(params)
+        elif s.startswith("INSERT INTO player_status"):
+            self.inserts.append(params)
+
+    def fetchone(self):
+        return self._armed[0] if self._armed else None
+
+    def fetchall(self):
+        return self._armed
+
+
+def _status_page(rows):
+    return {"fantasy_content": {"league": {"players": rows}}}
+
+
+def test_sync_player_status_keeps_injured_and_crosswalks(monkeypatch):
+    page0 = _status_page(
+        [
+            {
+                "player": {
+                    "player_id": "100",
+                    "name": {"full": "A"},
+                    "status": "Q",
+                    "status_full": "Questionable",
+                    "injury_note": "Hamstring",
+                }
+            },
+            {
+                "player": {
+                    "player_id": "200",
+                    "name": {"full": "B"},
+                    "status": "IR",
+                    "status_full": "Injured Reserve",
+                    "injury_note": "Knee",
+                }
+            },
+            {"player": {"player_id": "300", "name": {"full": "C"}, "status": None}},
+        ]
+    )
+
+    # Only the first page has players; later pages are empty (short pool).
+    def fetch(lk, start, count):
+        return page0 if start == 0 else _status_page([])
+
+    cur = _StatusCursor(season=2026, players=[("100", "pid-100")])  # 200 unmatched
+    monkeypatch.setattr(sync.postgres, "connect", lambda: _DraftConn(cur))
+
+    out = sync.sync_player_status("470.l.735658", fetch, max_players=50, page=25)
+    assert out["injured"] == 2  # C (healthy) skipped by the parser
+    assert out["written"] == 1  # only the crosswalked player 100
+    assert out["unmatched"] == 1  # player 200 had no players.yahoo_id
+    assert cur.deletes == [(2026,)]  # season fully refreshed before insert
+    assert len(cur.inserts) == 1
+    ins = cur.inserts[0]  # (player_id, season, status, status_full, injury_note)
+    assert ins[0] == "pid-100" and ins[1] == 2026 and ins[2] == "Q"
+    assert ins[3] == "Questionable" and ins[4] == "Hamstring"
+
+
+def test_sync_player_status_no_league_row(monkeypatch):
+    class _NoLeague(_StatusCursor):
+        def execute(self, sql, params=()):
+            pass  # every SELECT returns nothing → the season lookup fails
+
+    cur = _NoLeague(season=None, players=[])
+    monkeypatch.setattr(sync.postgres, "connect", lambda: _DraftConn(cur))
+    try:
+        sync.sync_player_status("x", lambda *a: _status_page([]))
+        raise AssertionError("expected ValueError")
+    except ValueError:
+        pass
