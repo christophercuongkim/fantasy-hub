@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from typing import Any, Literal
 
 from fastapi import BackgroundTasks, FastAPI
 from fastapi.responses import JSONResponse
@@ -305,29 +306,53 @@ def set_yahoo_cookie(body: SetCookieRequest) -> JSONResponse:
     return JSONResponse({"status": "stored"})
 
 
+# Yahoo sync has two interchangeable fetch sources behind one function surface:
+# "oauth" (official API, refreshing bearer token — no cookie to re-paste) and
+# "cookie" (pub-api-rw, hand-pasted session cookie, the original path / fallback).
+# Both return the same json_f payloads, so the writers don't care which is used.
+SyncSource = Literal["oauth", "cookie"]
+
+
+def _fetch_source(source: SyncSource):
+    from app.yahoo import oauth_api, pub_api
+
+    return oauth_api if source == "oauth" else pub_api
+
+
+def _run_yahoo_job(fn: Callable[[], Any]) -> JSONResponse:
+    """Run a sync job, mapping either source's auth/rate errors to a status.
+    401 = re-auth needed (re-connect / re-paste); 422 = not connected or bad
+    input; 424 = upstream Yahoo / DB failure."""
+    from app.yahoo import client, pub_api
+
+    try:
+        return JSONResponse(fn())
+    except (pub_api.CookieExpired, client.YahooRateLimited) as e:
+        return JSONResponse(status_code=401, content={"error": str(e)})
+    except (pub_api.NoCookie, client.YahooNotConnected, ValueError) as e:
+        return JSONResponse(status_code=422, content={"error": str(e)})
+    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
+        return JSONResponse(status_code=424, content={"error": str(e)})
+
+
 class SyncTeamsRequest(BaseModel):
     league_key: str
+    source: SyncSource = "oauth"
 
 
 # Pull the league's teams + standings from Yahoo (cookie-auth pub-api-rw) and
 # backfill league_teams. The league must already exist (bootstrap loads it).
 @app.post("/jobs/sync-teams")
 def sync_teams_job(body: SyncTeamsRequest) -> JSONResponse:
-    from app.yahoo import pub_api, sync
+    from app.yahoo import sync
 
-    try:
-        payload = pub_api.teams(body.league_key)
-        return JSONResponse(sync.sync_teams(payload))
-    except pub_api.CookieExpired as e:
-        return JSONResponse(status_code=401, content={"error": str(e)})
-    except (pub_api.NoCookie, ValueError) as e:
-        return JSONResponse(status_code=422, content={"error": str(e)})
-    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
-        return JSONResponse(status_code=424, content={"error": str(e)})
+    src = _fetch_source(body.source)
+    return _run_yahoo_job(lambda: sync.sync_teams(src.teams(body.league_key)))
 
 
 class SyncLeagueRequest(BaseModel):
     league_key: str
+    source: SyncSource = "oauth"
 
 
 # Create-or-update a league from its Yahoo /settings (scoring, roster) + teams.
@@ -335,98 +360,78 @@ class SyncLeagueRequest(BaseModel):
 # re-run after the league's rules finalise to refresh scoring in place.
 @app.post("/jobs/sync-league")
 def sync_league_job(body: SyncLeagueRequest) -> JSONResponse:
-    from app.yahoo import pub_api, sync
+    from app.yahoo import sync
 
-    try:
-        settings_payload = pub_api.settings(body.league_key)
-        teams_payload = pub_api.teams(body.league_key)
-        return JSONResponse(sync.sync_league(settings_payload, teams_payload))
-    except pub_api.CookieExpired as e:
-        return JSONResponse(status_code=401, content={"error": str(e)})
-    except (pub_api.NoCookie, ValueError) as e:
-        return JSONResponse(status_code=422, content={"error": str(e)})
-    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
-        return JSONResponse(status_code=424, content={"error": str(e)})
+    src = _fetch_source(body.source)
+    return _run_yahoo_job(
+        lambda: sync.sync_league(
+            src.settings(body.league_key), src.teams(body.league_key)
+        )
+    )
 
 
 class SyncRostersRequest(BaseModel):
     league_key: str
     week: int
+    source: SyncSource = "oauth"
 
 
 class SyncTransactionsRequest(BaseModel):
     league_key: str
+    source: SyncSource = "oauth"
 
 
 # All of a league's adds/drops/trades → the transactions table (paginated).
 @app.post("/jobs/sync-transactions")
 def sync_transactions_job(body: SyncTransactionsRequest) -> JSONResponse:
-    from app.yahoo import pub_api, sync
+    from app.yahoo import sync
 
-    try:
-        return JSONResponse(
-            sync.sync_all_transactions(body.league_key, pub_api.transactions)
-        )
-    except pub_api.CookieExpired as e:
-        return JSONResponse(status_code=401, content={"error": str(e)})
-    except (pub_api.NoCookie, ValueError) as e:
-        return JSONResponse(status_code=422, content={"error": str(e)})
-    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
-        return JSONResponse(status_code=424, content={"error": str(e)})
+    src = _fetch_source(body.source)
+    return _run_yahoo_job(
+        lambda: sync.sync_all_transactions(body.league_key, src.transactions)
+    )
 
 
 class SyncMatchupsRequest(BaseModel):
     league_key: str
     week: int
+    source: SyncSource = "oauth"
 
 
 # A week's matchups + scores → the matchups table (one call for the whole league).
 @app.post("/jobs/sync-matchups")
 def sync_matchups_job(body: SyncMatchupsRequest) -> JSONResponse:
-    from app.yahoo import pub_api, sync
+    from app.yahoo import sync
 
-    try:
-        payload = pub_api.scoreboard(body.league_key, body.week)
-        return JSONResponse(sync.sync_matchups(payload))
-    except pub_api.CookieExpired as e:
-        return JSONResponse(status_code=401, content={"error": str(e)})
-    except (pub_api.NoCookie, ValueError) as e:
-        return JSONResponse(status_code=422, content={"error": str(e)})
-    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
-        return JSONResponse(status_code=424, content={"error": str(e)})
+    src = _fetch_source(body.source)
+    return _run_yahoo_job(
+        lambda: sync.sync_matchups(src.scoreboard(body.league_key, body.week))
+    )
 
 
 # Every team's weekly roster (players + slots) → the rosters table. Post-draft.
 @app.post("/jobs/sync-rosters")
 def sync_rosters_job(body: SyncRostersRequest) -> JSONResponse:
-    from app.yahoo import pub_api, sync
+    from app.yahoo import sync
 
-    try:
-        return JSONResponse(
-            sync.sync_rosters(body.league_key, pub_api.roster, body.week)
-        )
-    except pub_api.CookieExpired as e:
-        return JSONResponse(status_code=401, content={"error": str(e)})
-    except (pub_api.NoCookie, ValueError) as e:
-        return JSONResponse(status_code=422, content={"error": str(e)})
-    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
-        return JSONResponse(status_code=424, content={"error": str(e)})
+    src = _fetch_source(body.source)
+    return _run_yahoo_job(
+        lambda: sync.sync_rosters(body.league_key, src.roster, body.week)
+    )
 
 
-# Sync teams for every league we hold a Yahoo key for — one cookie, all seasons,
+class SyncAllTeamsRequest(BaseModel):
+    source: SyncSource = "oauth"
+
+
+# Sync teams for every league we hold a Yahoo key for — one auth, all seasons,
 # no league_key to type.
 @app.post("/jobs/sync-all-teams")
-def sync_all_teams_job() -> JSONResponse:
-    from app.yahoo import pub_api, sync
+def sync_all_teams_job(body: SyncAllTeamsRequest | None = None) -> JSONResponse:
+    from app.yahoo import sync
 
-    try:
-        return JSONResponse(sync.sync_all_teams(pub_api.teams))
-    except pub_api.CookieExpired as e:
-        return JSONResponse(status_code=401, content={"error": str(e)})
-    except pub_api.NoCookie as e:
-        return JSONResponse(status_code=422, content={"error": str(e)})
-    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
-        return JSONResponse(status_code=424, content={"error": str(e)})
+    src = _fetch_source(body.source if body else "oauth")
+    return _run_yahoo_job(lambda: sync.sync_all_teams(src.teams))
 
 
 class SimMatchupRequest(BaseModel):
@@ -450,22 +455,17 @@ def sim_matchup_job(body: SimMatchupRequest) -> JSONResponse:
 
 class SyncDraftRequest(BaseModel):
     league_key: str
+    source: SyncSource = "oauth"
 
 
 # Draft assistant Slice 3: poll Yahoo draft-results into draft_picks. Idempotent
 # per overall pick — the live board calls this on a timer during the draft.
 @app.post("/jobs/sync-draft")
 def sync_draft_job(body: SyncDraftRequest) -> JSONResponse:
-    from app.yahoo import pub_api, sync
+    from app.yahoo import sync
 
-    try:
-        return JSONResponse(sync.sync_draft(body.league_key, pub_api.draftresults))
-    except pub_api.CookieExpired as e:
-        return JSONResponse(status_code=401, content={"error": str(e)})
-    except (pub_api.NoCookie, ValueError) as e:
-        return JSONResponse(status_code=422, content={"error": str(e)})
-    except Exception as e:  # noqa: BLE001 — Yahoo / DB failure
-        return JSONResponse(status_code=424, content={"error": str(e)})
+    src = _fetch_source(body.source)
+    return _run_yahoo_job(lambda: sync.sync_draft(body.league_key, src.draftresults))
 
 
 class BuildDraftBoardRequest(BaseModel):

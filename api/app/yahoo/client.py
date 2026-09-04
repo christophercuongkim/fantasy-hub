@@ -23,6 +23,11 @@ class YahooError(RuntimeError):
     pass
 
 
+class YahooNotConnected(YahooError):
+    """No OAuth token stored yet — connect Yahoo in the admin first. The OAuth
+    analogue of pub_api.NoCookie (a config problem, not an upstream failure)."""
+
+
 class YahooRateLimited(YahooError):
     """Yahoo returned HTTP 999 — back off exponentially."""
 
@@ -43,7 +48,9 @@ class YahooClient:
     def _load(self) -> None:
         stored = tokens.load()
         if stored is None:
-            raise YahooError("no Yahoo token stored — complete the OAuth flow first")
+            raise YahooNotConnected(
+                "no Yahoo token stored — connect Yahoo in the admin first"
+            )
         self._access = stored.access_token
         self._refresh = stored.refresh_token
         self._expires_at = stored.expires_at
@@ -78,9 +85,14 @@ class YahooClient:
         )
         tokens.save_access_token(self._access, self._expires_at)
 
-    def get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def get(
+        self,
+        path: str,
+        params: dict[str, Any] | None = None,
+        fmt: str = "json",
+    ) -> dict[str, Any]:
         self._ensure_token()
-        query = {**(params or {}), "format": "json"}
+        query = {**(params or {}), "format": fmt}
         for attempt in range(2):
             resp = httpx.get(
                 f"{BASE}{path}",

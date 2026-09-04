@@ -51,7 +51,7 @@ def test_expired_cookie_raises(monkeypatch):
         pub_api.get_json_f("x")
 
 
-def test_sync_teams_endpoint(monkeypatch):
+def test_sync_teams_endpoint_cookie_source(monkeypatch):
     from fastapi.testclient import TestClient
 
     from app.main import app
@@ -61,9 +61,29 @@ def test_sync_teams_endpoint(monkeypatch):
     monkeypatch.setattr(pa, "teams", lambda lk: {"fantasy_content": {"league": {}}})
     monkeypatch.setattr(sync, "sync_teams", lambda payload: {"teams_updated": 3})
 
-    res = TestClient(app).post("/jobs/sync-teams", json={"league_key": "449.l.93367"})
+    res = TestClient(app).post(
+        "/jobs/sync-teams",
+        json={"league_key": "449.l.93367", "source": "cookie"},
+    )
     assert res.status_code == 200
     assert res.json()["teams_updated"] == 3
+
+
+def test_sync_teams_endpoint_oauth_source(monkeypatch):
+    """Default source is oauth → the endpoint fetches via oauth_api, not pub_api."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.yahoo import oauth_api, sync
+
+    monkeypatch.setattr(
+        oauth_api, "teams", lambda lk: {"fantasy_content": {"league": {}}}
+    )
+    monkeypatch.setattr(sync, "sync_teams", lambda payload: {"teams_updated": 7})
+
+    res = TestClient(app).post("/jobs/sync-teams", json={"league_key": "449.l.93367"})
+    assert res.status_code == 200
+    assert res.json()["teams_updated"] == 7
 
 
 def test_sync_teams_endpoint_no_cookie(monkeypatch):
@@ -76,5 +96,22 @@ def test_sync_teams_endpoint_no_cookie(monkeypatch):
         raise pa.NoCookie("no cookie")
 
     monkeypatch.setattr(pa, "teams", _raise)
+    res = TestClient(app).post(
+        "/jobs/sync-teams", json={"league_key": "x", "source": "cookie"}
+    )
+    assert res.status_code == 422
+
+
+def test_sync_teams_endpoint_not_connected(monkeypatch):
+    """oauth source with no token stored → 422 (YahooNotConnected)."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.yahoo import client, oauth_api
+
+    def _raise(lk):
+        raise client.YahooNotConnected("not connected")
+
+    monkeypatch.setattr(oauth_api, "teams", _raise)
     res = TestClient(app).post("/jobs/sync-teams", json={"league_key": "x"})
     assert res.status_code == 422
