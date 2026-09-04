@@ -92,6 +92,13 @@
       "when": 1786318824485,
       "tag": "20260809234024_useful_ezekiel",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788529917109,
+      "tag": "20260904135157_add_player_injury_status",
+      "breakpoints": true
     }
   ]
 }

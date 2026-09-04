@@ -19,6 +19,8 @@ export type DraftBoardRow = {
   value: number | null;
   drafted: boolean; // already picked in the live draft
   mine: boolean; // picked by my team
+  status: string | null; // Yahoo injury code (Q/O/IR/…); null when healthy
+  statusFull: string | null; // human label, e.g. "Questionable"
 };
 
 export type RosterPick = { player: string; pos: string };
@@ -90,9 +92,12 @@ export async function latestDraftBoard(): Promise<DraftBoardSet | null> {
   const rows = (await db.execute(sql`
     select db.player_id, db.overall_rank, pl.full_name as player,
            pl.position as pos, db.pos_rank, pl.team, db.season_pts::float as season_pts,
-           db.vor::float as vor, db.adp::float as adp, db.tier
+           db.vor::float as vor, db.adp::float as adp, db.tier,
+           ps.status, ps.status_full
     from draft_board db
     join players pl on pl.id = db.player_id
+    left join player_injury_status ps
+      on ps.player_id = db.player_id and ps.season = db.season
     where db.league_id = ${id} and db.season = ${season}
     order by db.overall_rank
   `)) as unknown as Record<string, unknown>[];
@@ -126,6 +131,8 @@ export async function latestDraftBoard(): Promise<DraftBoardSet | null> {
         value: adp == null ? null : Math.round((adp - overallRank) * 10) / 10,
         drafted: draftedBy.has(pid),
         mine: draftedBy.get(pid) === true,
+        status: (r.status as string | null) ?? null,
+        statusFull: (r.status_full as string | null) ?? null,
       };
     }),
   };

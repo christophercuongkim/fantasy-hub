@@ -35,6 +35,7 @@ def test_endpoints_hit_expected_paths_with_json_f(monkeypatch):
     oauth_api.draftresults("449.l.93367")
     oauth_api.transactions("449.l.93367", start=25, count=25)
     oauth_api.user_leagues("nfl")
+    oauth_api.players("449.l.93367", start=0, count=25)
 
     paths = [p for p, _ in fake.calls]
     assert paths == [
@@ -46,6 +47,7 @@ def test_endpoints_hit_expected_paths_with_json_f(monkeypatch):
         "/league/449.l.93367/transactions;types=add,drop,trade,commish;"
         "start=25;count=25",
         "/users;use_login=1/games;game_keys=nfl/leagues",
+        "/league/449.l.93367/players;sort=OR;start=0;count=25",
     ]
     # Every call must request the clean json_f shape, never the default json.
     assert {fmt for _, fmt in fake.calls} == {"json_f"}

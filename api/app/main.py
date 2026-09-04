@@ -458,6 +458,22 @@ def discover_leagues_job(body: DiscoverLeaguesRequest | None = None) -> JSONResp
     )
 
 
+class SyncPlayerStatusRequest(BaseModel):
+    league_key: str
+
+
+# Refresh the season's current Yahoo injury designations (Q/O/IR/…) for the
+# draftable pool → player_status. Flags the draft board; no effect on VOR.
+# OAuth-only (the ranked players collection is cleanest through the token).
+@app.post("/jobs/sync-player-status")
+def sync_player_status_job(body: SyncPlayerStatusRequest) -> JSONResponse:
+    from app.yahoo import oauth_api, sync
+
+    return _run_yahoo_job(
+        lambda: sync.sync_player_status(body.league_key, oauth_api.players)
+    )
+
+
 class SimMatchupRequest(BaseModel):
     league_key: str
     week: int

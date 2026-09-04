@@ -16,6 +16,7 @@ from app.storage import postgres
 from app.yahoo.parse_jsonf import (
     parse_draftresults,
     parse_matchups,
+    parse_player_statuses,
     parse_roster,
     parse_settings,
     parse_teams,
@@ -673,4 +674,64 @@ def discover_leagues(payload: dict, create) -> dict:
         ],
         "created": created,
         "existing": existing,
+    }
+
+
+def sync_player_status(
+    league_key, fetch, max_players: int = 200, page: int = 25
+) -> dict:
+    """Refresh the season's current Yahoo injury designations. `fetch(league_key,
+    start, count) -> payload` pages the ranked player pool (oauth_api.players); we
+    read the top `max_players` (the draftable set) and keep only injured players.
+
+    Full-refresh per season: delete the season's rows, insert the current injured
+    set. That way a player who has recovered (status cleared) loses his row rather
+    than leaving a stale designation. Players we can't crosswalk (DST, a rookie
+    whose yahoo_id lags) are skipped."""
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT season FROM leagues WHERE yahoo_league_key = %s", (league_key,)
+        )
+        row = cur.fetchone()
+        if row is None:
+            raise ValueError(f"no league row for {league_key}")
+        season = row[0]
+
+        statuses: dict[str, object] = {}  # yahoo_player_id -> PlayerStatusRow (dedup)
+        for start in range(0, max_players, page):
+            for s in parse_player_statuses(fetch(league_key, start, page)):
+                statuses.setdefault(s.yahoo_player_id, s)
+
+        yahoo_ids = list(statuses)
+        pmap: dict[str, str] = {}
+        if yahoo_ids:
+            cur.execute(
+                "SELECT yahoo_id, id FROM players WHERE yahoo_id = ANY(%s)",
+                (yahoo_ids,),
+            )
+            pmap = {y: i for y, i in cur.fetchall()}
+
+        cur.execute("DELETE FROM player_injury_status WHERE season = %s", (season,))
+        written = 0
+        unmatched: list[str] = []
+        for yid, s in statuses.items():
+            pid = pmap.get(yid)
+            if pid is None:
+                unmatched.append(yid)
+                continue
+            cur.execute(
+                "INSERT INTO player_injury_status "
+                "(player_id, season, status, status_full, injury_note, updated_at) "
+                "VALUES (%s, %s, %s, %s, %s, now())",
+                (pid, season, s.status, s.status_full, s.injury_note),
+            )
+            written += 1
+        conn.commit()
+
+    return {
+        "league_key": league_key,
+        "season": season,
+        "injured": len(statuses),
+        "written": written,
+        "unmatched": len(unmatched),
     }

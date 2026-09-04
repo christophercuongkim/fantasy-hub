@@ -59,6 +59,13 @@ def transactions(league_key: str, start: int = 0, count: int = 25) -> dict:
     )
 
 
+def players(league_key: str, start: int = 0, count: int = 25, sort: str = "OR") -> dict:
+    """A page of the league's players, ranked (sort=OR = overall rank) so the
+    first pages are the draftable pool. Each player carries `status` /
+    `status_full` / `injury_note` (null when healthy). Paginate with `start`."""
+    return _get(f"league/{league_key}/players;sort={sort};start={start};count={count}")
+
+
 def user_leagues(game_keys: str = "nfl") -> dict:
     """Every league the token's owner is in for the given game(s). `use_login=1`
     means "whoever the token belongs to" — no guid needed. `game_keys` filters by

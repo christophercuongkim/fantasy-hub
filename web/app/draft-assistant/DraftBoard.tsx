@@ -32,6 +32,23 @@ const POSITIONS = ["All", "QB", "RB", "WR", "TE", "K", "DST"];
 const one = (n: number) => n.toFixed(1);
 const signed = (n: number) => (n > 0 ? "+" : "") + n.toFixed(0);
 
+// The "will actually miss games" designations. Preseason, ~a quarter of the
+// draftable pool is day-to-day "Questionable" — noise on a draft board — so only
+// this tier gets a badge here. Q/D are still stored in player_status and surface
+// in-season for start/sit; they just don't clutter the draft board.
+const OUT_STATUSES = new Set(["O", "IR", "IR-R", "PUP", "PUP-R", "SUSP", "NA"]);
+
+// The injury badge beside a player's name, or null when healthy / merely Q/D.
+function StatusBadge({ row }: { row: DraftBoardRow }) {
+  if (!row.status || !OUT_STATUSES.has(row.status.toUpperCase())) return null;
+  const title = [row.statusFull, row.status].filter(Boolean).join(" · ");
+  return (
+    <Badge tone="danger" variant="subtle" mono title={title}>
+      {row.status}
+    </Badge>
+  );
+}
+
 type Msg = { text: string; error: boolean } | null;
 
 export function DraftBoard({
@@ -233,7 +250,23 @@ export function DraftBoard({
           caption={`${season} draft value board — ranked by value over replacement`}
           columns={[
             { key: "overallRank", label: "#", identifying: true },
-            { key: "player", label: "Player", secondary: true },
+            {
+              key: "player",
+              label: "Player",
+              secondary: true,
+              render: (r) => (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "var(--space-2)",
+                  }}
+                >
+                  {r.player}
+                  <StatusBadge row={r} />
+                </span>
+              ),
+            },
             { key: "pos", label: "Pos", render: (r) => `${r.pos}${r.posRank}` },
             {
               key: "team",
@@ -407,6 +440,7 @@ function Recommendations({
                 {r.posRank}
               </span>
               <span>{r.player}</span>
+              <StatusBadge row={r} />
               <span style={{ color: "var(--text-tertiary)" }}>
                 VOR {r.vor.toFixed(0)} · T{r.tier}
               </span>
