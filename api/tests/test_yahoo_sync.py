@@ -204,3 +204,70 @@ def test_sync_draft_maps_and_computes_pick_in_round(monkeypatch):
     assert first[2] == 1 and first[4] == 1 and first[6] == "player-100"
     # overall 13, round 2, 12 teams → pick_in_round 13 - 12 = 1; player unresolved
     assert second[2] == 13 and second[4] == 1 and second[6] is None
+
+
+_DISCOVERY_PAYLOAD = {
+    "fantasy_content": {
+        "users": [
+            {
+                "user": {
+                    "games": [
+                        {
+                            "game": {
+                                "code": "nfl",
+                                "leagues": [
+                                    {
+                                        "league": {
+                                            "league_key": "470.l.735658",
+                                            "name": "PeopleCanEat",
+                                            "season": "2026",
+                                            "num_teams": 12,
+                                        }
+                                    },
+                                    {
+                                        "league": {
+                                            "league_key": "470.l.999999",
+                                            "name": "New One",
+                                            "season": "2026",
+                                            "num_teams": 10,
+                                        }
+                                    },
+                                ],
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}
+
+
+def test_discover_leagues_creates_missing_skips_existing(monkeypatch):
+    monkeypatch.setattr(sync, "_known_league_keys", lambda: {"470.l.735658"})
+    made = []
+
+    def create(lk):
+        made.append(lk)
+        return {"season": 2026}
+
+    out = sync.discover_leagues(_DISCOVERY_PAYLOAD, create)
+    assert made == ["470.l.999999"]  # only the unknown one is created
+    assert out["existing"] == ["470.l.735658"]
+    assert [c["league_key"] for c in out["created"]] == ["470.l.999999"]
+    assert len(out["discovered"]) == 2
+
+
+def test_discover_leagues_records_create_error(monkeypatch):
+    monkeypatch.setattr(sync, "_known_league_keys", lambda: set())
+
+    def create(lk):
+        if lk == "470.l.999999":
+            raise ValueError("couldn't resolve a family")
+        return {"season": 2026}
+
+    out = sync.discover_leagues(_DISCOVERY_PAYLOAD, create)
+    ok = next(c for c in out["created"] if c["league_key"] == "470.l.735658")
+    bad = next(c for c in out["created"] if c["league_key"] == "470.l.999999")
+    assert "error" not in ok  # one league failing doesn't abort the others
+    assert bad["error"] == "couldn't resolve a family"

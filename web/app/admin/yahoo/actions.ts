@@ -133,6 +133,28 @@ export async function syncMatchups(
   }
 }
 
+// Enumerate the connected user's own leagues and create rows for any we don't
+// have yet. OAuth-only (uses the stored token's use_login scope).
+export async function discoverLeagues(
+  gameKeys = "nfl",
+): Promise<{ result?: Record<string, unknown>; error?: string }> {
+  try {
+    const res = await fetch(`${apiUrl()}/jobs/discover-leagues`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ game_keys: gameKeys }),
+      cache: "no-store",
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: String(body.error ?? `HTTP ${res.status}`) };
+    return { result: body };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not reach the api.",
+    };
+  }
+}
+
 // Sync every league we hold a Yahoo key for — one cookie, all seasons.
 export async function syncAll(): Promise<{
   result?: Record<string, unknown>;

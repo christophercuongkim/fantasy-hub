@@ -434,6 +434,30 @@ def sync_all_teams_job(body: SyncAllTeamsRequest | None = None) -> JSONResponse:
     return _run_yahoo_job(lambda: sync.sync_all_teams(src.teams))
 
 
+class DiscoverLeaguesRequest(BaseModel):
+    # Which sport(s) to enumerate: "nfl" (default), "nba", "nhl", or a comma list.
+    game_keys: str = "nfl"
+
+
+# Enumerate the token owner's own leagues and create rows for any we don't have —
+# so a new season (or a second league) bootstraps itself, no league_key to type.
+# OAuth-only: use_login=1 needs the token; the cookie source has no equivalent.
+@app.post("/jobs/discover-leagues")
+def discover_leagues_job(body: DiscoverLeaguesRequest | None = None) -> JSONResponse:
+    from app.yahoo import oauth_api, sync
+
+    game_keys = body.game_keys if body else "nfl"
+
+    def create(league_key: str) -> dict:
+        return sync.sync_league(
+            oauth_api.settings(league_key), oauth_api.teams(league_key)
+        )
+
+    return _run_yahoo_job(
+        lambda: sync.discover_leagues(oauth_api.user_leagues(game_keys), create)
+    )
+
+
 class SimMatchupRequest(BaseModel):
     league_key: str
     week: int

@@ -20,6 +20,7 @@ from app.yahoo.parse_jsonf import (
     parse_settings,
     parse_teams,
     parse_transactions,
+    parse_user_leagues,
 )
 
 # Yahoo returns a real GUID but the nickname "--hidden--" for a manager not
@@ -631,4 +632,45 @@ def sync_all_teams(fetch, keys: list[str] | None = None) -> dict:
         "leagues": len(keys),
         "synced": sum(1 for r in results if "error" not in r),
         "results": results,
+    }
+
+
+def _known_league_keys() -> set[str]:
+    with postgres.connect() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT yahoo_league_key FROM leagues WHERE yahoo_league_key IS NOT NULL"
+        )
+        return {r[0] for r in cur.fetchall()}
+
+
+def discover_leagues(payload: dict, create) -> dict:
+    """Enumerate the user's leagues (a `users;.../leagues` payload) and create the
+    rows for any we don't already have. `create(league_key) -> dict` builds a new
+    league (sync_league = settings + teams). Existing leagues are left untouched —
+    re-running is cheap and idempotent. A single league's ValueError (e.g. a name
+    that won't match) is recorded so one bad league doesn't abort the discovery."""
+    discovered = parse_user_leagues(payload)
+    known = _known_league_keys()
+    created: list[dict] = []
+    existing: list[str] = []
+    for lg in discovered:
+        if lg.league_key in known:
+            existing.append(lg.league_key)
+            continue
+        try:
+            created.append({"league_key": lg.league_key, **create(lg.league_key)})
+        except ValueError as e:
+            created.append({"league_key": lg.league_key, "error": str(e)})
+    return {
+        "discovered": [
+            {
+                "league_key": lg.league_key,
+                "name": lg.name,
+                "season": lg.season,
+                "sport": lg.game_code,
+            }
+            for lg in discovered
+        ],
+        "created": created,
+        "existing": existing,
     }
