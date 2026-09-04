@@ -289,9 +289,9 @@ class _StatusCursor:
             self._armed = [(self._season,)]
         elif s.startswith("SELECT yahoo_id, id FROM players"):
             self._armed = self._players
-        elif s.startswith("DELETE FROM player_status"):
+        elif s.startswith("DELETE FROM player_injury_status"):
             self.deletes.append(params)
-        elif s.startswith("INSERT INTO player_status"):
+        elif s.startswith("INSERT INTO player_injury_status"):
             self.inserts.append(params)
 
     def fetchone(self):

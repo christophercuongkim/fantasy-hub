@@ -1,5 +1,5 @@
 {
-  "id": "3f17dd1f-8dd4-4f63-9a5d-a92f5dc18b12",
+  "id": "b984b3d7-475d-43aa-9c0b-c18d261af241",
   "prevId": "259a6a61-3991-4a5e-a105-2b55ea59820c",
   "version": "7",
   "dialect": "postgresql",
@@ -1386,8 +1386,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.player_status": {
-      "name": "player_status",
+    "public.player_injury_status": {
+      "name": "player_injury_status",
       "schema": "",
       "columns": {
         "player_id": {
@@ -1430,9 +1430,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "player_status_player_id_players_id_fk": {
-          "name": "player_status_player_id_players_id_fk",
-          "tableFrom": "player_status",
+        "player_injury_status_player_id_players_id_fk": {
+          "name": "player_injury_status_player_id_players_id_fk",
+          "tableFrom": "player_injury_status",
           "tableTo": "players",
           "columnsFrom": [
             "player_id"
@@ -1445,8 +1445,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "player_status_player_id_season_pk": {
-          "name": "player_status_player_id_season_pk",
+        "player_injury_status_player_id_season_pk": {
+          "name": "player_injury_status_player_id_season_pk",
           "columns": [
             "player_id",
             "season"

@@ -96,7 +96,7 @@ export async function latestDraftBoard(): Promise<DraftBoardSet | null> {
            ps.status, ps.status_full
     from draft_board db
     join players pl on pl.id = db.player_id
-    left join player_status ps
+    left join player_injury_status ps
       on ps.player_id = db.player_id and ps.season = db.season
     where db.league_id = ${id} and db.season = ${season}
     order by db.overall_rank

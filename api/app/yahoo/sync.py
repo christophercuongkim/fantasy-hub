@@ -711,7 +711,7 @@ def sync_player_status(
             )
             pmap = {y: i for y, i in cur.fetchall()}
 
-        cur.execute("DELETE FROM player_status WHERE season = %s", (season,))
+        cur.execute("DELETE FROM player_injury_status WHERE season = %s", (season,))
         written = 0
         unmatched: list[str] = []
         for yid, s in statuses.items():
@@ -720,7 +720,7 @@ def sync_player_status(
                 unmatched.append(yid)
                 continue
             cur.execute(
-                "INSERT INTO player_status "
+                "INSERT INTO player_injury_status "
                 "(player_id, season, status, status_full, injury_note, updated_at) "
                 "VALUES (%s, %s, %s, %s, %s, now())",
                 (pid, season, s.status, s.status_full, s.injury_note),

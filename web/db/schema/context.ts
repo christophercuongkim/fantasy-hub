@@ -59,8 +59,10 @@ export const injuries = pgTable(
 // preseason draft board and in-season start/sit. `status` is the raw Yahoo code
 // (Q/D/O/IR/PUP/SUSP and wider ones like IR-R/PUP-R/NA) as text, not the narrow
 // yahooInjuryStatusEnum, so an unexpected code never fails the write.
-export const playerStatus = pgTable(
-  "player_status",
+// Named player_injury_status, not player_status — the latter is already an enum
+// (players.status, roster ACT/IR/…) and a table can't share a type's name.
+export const playerInjuryStatus = pgTable(
+  "player_injury_status",
   {
     playerId: uuid()
       .notNull()
