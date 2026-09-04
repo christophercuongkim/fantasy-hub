@@ -258,6 +258,23 @@ def test_discover_leagues_creates_missing_skips_existing(monkeypatch):
     assert len(out["discovered"]) == 2
 
 
+def test_season_league_keys(monkeypatch):
+    """Returns every league key for the season — one query, ordered by key."""
+
+    class _Cur(_FakeCursor):
+        def __init__(self):
+            super().__init__([])
+            self._armed = [("470.l.1",), ("470.l.2",)]
+
+        def execute(self, sql, params=()):
+            self.calls.append((sql, params))
+
+    cur = _Cur()
+    monkeypatch.setattr(sync.postgres, "connect", lambda: _DraftConn(cur))
+    assert sync.season_league_keys(2026) == ["470.l.1", "470.l.2"]
+    assert cur.calls[0][1] == (2026,)
+
+
 def test_discover_leagues_records_create_error(monkeypatch):
     monkeypatch.setattr(sync, "_known_league_keys", lambda: set())
 

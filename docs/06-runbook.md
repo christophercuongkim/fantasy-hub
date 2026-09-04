@@ -368,6 +368,48 @@ task history), then run it by hand from the api container —
 
 ---
 
+## 7. In-season league sync cron
+
+A second **Dokploy scheduled task** keeps the *Yahoo* side current — rosters,
+matchups, transactions, and injury designations — the same in-process way, over
+the **auto-refreshing OAuth token** (no cookie re-paste). This is what makes the
+draft-board injury flags and the in-season features hands-off; before durable
+OAuth, cookie expiry made an unattended run unreliable.
+
+**The job.** `python -m app.refresh_league` resolves the current season + week
+from the schedule table (never Yahoo's `current_week`), then for **every league
+of that season** (so a second team is covered too) it runs `sync_rosters` +
+`sync_matchups` for the current week, `sync_all_transactions` (paginated), and
+`sync_player_status`. It **no-ops in the offseason** (`{"status": "offseason"}`)
+and prints one JSON summary. A data error in one leg (an unmatched name, a
+missing league row) is recorded, the run is marked `degraded`, and it **exits
+non-zero** so the scheduler flags it while the other legs still run; an auth or
+upstream failure aborts the whole run non-zero. The same writers are exposed as
+`POST /jobs/sync-rosters | sync-matchups | sync-transactions |
+sync-player-status` for a manual trigger — but those take one league + week; the
+cron resolves the week and loops leagues itself.
+
+**The schedule (Dokploy → the api service → Schedules):**
+
+| Field | Value |
+|---|---|
+| Cron | `0 12 * * *` — daily 12:00 UTC (~7–8am ET) |
+| Command | `uv run --no-dev python -m app.refresh_league` |
+| Runs in | the api service container (same env as the `uv run` CMD) |
+
+Daily: rosters/matchups shift during the game days and transactions (waivers)
+land midweek; one daily pull keeps everything within a day for cheap. It is
+idempotent (roster/matchup/injury writes upsert or full-refresh the current
+slice; transactions upsert by key), so a missed run is fixed by the next. Split
+the cadence later (transactions daily, rosters/matchups game-days only) if the
+fetch budget matters.
+
+**If Yahoo data looks stale:** check the task history, confirm OAuth is still
+connected (`/admin/yahoo`), then run by hand —
+`docker exec <api-container> uv run --no-dev python -m app.refresh_league`.
+
+---
+
 ## 6. What "normal" looks like
 
 Reference values so you can recognize abnormal.
