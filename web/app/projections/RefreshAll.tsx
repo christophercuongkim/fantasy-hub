@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@seakim/design-system";
 import { refreshAll, refreshStatus, type RefreshStatus } from "./actions";
+
+// How long to keep polling a job that reports no progress before giving up on it.
+// A healthy backfill keeps advancing weeksDone/seasonsDone even when slow, so
+// this only trips on a job that has actually stopped reporting — at which point
+// polling forever just holds the Neon compute awake for nothing.
+const STALL_MS = 15 * 60 * 1000;
 
 // One click starts the api backfill (ingest all seasons + project every week).
 // The api runs it in the background; this polls for progress, shows
@@ -38,13 +44,36 @@ export function RefreshAll() {
   }, []);
 
   // Poll while running; when it stops, refresh the page data + report done.
+  // A hidden tab doesn't poll (nobody is reading the progress caption, and every
+  // poll wakes the Neon compute), and a job that stops reporting progress is
+  // eventually abandoned rather than polled forever.
+  const lastProgress = useRef("");
+  const progressAt = useRef(0);
   useEffect(() => {
     if (!running) return;
     let active = true;
+    lastProgress.current = "";
+    progressAt.current = Date.now();
     const tick = async () => {
+      if (document.hidden) {
+        progressAt.current = Date.now();
+        return;
+      }
       const s = await refreshStatus();
       if (!active) return;
       setStatus(s);
+      const progress = `${s.seasonsDone}/${s.weeksDone}`;
+      if (progress !== lastProgress.current) {
+        lastProgress.current = progress;
+        progressAt.current = Date.now();
+      } else if (s.running && Date.now() - progressAt.current > STALL_MS) {
+        setRunning(false);
+        setActiveMode(null);
+        setError(
+          "Lost track of this job — no progress for 15 minutes. It may still be running; reload to pick it up again.",
+        );
+        return;
+      }
       if (!s.running) {
         setRunning(false);
         setActiveMode(null);

@@ -29,6 +29,12 @@ import {
 import { rebuildBoard, syncDraft } from "./actions";
 
 const POSITIONS = ["All", "QB", "RB", "WR", "TE", "K", "DST"];
+
+// How long Live keeps polling with no new picks before switching itself off.
+// Long enough to outlast the gap between your picks in a slow league; short
+// enough that a tab left open overnight costs ~20 minutes of compute, not eight
+// hours.
+const LIVE_IDLE_MS = 20 * 60 * 1000;
 const one = (n: number) => n.toFixed(1);
 const signed = (n: number) => (n > 0 ? "+" : "") + n.toFixed(0);
 
@@ -82,18 +88,53 @@ export function DraftBoard({
 
   // While Live, poll Yahoo draft-results every 10s and re-read the page. A ref
   // guards against overlapping polls if one call runs long.
+  //
+  // Each poll wakes the Neon compute, which bills by uptime and only suspends
+  // once nothing is connected — so a Live switch left on is a database left
+  // running. Two brakes: a hidden tab doesn't poll at all, and Live turns itself
+  // off once the draft stops moving. Neither can fire during a real draft, where
+  // picks keep arriving and the tab is the thing you're looking at.
   const inFlight = useRef(false);
+  const lastPicks = useRef(-1);
+  const idleSince = useRef(0);
   useEffect(() => {
     if (!live) return;
     let active = true;
+    lastPicks.current = -1;
+    idleSince.current = Date.now();
     const tick = async () => {
+      // Backgrounded: nobody is watching, so don't poll — and don't let the idle
+      // clock age either, since a hidden tab isn't burning anything. Coming back
+      // to the tab therefore starts the 20 minutes over.
+      if (document.hidden) {
+        idleSince.current = Date.now();
+        return;
+      }
       if (inFlight.current) return;
       inFlight.current = true;
       try {
         const r = await syncDraft(leagueKey);
-        if (active && !r.error) router.refresh();
-        else if (active && r.error)
+        if (!active) return;
+        if (r.error) {
           setMsg({ text: `Live sync: ${r.error}`, error: true });
+          return;
+        }
+        // `picks` is the draft's running pick count. Unchanged = nothing has
+        // happened since the last poll. If the api ever stops returning it we
+        // refresh every poll as before, rather than silently never refreshing.
+        const picks =
+          typeof r.result?.picks === "number" ? r.result.picks : null;
+        if (picks === null || picks > lastPicks.current) {
+          if (picks !== null) lastPicks.current = picks;
+          idleSince.current = Date.now();
+          router.refresh();
+        } else if (Date.now() - idleSince.current > LIVE_IDLE_MS) {
+          setLive(false);
+          setMsg({
+            text: "Live sync paused — no new picks for 20 minutes. Flip Live back on to resume.",
+            error: false,
+          });
+        }
       } finally {
         inFlight.current = false;
       }
