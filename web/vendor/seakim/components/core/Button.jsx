@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from './Icon.jsx';
+import { useCoarsePointer } from './useCoarsePointer.js';
 
 const SIZES = {
   sm: { h: 'var(--control-h-sm)', px: 'var(--space-4)', fs: 'var(--text-xs)', icon: 14, gap: 'var(--space-2)' },
@@ -29,8 +30,9 @@ function palette(variant, hover, active, off) {
       return { background: active ? 'var(--danger-500)' : hover ? 'var(--danger-400)' : 'var(--fill-danger)',
                color: 'var(--on-danger)', border: '1px solid transparent' };
     default:
-      return { background: active ? 'var(--fill-accent-active)' : hover ? 'var(--fill-accent-hover)' : 'var(--fill-accent)',
-               color: 'var(--on-accent)', border: '1px solid transparent' };
+      // The primary action is ink (0036); accent is for links, focus, selection, identity.
+      return { background: active ? 'var(--fill-primary-active)' : hover ? 'var(--fill-primary-hover)' : 'var(--fill-primary)',
+               color: 'var(--on-primary)', border: '1px solid transparent' };
   }
 }
 
@@ -41,6 +43,7 @@ export function Button({
 }) {
   const [hover, setHover] = useState(false);
   const [active, setActive] = useState(false);
+  const coarse = useCoarsePointer();
   const s = SIZES[size] || SIZES.md;
   const off = disabled || loading;
   return (
@@ -55,11 +58,10 @@ export function Button({
       style={{
         display: fullWidth ? 'flex' : 'inline-flex', width: fullWidth ? '100%' : undefined,
         alignItems: 'center', justifyContent: 'center', gap: s.gap,
-        height: s.h, padding: `0 ${s.px}`, borderRadius: 'var(--radius-none)',
-        fontFamily: 'var(--font-sans)', fontSize: s.fs, fontWeight: 'var(--weight-semibold)',
+        height: s.h, minHeight: coarse ? 44 : undefined, padding: `0 ${s.px}`, borderRadius: 'var(--radius-lg)',
+        fontFamily: 'var(--font-sans)', fontSize: s.fs, fontWeight: 'var(--weight-medium)',
         letterSpacing: '0.005em', whiteSpace: 'nowrap', cursor: off ? 'not-allowed' : 'pointer',
         transition: 'var(--transition-control)',
-        transform: active && !off ? 'scale(var(--press-scale))' : 'scale(1)',
         ...palette(variant, hover && !off, active && !off, off), ...style,
       }}
       {...rest}

@@ -21,7 +21,15 @@ Everything below is **Tier 0** unless marked otherwise — see
 | Decorative rules, disabled | no minimum | — |
 
 **A new accent hue** must clear 4.5:1 at `oklch(0.72 0.13 H)` on `--stone-950` *and* at
-`oklch(0.56 0.14 H)` on `--stone-50` before it enters the system. That is the check in
+`oklch(0.46 0.12 H)` on `--stone-50` before it enters the system — that is `--brand-300`
+in dark and `--brand-700` in light, the steps `--text-accent` actually resolves to.
+
+This criterion previously named `oklch(0.56 0.14 H)` (`--brand-600`) for the light side,
+and **two shipped hues failed it**: sea at 4.39:1 and turf at 4.17:1. Nothing ran it. One
+fixed oklch lightness is one *perceptual* lightness, but WCAG weights green at 0.7152, so
+turf and sea carry more relative luminance than brick or plum at the same `L` and lose
+contrast on a light ground. `--text-accent` now resolves to `--brand-700` in light, which
+clears 6.7:1 for every hue, and `tool/conformance-check.mjs` measures it on every run. That is the check in
 [`tokens/src/README.md`](../tokens/src/README.md), and it is why light mode is not
 optional: an accent that only passes in dark is not an accent, it is a dark-mode value.
 
@@ -68,7 +76,7 @@ Focus **order** follows reading order. Two places that need attention:
 
 ## Motion
 
-`prefers-reduced-motion` collapses every duration to 0 and `--press-scale` to 1. Already
+`prefers-reduced-motion` collapses every duration to 0 (the press tint is not motion and stays). Already
 handled in `tokens/motion.css`; Flutter reads `MediaQuery.disableAnimations`.
 
 **Never animate a value the user is reading.** Prices, scores, times, and counts cut
@@ -93,7 +101,11 @@ the reason there is no value tooltip on the slider thumb.
   list and announces as one rather than pretending to still be a table.
 - **Landmarks** on the shell: navigation, main, and a labelled banner. Both kits do this.
 - **Live regions** for anything that appears without user action. `Toast` is a status
-  region; a form error is announced when it appears.
+  region; a form error is announced when it appears. A **loading state** announces itself
+  **busy** and then announces **completion** when content replaces it — `role="status"` +
+  `aria-busy` on the web, `Semantics(liveRegion: true)` in Flutter (per
+  [0021](../decisions/0021-loading-states.md)). A **skeleton** is decorative and stays
+  `aria-hidden` — the region around it owns the announcement, not each block.
 
 ## Forms
 

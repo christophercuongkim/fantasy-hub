@@ -2,7 +2,7 @@ import React from 'react';
 import { IconButton } from '../core/IconButton.jsx';
 
 /** Modal. One of the few things that gets a shadow, because it floats. */
-export function Dialog({ open = true, title, description, children, footer, onClose, width = 440, style, ...rest }) {
+export function Dialog({ open = true, title, description, children, footer, onClose, width = 'var(--overlay-w-dialog, 440px)', style, ...rest }) {
   if (!open) return null;
   return (
     <div
@@ -22,7 +22,7 @@ export function Dialog({ open = true, title, description, children, footer, onCl
           width: '100%', maxWidth: width,
           background: 'var(--surface-overlay)',
           border: '1px solid var(--border-default)',
-          borderRadius: 'var(--radius-none)',
+          borderRadius: 'var(--radius-xl)',
           boxShadow: 'var(--shadow-dialog)',
           display: 'flex', flexDirection: 'column', ...style,
         }}

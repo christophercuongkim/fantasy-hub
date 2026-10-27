@@ -23,8 +23,10 @@ export interface SideNavGroup {
  * icons. The active item is the only accent-colored thing in the nav.
  */
 export interface SideNavProps extends React.HTMLAttributes<HTMLElement> {
-  /** Wordmark. Renders its first letter when collapsed. */
+  /** Wordmark. A string collapses to its first letter; an element collapses to `brandCollapsed`. */
   brand?: React.ReactNode;
+  /** What the 56px rail shows in place of `brand`: a mark, an initial. */
+  brandCollapsed?: React.ReactNode;
   groups: SideNavGroup[];
   /** The active item's `value`. */
   active?: string;

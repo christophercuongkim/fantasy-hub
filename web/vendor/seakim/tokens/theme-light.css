@@ -2,36 +2,44 @@
    Source: tokens/src/color.tokens.json
    Regenerate: node tool/build-tokens.mjs
    Why generated: see decisions/0007-token-source-format.md
-   Light is a PEER of dark, not a filter of it — the card is pure white on an */
-/* off-white page, so cards read lighter than the page, the inverse of dark's */
-/* logic. Never derive one theme from the other. */
+   Light is a PEER of dark, not a filter of it. Fills define (0037): the page is */
+/* white and a card is a stone tint on it, so a region is its fill, not its outline. */
+/* Never derive one theme from the other. */
 
-[data-theme="light"] {
+/* Light is the DEFAULT (0033): bare :root carries it; the attribute form rethemes a subtree. */
+:root, [data-theme="light"] {
   color-scheme: light;
 
-  --bg-base:          var(--stone-50);
-  --surface-page:     var(--stone-50);
-  --surface-sunken:   var(--stone-100);
-  --surface-card:     var(--stone-0);
+  --bg-base:          var(--stone-0);
+  --surface-page:     var(--stone-0);
+  --surface-sunken:   var(--stone-200);
+  --surface-card:     var(--stone-100);
   --surface-raised:   var(--stone-0);
   --surface-overlay:  var(--stone-0);
-  --surface-inset:    var(--stone-100);
-  --surface-hover:    var(--stone-100);
-  --surface-active:   var(--stone-200);
+  --surface-inset:    var(--stone-200);
+  --surface-shimmer:  #e3e1dd;
+  --surface-hover:    color-mix(in oklab, #181614 6%, transparent);
+  --surface-active:   color-mix(in oklab, #181614 12%, transparent);
   --surface-selected: var(--brand-050);
   --surface-scrim:    color-mix(in oklab, #2b2a27 40%, transparent);
 
   --text-primary:    var(--stone-900);
   --text-secondary:  var(--stone-600);
-  --text-tertiary:   var(--stone-500);
+  --text-tertiary:   var(--stone-550);
   --text-inverse:    var(--stone-50);
-  --text-accent:     var(--brand-600);
-  --text-link:       var(--brand-600);
-  --text-link-hover: var(--brand-700);
+  /* 700, not 600. At one fixed oklch L every hue is the same PERCEPTUAL
+     lightness, but WCAG weights green at 0.7152, so turf and sea sit
+     brighter in luminance terms: 600 lands at 4.38:1 for turf and 4.62:1
+     for sea on card. 700 clears 6.7:1 for every hue. See lesson 18, and
+     the contrast gate in tool/conformance-check.mjs that measures it. */
+  --text-accent:     var(--brand-700);
+  --text-link:       var(--brand-700);
+  --text-link-hover: var(--brand-800);
 
-  --border-subtle:  var(--stone-200);
-  --border-default: var(--stone-300);
-  --border-strong:  var(--stone-400);
+  /* Hairlines are alpha (0037): one token composes on any surface. */
+  --border-subtle:  color-mix(in oklab, #181614 8%, transparent);
+  --border-default: color-mix(in oklab, #181614 14%, transparent);
+  --border-strong:  color-mix(in oklab, #181614 24%, transparent);
   --border-accent:  var(--brand-500);
   --border-focus:   var(--brand-600);
 
@@ -40,6 +48,12 @@
   --fill-accent-hover:  var(--brand-600);
   --fill-accent-active: var(--brand-700);
   --on-accent:          var(--stone-950);
+
+  /* The primary action is ink (0036); the accent above is identity and selection. */
+  --fill-primary:        var(--stone-900);
+  --fill-primary-hover:  var(--stone-800);
+  --fill-primary-active: var(--stone-700);
+  --on-primary:          var(--stone-50);
 
   --fill-neutral:        var(--stone-100);
   --fill-neutral-hover:  var(--stone-200);

@@ -16,7 +16,7 @@ export function Textarea({ rows = 4, invalid = false, disabled = false, style, .
       style={{
         width: '100%', resize: 'vertical', padding: 'var(--space-4)',
         background: disabled ? 'var(--fill-disabled)' : 'var(--surface-raised)',
-        border: `1px solid ${disabled ? 'var(--border-disabled)' : border}`, borderRadius: 'var(--radius-none)',
+        border: `1px solid ${disabled ? 'var(--border-disabled)' : border}`, borderRadius: 'var(--radius-lg)',
         boxShadow: focus ? 'var(--focus-ring-inset)' : 'none',
         outline: 'none', font: 'var(--type-body-sm)', color: disabled ? 'var(--text-disabled)' : 'var(--text-primary)',
         

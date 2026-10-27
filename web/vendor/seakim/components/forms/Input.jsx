@@ -25,7 +25,7 @@ export function Input({
         background: disabled ? 'var(--fill-disabled)' : 'var(--surface-raised)',
         border: `1px solid ${disabled ? 'var(--border-disabled)' : border}`,
         boxShadow: focus ? 'var(--focus-ring-inset)' : 'none',
-        borderRadius: 'var(--radius-none)',
+        borderRadius: 'var(--radius-lg)',
         
         transition: 'var(--transition-control), box-shadow var(--dur-instant) var(--ease-out)',
         ...style,

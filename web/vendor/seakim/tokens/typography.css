@@ -1,15 +1,17 @@
 /* ============================================================
    SeaKim — typography
-   Outfit (display) · Plus Jakarta Sans (UI + body) · IBM Plex Mono (data).
-   Families live in fonts.css. Density 7/10: UI text is 13px, body 15px.
+   Instrument Sans (display + UI + body) · JetBrains Mono (data). See 0031.
+   Families live in fonts.css. Quiet (0033, CHR-193): UI text is 14px, body 16px,
+   weight 500 throughout, UI tracking -0.01em. Hierarchy comes from size and
+   colour, not from bold.
    ============================================================ */
 
 :root {
   /* Size scale */
   --text-2xs: 10px;
   --text-xs:  11px;
-  --text-sm:  13px;   /* UI default */
-  --text-md:  15px;   /* body default */
+  --text-sm:  14px;   /* UI default */
+  --text-md:  16px;   /* body default */
   --text-lg:  17px;
   --text-xl:  20px;
   --text-2xl: 24px;
@@ -28,6 +30,7 @@
   --tracking-tighter: -0.03em;
   --tracking-tight:   -0.018em;
   --tracking-normal:   0em;
+  --tracking-ui:      -0.01em; /* applied on <body> in base.css; every role inherits it */
   --tracking-wide:     0.04em;
   --tracking-caps:     0.10em;
 
@@ -38,14 +41,14 @@
   --weight-bold:     700;
 
   /* Composed roles — use these, not raw sizes */
-  --type-display:    var(--weight-semibold) var(--text-5xl)/var(--leading-tight) var(--font-display);
-  --type-title:      var(--weight-semibold) var(--text-3xl)/var(--leading-tight) var(--font-display);
-  --type-heading:    var(--weight-semibold) var(--text-xl)/var(--leading-snug) var(--font-display);
+  --type-display:    var(--weight-medium) var(--text-5xl)/var(--leading-tight) var(--font-display);
+  --type-title:      var(--weight-medium) var(--text-3xl)/var(--leading-tight) var(--font-display);
+  --type-heading:    var(--weight-medium) var(--text-xl)/var(--leading-snug) var(--font-display);
   --type-subheading: var(--weight-medium) var(--text-lg)/var(--leading-snug) var(--font-display);
-  --type-body:       var(--weight-regular) var(--text-md)/var(--leading-body) var(--font-sans);
-  --type-body-sm:    var(--weight-regular) var(--text-sm)/var(--leading-body) var(--font-sans);
-  --type-label:      var(--weight-semibold) var(--text-sm)/var(--leading-snug) var(--font-sans);
-  --type-caption:    var(--weight-regular) var(--text-xs)/var(--leading-snug) var(--font-sans);
+  --type-body:       var(--weight-medium) var(--text-md)/var(--leading-body) var(--font-sans);
+  --type-body-sm:    var(--weight-medium) var(--text-sm)/var(--leading-body) var(--font-sans);
+  --type-label:      var(--weight-medium) var(--text-sm)/var(--leading-snug) var(--font-sans);
+  --type-caption:    var(--weight-medium) var(--text-xs)/var(--leading-snug) var(--font-sans);
   --type-data:       var(--weight-medium) var(--text-sm)/1.2 var(--font-mono);
   --type-eyebrow:    var(--weight-medium) var(--text-2xs)/1.2 var(--font-mono);
 }

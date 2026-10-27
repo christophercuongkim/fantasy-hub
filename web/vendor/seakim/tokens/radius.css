@@ -1,13 +1,19 @@
-/* Corners are square. This is the loudest decision in the system: nothing
-   that CONTAINS content is ever rounded, at any size, in any app. The only
-   exceptions are shapes that are conceptually circular — avatars, status
-   dots, toggle knobs, count pills. Do not introduce a 4px radius. */
+/* Every corner is a token, and every rung has one documented use (decisions 0030,
+   0035).
+   No literal radius in any binding. A component takes the rung its ROLE names —
+   a dialog is `xl` because it is a dialog, not because 12px looked right at that
+   width. The ladder is closed: a rung that is not here does not exist, and adding
+   one is an ADR, not a token edit.
+
+   `none` is still a real answer. This widened the vocabulary; it did not make
+   rounding a default. Values are mirrored in flutter SkRadius and asserted equal
+   by tool/conformance-check.mjs — change them in one place and the gate fails. */
 :root {
-  --radius-none: 0px;
-  --radius-xs:   0px;   /* alias — kept so component code reads intentionally */
-  --radius-sm:   0px;   /* cards, inputs, buttons, sheets, modals, images */
-  --radius-md:   0px;
-  --radius-lg:   0px;
-  --radius-full: 999px; /* count badges, filter chips, toggle tracks */
-  --radius-circle: 50%; /* avatars, dots, round icon affordances */
+  --radius-none:   0px;   /* dividers, table cells, full-bleed images, the page */
+  --radius-xs:     2px;   /* tags, chips, inline marks */
+  --radius-sm:     4px;   /* checkboxes, menu items */
+  --radius-lg:     8px;   /* buttons, icon buttons, inputs, selects, segmented control */
+  --radius-xl:    12px;   /* cards, panels, dialogs, sheets, popovers, menus */
+  --radius-full: 999px;   /* count badges, toggle tracks, pills */
+  --radius-circle: 50%;   /* avatars, dots, round icon affordances */
 }

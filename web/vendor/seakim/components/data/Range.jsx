@@ -30,7 +30,7 @@ export function Range({ low, mid, high, domain, size = 'md', accent = false, lab
       style={{ position: 'relative', width: '100%', height: s.track, ...style }}
       {...rest}
     >
-      <div style={{ position: 'absolute', inset: 0, background: 'var(--surface-inset)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-none)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'var(--surface-inset)', borderRadius: 'var(--radius-none)' }} />
       {/* minWidth floors a near-zero-spread interval so the safe pick (tightest band)
           still reads as a band, not a smudge under the marker — see 0017 Consequences. */}
       <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${bandL}%`, width: `${bandW}%`, minWidth: 'var(--border-emphasis)', background: accent ? 'var(--fill-accent)' : 'var(--text-tertiary)' }} />

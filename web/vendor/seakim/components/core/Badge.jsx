@@ -16,9 +16,8 @@ export function Badge({ children, tone = 'neutral', variant = 'subtle', icon, do
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
       height: 20, padding: '0 var(--space-3)', background: bg, color: fg,
-      border: variant === 'subtle' ? '1px solid var(--border-subtle)' : '1px solid transparent',
       fontFamily: mono ? 'var(--font-mono)' : 'var(--font-sans)',
-      fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)',
+      fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)',
       letterSpacing: mono ? 'var(--tracking-wide)' : '0.01em', whiteSpace: 'nowrap', ...style,
     }} {...rest}>
       {dot && <span style={{ width: 5, height: 5, borderRadius: 'var(--radius-full)', background: 'currentColor' }} />}

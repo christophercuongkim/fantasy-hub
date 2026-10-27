@@ -61,16 +61,16 @@ function Cell({ date, inMonth, state, onPick, onHover, disabled, touch }) {
       onClick={() => onPick(date)}
       onMouseEnter={() => onHover && onHover(date)}
       style={{
-        width: size, height: size, padding: 0, border: 'none',
+        width: size, height: size, padding: 0, border: 'none', boxSizing: 'border-box',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         font: 'var(--type-data)', fontSize: 'var(--text-sm)',
         background: bg,
         color: disabled ? 'var(--text-disabled)' : fg,
         fontWeight: state.endpoint ? 'var(--weight-semibold)' : 'var(--weight-regular)',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        // Today is an UNDERLINE. A fill means selected and a ring means focused —
-        // both are taken, and a ring vanishes once the date sits inside a range.
-        boxShadow: state.today ? 'inset 0 -2px 0 var(--border-accent)' : 'none',
+        // Today is an UNDERLINE, drawn as a border (0037). A fill means selected and a
+        // ring means focused; both are taken, and a ring vanishes inside a range.
+        borderBottom: `var(--border-emphasis) solid ${state.today ? 'var(--border-accent)' : 'transparent'}`,
         transition: 'var(--transition-control)',
       }}
     >

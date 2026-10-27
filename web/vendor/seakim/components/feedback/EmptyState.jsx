@@ -7,7 +7,7 @@ export function EmptyState({ icon = 'tray', title, description, action, compact 
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
       gap: 'var(--space-5)', padding: compact ? 'var(--space-8) var(--space-6)' : 'var(--space-11) var(--space-7)',
-      border: '1px dashed var(--border-default)', borderRadius: 'var(--radius-none)',
+      borderRadius: 'var(--radius-none)', // a sunken fill, no outline (0037)
       background: 'var(--surface-sunken)', ...style,
     }} {...rest}>
       <Icon name={icon} size={compact ? 24 : 32} style={{ color: 'var(--text-tertiary)' }} />

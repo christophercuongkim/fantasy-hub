@@ -21,6 +21,12 @@ export interface TabsProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'o
   defaultValue?: string;
   onChange?: (value: string) => void;
   size?: 'sm' | 'md';
+  /**
+   * Span the container. The tabs share its width when they fit at their natural widths
+   * (equally when the widest allows), and scroll at natural widths when they do not. The
+   * active tab scrolls into view when `value` changes. Default false.
+   */
+  fill?: boolean;
   style?: React.CSSProperties;
 }
 export declare function Tabs(props: TabsProps): JSX.Element;

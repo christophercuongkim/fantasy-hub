@@ -1,0 +1,48 @@
+/* ============================================================
+   SeaKim — profiles. Hand-written; nothing generates this file. Imported
+   last by styles.css: it re-points tokens from every other token file.
+   A profile is an opt-in an app sets on its root beside data-app. It
+   re-points semantic tokens inside that subtree and touches nothing in the
+   shared layer, so an app that sets no profile is exactly what 0036 and 0037
+   describe.
+
+   Learning (0040): a product whose core loop is practice. The primary action,
+   progress and the next step take the accent; titles get weight; one in-flow
+   object per screen may stand up. Verdict and status colours stay semantic.
+   ============================================================ */
+[data-profile="learning"] {
+  /* The primary action reads the brand ramp. Light: 700 under stone-50 text,
+     the step that clears 4.5:1 for every slot (600 does not for sea, turf or
+     azure); the profile-contrast gate measures each one. */
+  --fill-primary: var(--brand-700);
+  --fill-primary-hover: var(--brand-800);
+  --fill-primary-active: var(--brand-900);
+  --on-primary: var(--stone-50);
+
+  /* Progress and the next step: bars and rings, never a text surface, so no
+     on-colour is defined for them. A consumer's own state tokens point here. */
+  --fill-progress: var(--brand-500);
+  --fill-next: var(--brand-500);
+
+  /* One raised object per screen. Softer and wider than --shadow-raised, which
+     is a bar's shadow; still role-named, still the shadow colour token. */
+  --shadow-card: 0 10px 28px -12px rgb(var(--shadow-rgb) / 0.22), 0 1px 2px rgb(var(--shadow-rgb) / 0.08);
+
+  /* Weight contrast on one typeface (0031 holds: the face does not change). */
+  --type-display:    var(--weight-semibold) var(--text-5xl)/var(--leading-tight) var(--font-display);
+  --type-title:      var(--weight-semibold) var(--text-3xl)/var(--leading-tight) var(--font-display);
+  --type-heading:    var(--weight-semibold) var(--text-xl)/var(--leading-snug) var(--font-display);
+  --type-subheading: var(--weight-semibold) var(--text-lg)/var(--leading-snug) var(--font-display);
+  --type-body:       var(--weight-regular) var(--text-md)/var(--leading-body) var(--font-sans);
+  --type-body-sm:    var(--weight-regular) var(--text-sm)/var(--leading-body) var(--font-sans);
+}
+/* Dark: the lighter step carries ink-dark text, and the shadow deepens.
+   data-theme sits on the profile element or an ancestor, never below it. */
+[data-theme="dark"][data-profile="learning"],
+[data-theme="dark"] [data-profile="learning"] {
+  --fill-primary: var(--brand-400);
+  --fill-primary-hover: var(--brand-300);
+  --fill-primary-active: var(--brand-200);
+  --on-primary: var(--stone-950);
+  --shadow-card: 0 10px 28px -12px rgb(var(--shadow-rgb) / 0.60), 0 1px 2px rgb(var(--shadow-rgb) / 0.40);
+}

@@ -18,7 +18,11 @@
     },
     "plum": {
       "$value": 320,
-      "$description": "Reserved for app three"
+      "$description": "interview-prep — interview practice (CHR-521). The reserve aliases stay for anything that bound them."
+    },
+    "azure": {
+      "$value": 215,
+      "$description": "Job Search — the job-search platform. Picked by the owner from eight ramped candidates (CHR-211); 25° from the info hue, so info badges sit close to the accent there."
     }
   },
   "brandRamp": {
@@ -132,8 +136,14 @@
     "400": {
       "$value": "#a09c95"
     },
+    "450": {
+      "$value": "#8e8a84"
+    },
     "500": {
       "$value": "#7c7873"
+    },
+    "550": {
+      "$value": "#6c6964"
     },
     "600": {
       "$value": "#5c5955"
@@ -154,7 +164,7 @@
       "$value": "#0f0e0d"
     },
     "$type": "color",
-    "$description": "The warm achromatic spine. Never per-app. Warm on purpose — near-blacks keep a trace of yellow so the system reads as paper and graphite, never blue-grey."
+    "$description": "The warm achromatic spine. Never per-app. Warm on purpose — near-blacks keep a trace of yellow so the system reads as paper and graphite, never blue-grey. 450 and 550 exist for --text-tertiary: no single grey clears 4.5:1 against BOTH a near-black card and a white one (the window is empty), so the third text tier has to split by theme, and 400/600 were already taken by --text-secondary. See lesson 18."
   },
   "status": {
     "$description": "Status ramps in oklch. `400` is tuned for dark surfaces, `500` for light — separately, not derived. Status colours are not accents and may coexist with one.",
@@ -548,18 +558,62 @@
       "$value": "#0a0908",
       "$description": "Below the page in dark. Deliberately not stone-950."
     },
+    "surfaceShimmerDark": {
+      "$value": "#1e1b18",
+      "$description": "The lightening highlight a skeleton pulses to over surface-sunken in dark (0021). Tuned by eye — dark's sunken sits below the page, so the sweep lifts warm, not white."
+    },
+    "surfaceShimmerLight": {
+      "$value": "#e3e1dd",
+      "$description": "The darkening highlight a skeleton pulses to over surface-sunken in light (0021). Light's sunken sits above white, so the sweep drops toward stone, not black."
+    },
     "textPrimaryDark": {
       "$value": "#f5f3f0",
       "$description": "Warm off-white. Not stone-50, which is too cool against the warm blacks."
     },
-    "borderSubtleDark": {
-      "$value": "#2a2724"
+    "hairlineSubtleLight": {
+      "$value": "#181614",
+      "alpha": 0.08,
+      "$description": "Hairlines are alpha (0037): stone-900 at 8%. Table rows, dividers. Decorative — 1.2:1 on white, never a boundary on its own."
     },
-    "borderDefaultDark": {
-      "$value": "#383431"
+    "hairlineDefaultLight": {
+      "$value": "#181614",
+      "alpha": 0.14,
+      "$description": "Inputs, overlay edges."
     },
-    "borderStrongDark": {
-      "$value": "#4c4844"
+    "hairlineStrongLight": {
+      "$value": "#181614",
+      "alpha": 0.24,
+      "$description": "Hover on an outlined control."
+    },
+    "hairlineSubtleDark": {
+      "$value": "#faf9f7",
+      "alpha": 0.1,
+      "$description": "stone-50 at 10%; the dark peer of hairlineSubtleLight, tuned by eye rather than mirrored."
+    },
+    "hairlineDefaultDark": {
+      "$value": "#faf9f7",
+      "alpha": 0.16
+    },
+    "hairlineStrongDark": {
+      "$value": "#faf9f7",
+      "alpha": 0.26
+    },
+    "hoverLight": {
+      "$value": "#181614",
+      "alpha": 0.06,
+      "$description": "Hover and active are alpha tints (0037) so one token composes on the page and on a card."
+    },
+    "activeLight": {
+      "$value": "#181614",
+      "alpha": 0.12
+    },
+    "hoverDark": {
+      "$value": "#faf9f7",
+      "alpha": 0.08
+    },
+    "activeDark": {
+      "$value": "#faf9f7",
+      "alpha": 0.14
     },
     "borderDisabledDark": {
       "$value": "#2e2b28"

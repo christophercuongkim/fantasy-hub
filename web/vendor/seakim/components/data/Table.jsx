@@ -12,7 +12,7 @@ const TH = {
   letterSpacing: 'var(--tracking-caps)', color: 'var(--text-tertiary)',
   textAlign: 'left', padding: 'var(--space-4) var(--space-5)',
   borderBottom: '1px solid var(--border-subtle)', whiteSpace: 'nowrap',
-  fontWeight: 500, background: 'var(--surface-card)',
+  fontWeight: 'var(--weight-medium)', background: 'var(--surface-card)',
   position: 'sticky', top: 0, zIndex: 1,
 };
 
@@ -84,7 +84,8 @@ function Row({ row, columns, density, selected, onSelect, actions }) {
       aria-selected={selected || undefined}
       style={{
         background: selected ? 'var(--surface-selected)' : hover ? 'var(--surface-hover)' : 'transparent',
-        boxShadow: selected ? 'inset 2px 0 0 var(--border-accent)' : 'none',
+        // The selected edge is a border, not an inset shadow (0037); always present so nothing shifts.
+        borderLeft: `var(--border-emphasis) solid ${selected ? 'var(--border-accent)' : 'transparent'}`,
         cursor: clickable ? 'pointer' : 'default',
         transition: 'var(--transition-surface)',
       }}
@@ -191,7 +192,7 @@ export function Table({
 
   if (!rows.length) {
     return (
-      <div style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-card)' }}>
+      <div style={{ background: 'var(--surface-card)' }}>
         <div style={{ padding: 'var(--space-6)' }}>
           {empty || <EmptyState compact icon="tray" title="Nothing here yet" />}
         </div>
@@ -203,7 +204,7 @@ export function Table({
   // frozen, because comparing its columns IS the task.
   if (bp === 'sm' && !matrix) {
     return (
-      <div role="list" style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-card)', borderLeft: 'none', borderRight: 'none' }}>
+      <div role="list" style={{ background: 'var(--surface-card)' }}>
         {rows.map(row => (
           <div role="listitem" key={rowKey(row)}>
             <ListRow row={row} columns={columns} onSelect={onSelectRow} actions={actions} />
@@ -215,7 +216,7 @@ export function Table({
 
   return (
     <div style={{
-      border: '1px solid var(--border-subtle)',
+      // A table is a fill, not an outlined box (0037); rows keep their hairlines.
       overflowX: matrix && bp === 'sm' ? 'auto' : undefined,
     }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--surface-card)' }}>

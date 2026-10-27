@@ -10,8 +10,9 @@ export function Card({ children, eyebrow, title, meta, footer, media, interactiv
       style={{
         display: 'flex', flexDirection: 'column',
         background: selected ? 'var(--surface-selected)' : lift ? 'var(--surface-hover)' : 'var(--surface-card)',
-        border: `1px solid ${selected ? 'var(--border-accent)' : lift ? 'var(--border-strong)' : 'var(--border-subtle)'}`,
-        borderRadius: 'var(--radius-none)', cursor: interactive ? 'pointer' : undefined,
+        // A card is a fill, not an outline (0037); the accent edge marks selection only.
+        border: `1px solid ${selected ? 'var(--border-accent)' : 'transparent'}`,
+        borderRadius: 'var(--radius-xl)', cursor: interactive ? 'pointer' : undefined,
         transition: 'background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out)',
         ...style,
       }}

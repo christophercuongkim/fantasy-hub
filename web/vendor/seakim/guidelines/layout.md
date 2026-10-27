@@ -38,7 +38,7 @@ sm  +-------------------------------------------+
 
 | Element | Token | Notes |
 | --- | --- | --- |
-| Top bar | `--topbar-h` 52 | Sticky. `--shadow-raised` only when content scrolls under it. |
+| Top bar | `--topbar-h` 52 | Sticky. `--shadow-raised` only when content scrolls under it. `TopBar` / `SkTopBar`; at `sm` it is the screen header. |
 | Sub bar | `--subbar-h` 44 | Filters, sort, result count. Optional. |
 | Side nav | `--sidebar-w` 232 | `--sidebar-w-collapsed` 56 at `md`. Gone at `sm`. |
 | Tab bar | `--tabbar-h` 56 | `sm` only. 3–5 destinations. |
@@ -57,20 +57,25 @@ never knows which is showing — that is the shell's job, not the screen's.
 Bottom padding is deliberately larger than top on every screen — the last row of a list
 needs air under it, and at `sm` it has to clear the tab bar.
 
-Both kits expose this as `pagePad(bp)` rather than repeating the values.
+Both kits expose this as `pagePad(bp)` rather than repeating the values (`pagePad` in React,
+`skPagePad` in Flutter), and `PageBody` / `SkPageBody` applies it together with a content
+ceiling below.
 
 ## Content width
 
-Wide is not free. Three ceilings, by content type:
+Wide is not free. Four ceilings, by content type:
 
 | Content | Max | Why |
 | --- | --- | --- |
 | Prose | **68ch** | Beyond that the eye loses the line return. |
 | Forms | **620px** | A 1200px-wide text input looks broken and scans badly. |
-| Tables, lists, dashboards | full width | Comparison wants every column visible. |
+| Single-column lists and feeds | **768px** (48rem) | A row has no columns to compare; wider only moves its trailing value away from its name. |
+| Tables, boards, split panes, maps, dashboards | full width | Comparison wants every column visible. |
 
 So a checkout screen caps its form column at 620 even on a 2560px monitor, while a roster
-table uses everything it is given. The container tokens (`--container-sm` through
+table uses everything it is given. A capped column is centred in main, with the page
+padding outside it. `PageBody` / `SkPageBody` takes the ceiling by name (`list`, `form`,
+`prose`, `full`). The container tokens (`--container-sm` through
 `--container-xl`) exist for pages that need a hard outer bound — marketing, docs, the
 overview page.
 
@@ -102,7 +107,11 @@ Detail screens. Primary content beside a 300–320px rail of secondary panels.
 | `md`, `sm` | Rail moves **below** the content, full width |
 
 The rail never becomes a drawer or a tab. It is secondary information, so at narrow
-widths it goes where secondary information goes: after the primary content.
+widths it goes where secondary information goes: after the primary content. The one
+exception is a pane that cannot have anything below it, such as a chat thread whose bottom
+edge is its composer: there the rail is hidden below `lg` (`railBelow: false`), and
+anything a phone needs belongs in the pane itself. `ContentRail` / `SkContentRail` is the
+binding; columns are separated by a `--border-subtle` hairline, as `SplitPane`'s are.
 
 **Where the rail held the primary action** — Checkout's pay button, Trip detail's pay
 balance — that action moves to a **sticky footer** below `lg`, because a page-bottom
@@ -184,6 +193,7 @@ Tier 1 — the mechanism is yours, the outcome is not:
 - Measure **container** width, not viewport. `ResizeObserver`, `LayoutBuilder`,
   `GeometryReader` — whichever your platform gives you.
 - Swap navigation at `sm`; do not shrink it.
-- Move rails below content rather than into a drawer.
+- Move rails below content rather than into a drawer (or hide them, for a pane that
+  cannot stack, per pattern 2).
 - Move rail-held primary actions to a sticky footer below `lg`.
-- Keep the three content ceilings.
+- Keep the four content ceilings.

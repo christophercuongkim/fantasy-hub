@@ -155,7 +155,7 @@ export function Charts({
             top: tip.y + 14,
             background: "var(--surface-raised)",
             border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-md)",
+            borderRadius: "var(--radius-sm)",
             padding: "var(--space-2) var(--space-3)",
             font: "var(--type-caption)",
             boxShadow: "var(--shadow-popover)",

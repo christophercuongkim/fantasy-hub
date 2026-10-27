@@ -1,10 +1,13 @@
-/* Typefaces — all three are Google Fonts (no licensed binaries were supplied).
-   Outfit        display / headings  — wide geometric, high contrast at large sizes
-   Plus Jakarta Sans  UI + body      — geometric skeleton, humanist apertures, reads well at 13px
-   IBM Plex Mono  data / labels      — prices, scores, stat tables, eyebrow labels */
+/* One text family, plus mono for data (decision 0031). Both SIL OFL 1.1.
+   Instrument Sans  display + UI + body — hierarchy is carried by size and weight,
+                    not by a change of face
+   JetBrains Mono   data / labels       — prices, scores, stat tables, eyebrow labels
+   --font-display stays a NAMED SLOT pointing at the text face. SeaKim has no logo;
+   the wordmark is the product name set in this token (see readme). When a real mark
+   or a display face arrives, it is one edit here. */
 
 :root {
-  --font-display: "Outfit", "Helvetica Neue", Arial, sans-serif;
-  --font-sans: "Plus Jakarta Sans", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }

@@ -36,6 +36,17 @@ describes the present and then rots.
 | [DatePicker](DatePicker.md) | Built | React, Flutter |
 | [Slider](Slider.md) | Built | React, Flutter |
 | [Range](Range.md) | Built | React — Bench projections; Flutter owed |
+| [Popover](Popover.md) | Built | React, Flutter — anchored overlay species (0022) |
+| [AvatarStack](AvatarStack.md) | Built | React, Flutter — facepile primitive (0024) |
+| [PageHeader](PageHeader.md) | Built | React, Flutter — the shared page header (0038) |
+| [ListRow](ListRow.md) | Built | React, Flutter — the row every list is made of, and ListGroup (0038) |
+| [SplitPane](SplitPane.md) | Built | React, Flutter — list beside detail with a header and an aside (0038) |
+| [Stepper](Stepper.md) | Built | React, Flutter — a labelled pipeline, vertical under md (0038) |
+| [Sheet](Sheet.md) | Built | React `Sheet`, Flutter `showSkSheet` — bottom sheet under md, centred panel from md (0039) |
+| [Board](Board.md) | Built | React, Flutter — kanban columns, a peek-and-swipe strip under md (0038) |
+| [MessageBubble](MessageBubble.md) | Note | No component — the bubble's corners on the ladder and the reaction chip as `pill` (0038) |
+| [Combobox](Combobox.md) | Built | React, Flutter — searchable long-list picker (0028) |
+| [ErrorState](ErrorState.md) | Built | React, Flutter — first-class error treatment (0029) |
 
 ## Known debt
 

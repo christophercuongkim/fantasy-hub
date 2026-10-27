@@ -20,8 +20,7 @@ function snap(v, min, max, step) {
 
 const RAIL = {
   position: 'absolute', left: 0, right: 0, height: 4,
-  background: 'var(--surface-inset)',
-  border: '1px solid var(--border-subtle)',
+  background: 'var(--surface-inset)', // a fill, no outline (0037)
   boxSizing: 'border-box',
 };
 
@@ -55,7 +54,6 @@ export function Slider({
 }) {
   const trackRef = useRef(null);
   const [hovered, setHovered] = useState(false);
-  const [pressed, setPressed] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
   const dragIndex = useRef(-1);
 
@@ -89,7 +87,6 @@ export function Slider({
     const v = valueFromEvent(e);
     const i = nearestIndex(v);
     dragIndex.current = i;
-    setPressed(true);
     setFocusIndex(i);
     emit(v, i);
 
@@ -99,7 +96,6 @@ export function Slider({
     };
     const up = () => {
       dragIndex.current = -1;
-      setPressed(false);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
@@ -155,8 +151,6 @@ export function Slider({
           display: 'flex', alignItems: 'center',
           cursor: disabled ? 'not-allowed' : 'pointer',
           touchAction: 'none',
-          transform: pressed ? 'scale(var(--press-scale))' : 'scale(1)',
-          transition: 'transform var(--dur-instant) var(--ease-out)',
         }}
       >
         <div style={RAIL} />
@@ -172,7 +166,7 @@ export function Slider({
             {Array.from({ length: tickCount }, (_, i) => (
               <span key={i} style={{
                 position: 'absolute', left: (i / (tickCount - 1)) * 100 + '%',
-                width: 1, height: 6, background: 'var(--border-default)',
+                width: 'var(--border-hairline)', height: 6, background: 'var(--border-default)',
               }} />
             ))}
           </div>

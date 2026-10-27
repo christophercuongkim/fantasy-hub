@@ -10,7 +10,8 @@
   --hue-brick: 8;    /* SeaKim house — decks, cross-product surfaces */
   --hue-sea: 245;    /* Voyage — travel planning and booking */
   --hue-turf: 145;    /* Bench — fantasy sport */
-  --hue-plum: 320;    /* Reserved for app three */
+  --hue-plum: 320;    /* interview-prep — interview practice (CHR-521). The reserve aliases stay for anything that bound them. */
+  --hue-azure: 215;    /* Job Search — the job-search platform. Picked by the owner from eight ramped candidates (CHR-211); 25° from the info hue, so info badges sit close to the accent there. */
   --hue-brand: var(--hue-brick);
 
   /* ---- Brand ramp, generated from --hue-brand ---- */
@@ -33,7 +34,9 @@
   --stone-200: #e0deda;
   --stone-300: #c6c3bd;
   --stone-400: #a09c95;
+  --stone-450: #8e8a84;
   --stone-500: #7c7873;
+  --stone-550: #6c6964;
   --stone-600: #5c5955;
   --stone-700: #413f3c;
   --stone-800: #2b2a27;
@@ -52,8 +55,10 @@
   --info-500: oklch(0.58 0.155 250);
 }
 
-/* ---- Semantic layer: DARK (default) ---- */
-:root, [data-theme="dark"] {
+/* ---- Semantic layer: DARK. Light is the default (0033); dark is opted into. ---- */
+/* :root[data-theme] outranks the bare :root that theme-light.css sets, and the plain */
+/* attribute selector still rethemes a nested subtree. */
+:root[data-theme="dark"], [data-theme="dark"] {
   color-scheme: dark;
 
   --bg-base:          var(--stone-950);
@@ -63,22 +68,24 @@
   --surface-raised:   var(--stone-850);
   --surface-overlay:  var(--stone-800);
   --surface-inset:    #0a0908;
-  --surface-hover:    var(--stone-800);
-  --surface-active:   var(--stone-700);
+  --surface-shimmer:  #1e1b18;
+  --surface-hover:    color-mix(in oklab, #faf9f7 8%, transparent);
+  --surface-active:   color-mix(in oklab, #faf9f7 14%, transparent);
   --surface-selected: var(--brand-wash);
   --surface-scrim:    color-mix(in oklab, #000000 68%, transparent);
 
   --text-primary:    #f5f3f0;
   --text-secondary:  var(--stone-400);
-  --text-tertiary:   var(--stone-500);
+  --text-tertiary:   var(--stone-450);
   --text-inverse:    var(--stone-950);
   --text-accent:     var(--brand-300);
   --text-link:       var(--brand-300);
   --text-link-hover: var(--brand-200);
 
-  --border-subtle:  #2a2724;
-  --border-default: #383431;
-  --border-strong:  #4c4844;
+  /* Hairlines are alpha (0037): one token composes on any surface. */
+  --border-subtle:  color-mix(in oklab, #faf9f7 10%, transparent);
+  --border-default: color-mix(in oklab, #faf9f7 16%, transparent);
+  --border-strong:  color-mix(in oklab, #faf9f7 26%, transparent);
   --border-accent:  var(--brand-400);
   --border-focus:   var(--brand-400);
 
@@ -86,6 +93,12 @@
   --fill-accent-hover:  var(--brand-300);
   --fill-accent-active: var(--brand-500);
   --on-accent:          var(--stone-950);
+
+  /* The primary action is ink (0036); the accent above is identity and selection. */
+  --fill-primary:        var(--stone-100);
+  --fill-primary-hover:  var(--stone-200);
+  --fill-primary-active: var(--stone-300);
+  --on-primary:          var(--stone-950);
 
   --fill-neutral:        var(--stone-800);
   --fill-neutral-hover:  var(--stone-700);

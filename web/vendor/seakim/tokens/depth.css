@@ -1,10 +1,15 @@
 /* ============================================================
-   SeaKim — depth. BORDERS DEFINE, SHADOWS LIFT.
-   Anything in the page flow gets a 1px hairline and no shadow. Shadow is
-   reserved for things that OVERLAY other content — menus, popovers, sheets,
+   SeaKim — depth. FILLS DEFINE, SHADOWS LIFT (0037, §0.16).
+   A region in the page flow is its surface fill; a hairline is the alpha
+   exception where a gap cannot separate (rows, inputs, overlay edges), and
+   nothing in flow carries a shadow. Shadow is reserved for things that OVERLAY
+   other content — menus, popovers, sheets,
    dialogs, toasts, drag ghosts — so elevation carries meaning instead of
-   decoration. --shadow-raised is the one exception: bars that scroll over
-   content.
+   decoration. A raised bar is the one in-layout exception: a bar that scrolls
+   over content earns a shadow. Per 0018 that shadow casts toward the content it
+   floats over, so the token is role-named: --shadow-raised-topbar casts down
+   (header), --shadow-raised-footer casts up (sticky footer). --shadow-raised is
+   kept as a back-compat alias of the top-bar orientation.
    ============================================================ */
 :root {
   --border-hairline: 1px;
@@ -16,7 +21,9 @@
      no component ships a literal. Dark casts pure black; light casts the warm
      near-black, because a neutral grey shadow reads cold against stone. */
   --shadow-rgb: 0 0 0;
-  --shadow-raised:  0 1px 2px rgb(var(--shadow-rgb) / 0.50);
+  --shadow-raised-topbar: 0 1px 2px rgb(var(--shadow-rgb) / 0.50);
+  --shadow-raised-footer: 0 -1px 2px rgb(var(--shadow-rgb) / 0.50);
+  --shadow-raised:  var(--shadow-raised-topbar);
   --shadow-popover: 0 8px 24px -4px rgb(var(--shadow-rgb) / 0.65), 0 2px 6px rgb(var(--shadow-rgb) / 0.50);
   --shadow-dialog:  0 24px 64px -12px rgb(var(--shadow-rgb) / 0.75), 0 4px 12px rgb(var(--shadow-rgb) / 0.50);
   --shadow-sheet:   0 -8px 32px rgb(var(--shadow-rgb) / 0.55);
@@ -33,7 +40,9 @@
 }
 [data-theme="light"] {
   --shadow-rgb: 30 28 26;
-  --shadow-raised:  0 1px 2px rgb(var(--shadow-rgb) / 0.07);
+  --shadow-raised-topbar: 0 1px 2px rgb(var(--shadow-rgb) / 0.07);
+  --shadow-raised-footer: 0 -1px 2px rgb(var(--shadow-rgb) / 0.07);
+  --shadow-raised:  var(--shadow-raised-topbar);
   --shadow-popover: 0 8px 24px -4px rgb(var(--shadow-rgb) / 0.14), 0 2px 6px rgb(var(--shadow-rgb) / 0.08);
   --shadow-dialog:  0 24px 64px -12px rgb(var(--shadow-rgb) / 0.22), 0 4px 12px rgb(var(--shadow-rgb) / 0.10);
   --shadow-sheet:   0 -8px 32px rgb(var(--shadow-rgb) / 0.12);

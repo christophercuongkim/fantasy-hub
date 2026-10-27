@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCoarsePointer } from '../core/useCoarsePointer.js';
 
 function Dot({ on, hover, disabled }) {
   return (
@@ -6,14 +7,14 @@ function Dot({ on, hover, disabled }) {
       width: 16, height: 16, flex: 'none', borderRadius: 'var(--radius-circle)',
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       background: disabled ? 'var(--fill-disabled)' : 'var(--surface-raised)',
-      border: `${on ? 2 : 1}px solid ${disabled ? 'var(--border-disabled)' : on ? 'var(--fill-accent)' : hover ? 'var(--border-strong)' : 'var(--border-default)'}`,
+      border: `${on ? 'var(--border-emphasis)' : 'var(--border-hairline)'} solid ${disabled ? 'var(--border-disabled)' : on ? 'var(--fill-accent)' : hover ? 'var(--border-strong)' : 'var(--border-default)'}`,
       transition: 'var(--transition-control)',
     }}>
       <span style={{
         width: 7, height: 7, borderRadius: 'var(--radius-circle)',
         background: disabled ? 'var(--text-disabled)' : 'var(--fill-accent)',
         transform: on ? 'scale(1)' : 'scale(0)',
-        transition: 'transform var(--dur-base) var(--ease-pop)',
+        transition: 'transform var(--dur-base) var(--ease-out)',
       }} />
     </span>
   );
@@ -23,6 +24,7 @@ function Dot({ on, hover, disabled }) {
 export function Radio({ name, options = [], value, defaultValue, onChange, direction = 'column', disabled = false, style, ...rest }) {
   const [inner, setInner] = useState(defaultValue);
   const [hoverKey, setHoverKey] = useState(null);
+  const coarse = useCoarsePointer();
   const current = value != null ? value : inner;
   return (
     <div role="radiogroup" style={{ display: 'flex', flexDirection: direction, gap: direction === 'row' ? 'var(--space-7)' : 'var(--space-4)', ...style }} {...rest}>
@@ -37,7 +39,8 @@ export function Radio({ name, options = [], value, defaultValue, onChange, direc
             onMouseLeave={() => setHoverKey(null)}
             style={{
               display: 'flex', gap: 'var(--space-4)', alignItems: opt.hint ? 'flex-start' : 'center',
-              cursor: off ? 'not-allowed' : 'pointer', 
+              minHeight: coarse ? 44 : undefined,
+              cursor: off ? 'not-allowed' : 'pointer',
             }}
           >
             <input type="radio" name={name} checked={on} disabled={off}
