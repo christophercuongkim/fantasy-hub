@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 import { useState } from "react";
 import {
+  Field,
   Range,
   Select,
   Table,
@@ -139,7 +140,7 @@ export function ProjectionsTable({ rows }: { rows: ProjectionRow[] }) {
 
   return (
     <div>
-      <div style={{ maxWidth: "9rem", marginBottom: "var(--space-4)" }}>
+      <Field label="Position" style={{ maxWidth: "9rem", marginBottom: "var(--space-4)" }}>
         <Select
           size="sm"
           value={pos}
@@ -147,7 +148,7 @@ export function ProjectionsTable({ rows }: { rows: ProjectionRow[] }) {
           aria-label="Filter by position"
           onChange={(e) => setPos(e.target.value)}
         />
-      </div>
+      </Field>
       <div
         ref={ref as RefObject<HTMLDivElement | null>}
         style={{
