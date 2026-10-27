@@ -1,5 +1,11 @@
 import { inArray, sql } from "drizzle-orm";
-import { Button, Card, EmptyState } from "@seakim/design-system";
+import {
+  Button,
+  Card,
+  EmptyState,
+  PageBody,
+  PageHeader,
+} from "@seakim/design-system";
 import { getDb } from "@/db";
 import { draftPicks, players as playersTable } from "@/db/schema";
 import { confirmMatch, dismiss, runCrosswalk } from "./actions";
@@ -197,44 +203,16 @@ export default async function CrosswalkAdmin() {
   };
 
   return (
-    <main
-      style={{
-        maxWidth: "48rem",
-        margin: "0 auto",
-        padding: "var(--space-8) var(--space-5)",
-      }}
-    >
-      <header
-        style={{
-          marginBottom: "var(--space-6)",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: "var(--space-4)",
-        }}
-      >
-        <div>
-          <h1
-            style={{ font: "var(--type-title)", color: "var(--text-primary)" }}
-          >
-            Crosswalk review
-          </h1>
-          <p
-            style={{
-              marginTop: "var(--space-1)",
-              font: "var(--type-body-sm)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            {Number(counts.resolved).toLocaleString()} /{" "}
-            {Number(counts.total).toLocaleString()} draft picks linked to a
-            player · {withCand.length} to review
-          </p>
-        </div>
-        <form action={runCrosswalk} style={{ flexShrink: 0 }}>
-          <RunButton />
-        </form>
-      </header>
+    <PageBody width="form">
+      <PageHeader
+        title="Crosswalk review"
+        description={`${Number(counts.resolved).toLocaleString()} / ${Number(counts.total).toLocaleString()} draft picks linked to a player · ${withCand.length} to review`}
+        actions={
+          <form action={runCrosswalk}>
+            <RunButton />
+          </form>
+        }
+      />
 
       {queue.length === 0 ? (
         <EmptyState
@@ -266,6 +244,6 @@ export default async function CrosswalkAdmin() {
           )}
         </>
       )}
-    </main>
+    </PageBody>
   );
 }

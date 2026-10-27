@@ -1,4 +1,4 @@
-import { EmptyState } from "@seakim/design-system";
+import { EmptyState, PageBody, PageHeader } from "@seakim/design-system";
 import { latestDraftBoard } from "@/lib/draft-board";
 import { DraftBoard } from "./DraftBoard";
 
@@ -10,32 +10,15 @@ export default async function DraftAssistant() {
   const board = await latestDraftBoard();
 
   return (
-    <main
-      style={{
-        maxWidth: "64rem",
-        margin: "0 auto",
-        padding: "var(--space-8) var(--space-5)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-6)",
-      }}
-    >
-      <div>
-        <h1 style={{ font: "var(--type-title)", color: "var(--text-primary)" }}>
-          Draft assistant
-        </h1>
-        <p
-          style={{
-            marginTop: "var(--space-1)",
-            font: "var(--type-body-sm)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          {board
+    <PageBody width="full">
+      <PageHeader
+        title="Draft assistant"
+        description={
+          board
             ? `${board.season} value board — projected season points over replacement, with market ADP`
-            : "Value over replacement for the upcoming draft."}
-        </p>
-      </div>
+            : "Value over replacement for the upcoming draft."
+        }
+      />
 
       {board ? (
         <DraftBoard
@@ -56,6 +39,6 @@ export default async function DraftAssistant() {
           description="Sync a league first, then build the draft board."
         />
       )}
-    </main>
+    </PageBody>
   );
 }

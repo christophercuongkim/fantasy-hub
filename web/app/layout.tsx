@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Button } from "@seakim/design-system";
-import { auth, signOut } from "@/auth";
 
 // Global CSS is only legal in the root layout. The design system's token +
 // component styles first, then our app globals (Tailwind utilities during the
@@ -15,7 +13,7 @@ import { fontVariables } from "./fonts";
 
 /** Which app's accent is live — the fantasy-sport "bench" kit (turf, hue 145). */
 const APP = "bench";
-/** System default; a first-time visitor sees no flash. */
+/** System default; a first-time visitor sees no flash. Kept dark (CHR-567 / 3A). */
 const DEFAULT_THEME = "dark";
 
 export const metadata: Metadata = {
@@ -35,10 +33,9 @@ const noFlashScript = `
 })();
 `;
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const session = await auth();
   return (
     // suppressHydrationWarning: the no-flash script may change data-theme before
     // React hydrates, and that difference is expected.
@@ -52,35 +49,7 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: noFlashScript }} />
       </head>
-      <body>
-        {session && (
-          <div
-            style={{
-              position: "fixed",
-              top: "var(--space-3)",
-              right: "var(--space-3)",
-              zIndex: 50,
-            }}
-          >
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/" });
-              }}
-            >
-              <Button
-                type="submit"
-                variant="ghost"
-                size="sm"
-                iconLeft="sign-out"
-              >
-                Sign out
-              </Button>
-            </form>
-          </div>
-        )}
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

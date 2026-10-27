@@ -1,4 +1,10 @@
-import { Card, EmptyState, Icon } from "@seakim/design-system";
+import {
+  Card,
+  EmptyState,
+  Icon,
+  PageBody,
+  PageHeader,
+} from "@seakim/design-system";
 import {
   careerLeaderboard,
   teamSeasons,
@@ -9,7 +15,6 @@ import {
   type SeasonRow,
   type WeekScore,
 } from "@/lib/hall-of-records";
-import { SeasonFilter } from "@/components/SeasonFilter";
 import { Charts } from "./charts";
 import {
   CareerTable,
@@ -106,52 +111,6 @@ function AwardsGrid({ awards }: { awards: Award[] }) {
   );
 }
 
-function PageHeader({
-  seasonList,
-  season,
-  subtitle,
-}: {
-  seasonList: number[];
-  season?: number;
-  subtitle: string;
-}) {
-  return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "space-between",
-        gap: "var(--space-4)",
-        flexWrap: "wrap",
-        marginBottom: "var(--space-8)",
-      }}
-    >
-      <div>
-        <h1
-          style={{ font: "var(--type-display)", color: "var(--text-primary)" }}
-        >
-          Hall of Records
-        </h1>
-        <p
-          style={{
-            marginTop: "var(--space-2)",
-            maxWidth: "44rem",
-            color: "var(--text-secondary)",
-          }}
-        >
-          {subtitle}
-        </p>
-      </div>
-      <SeasonFilter
-        basePath="/hall_of_records"
-        seasons={seasonList}
-        value={season}
-        allLabel="All-time"
-      />
-    </header>
-  );
-}
-
 function TableCaption({ children }: { children: React.ReactNode }) {
   return (
     <p
@@ -173,12 +132,10 @@ function SeasonInReview({
   season,
   seasons,
   weeks,
-  seasonList,
 }: {
   season: number;
   seasons: SeasonRow[];
   weeks: WeekScore[];
-  seasonList: number[];
 }) {
   const standings = seasons
     .filter((s) => s.season === season)
@@ -269,17 +226,10 @@ function SeasonInReview({
     }));
 
   return (
-    <main
-      style={{
-        maxWidth: "72rem",
-        margin: "0 auto",
-        padding: "var(--space-8) var(--space-5)",
-      }}
-    >
+    <PageBody width="full">
       <PageHeader
-        seasonList={seasonList}
-        season={season}
-        subtitle={`${season} season in review — champion, single-game records, and the final standings.`}
+        title="Hall of Records"
+        description={`${season} season in review — champion, single-game records, and the final standings.`}
       />
       {standings.length === 0 ? (
         <EmptyState
@@ -307,7 +257,7 @@ function SeasonInReview({
           </section>
         </>
       )}
-    </main>
+    </PageBody>
   );
 }
 
@@ -321,19 +271,9 @@ export default async function HallOfRecords({
     sp.season && /^\d{4}$/.test(sp.season) ? Number(sp.season) : undefined;
 
   const [seasons, weeks] = await Promise.all([teamSeasons(), weekScores()]);
-  const seasonList = [...new Set(seasons.map((s) => s.season))].sort(
-    (a, b) => b - a,
-  );
 
   if (season != null) {
-    return (
-      <SeasonInReview
-        season={season}
-        seasons={seasons}
-        weeks={weeks}
-        seasonList={seasonList}
-      />
-    );
+    return <SeasonInReview season={season} seasons={seasons} weeks={weeks} />;
   }
 
   // All-time hall: the cross-season data.
@@ -464,16 +404,10 @@ export default async function HallOfRecords({
   }));
 
   return (
-    <main
-      style={{
-        maxWidth: "72rem",
-        margin: "0 auto",
-        padding: "var(--space-8) var(--space-5)",
-      }}
-    >
+    <PageBody width="full">
       <PageHeader
-        seasonList={seasonList}
-        subtitle="PeopleCanEat · 12 seasons (2014–2025). Career & head-to-head stats cover the GUID-identified era (2022–25); single-game records span all 12 years."
+        title="Hall of Records"
+        description="PeopleCanEat · 12 seasons (2014–2025). Career & head-to-head stats cover the GUID-identified era (2022–25); single-game records span all 12 years."
       />
 
       <Charts
@@ -524,6 +458,6 @@ export default async function HallOfRecords({
         </h2>
         <TopWeeksTable rows={topWeekRows} />
       </section>
-    </main>
+    </PageBody>
   );
 }
