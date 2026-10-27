@@ -140,7 +140,10 @@ export function ProjectionsTable({ rows }: { rows: ProjectionRow[] }) {
 
   return (
     <div>
-      <Field label="Position" style={{ maxWidth: "9rem", marginBottom: "var(--space-4)" }}>
+      <Field
+        label="Position"
+        style={{ maxWidth: "9rem", marginBottom: "var(--space-4)" }}
+      >
         <Select
           size="sm"
           value={pos}
