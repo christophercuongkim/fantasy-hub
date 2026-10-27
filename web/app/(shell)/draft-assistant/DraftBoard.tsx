@@ -12,6 +12,7 @@ import {
   Badge,
   Button,
   EmptyState,
+  Field,
   Select,
   Switch,
   Table,
@@ -248,7 +249,7 @@ export function DraftBoard({
             flexWrap: "wrap",
           }}
         >
-          <div style={{ maxWidth: "9rem" }}>
+          <Field label="Position" style={{ maxWidth: "9rem" }}>
             <Select
               size="sm"
               value={pos}
@@ -256,7 +257,7 @@ export function DraftBoard({
               aria-label="Filter by position"
               onChange={(e) => setPos(e.target.value)}
             />
-          </div>
+          </Field>
           <Switch
             size="sm"
             checked={live}

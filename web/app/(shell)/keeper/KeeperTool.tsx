@@ -1,9 +1,10 @@
 "use client";
 
-import { type RefObject, useMemo, useRef, useState } from "react";
+import { type RefObject, useMemo, useState } from "react";
 import {
   Badge,
-  Button,
+  Field,
+  FileDrop,
   Table,
   useMeasuredBreakpoint,
 } from "@seakim/design-system";
@@ -54,9 +55,11 @@ export function KeeperTool({
   board: BoardRow[];
 }) {
   const { ref, bp } = useMeasuredBreakpoint();
-  const fileRef = useRef<HTMLInputElement>(null);
   const [csvText, setCsvText] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileMeta, setFileMeta] = useState<{
+    name: string;
+    size: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const analysis = useMemo(() => {
@@ -69,11 +72,17 @@ export function KeeperTool({
 
   const onFile = (file: File) => {
     setError(null);
-    setFileName(file.name);
+    setFileMeta({ name: file.name, size: file.size });
     const reader = new FileReader();
     reader.onload = () => setCsvText(String(reader.result ?? ""));
     reader.onerror = () => setError("Couldn’t read that file.");
     reader.readAsText(file);
+  };
+
+  const clearFile = () => {
+    setCsvText(null);
+    setFileMeta(null);
+    setError(null);
   };
 
   const recommended = analysis?.best
@@ -88,50 +97,26 @@ export function KeeperTool({
         gap: "var(--space-4)",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          gap: "var(--space-3)",
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
+      <Field
+        label="Keeper sheet"
+        hint={
+          myTeam
+            ? `CSV with a section for ${myTeam}`
+            : "Commissioner keeper-cost export"
+        }
       >
-        <input
-          ref={fileRef}
-          type="file"
+        <FileDrop
           accept=".csv,text/csv"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-          }}
+          hint="One CSV"
+          action="Choose CSV"
+          label="or drop it here"
+          file={fileMeta}
+          onFile={onFile}
+          onRemove={clearFile}
+          error={error ?? undefined}
+          onRetry={() => setError(null)}
         />
-        <Button
-          variant="secondary"
-          size="sm"
-          iconLeft="upload-simple"
-          onClick={() => fileRef.current?.click()}
-        >
-          {fileName ? "Replace CSV" : "Upload keeper CSV"}
-        </Button>
-        {fileName && (
-          <span
-            style={{
-              font: "var(--type-caption)",
-              color: "var(--text-tertiary)",
-            }}
-          >
-            {fileName}
-          </span>
-        )}
-        {error && (
-          <span
-            style={{ font: "var(--type-caption)", color: "var(--text-danger)" }}
-          >
-            {error}
-          </span>
-        )}
-      </div>
+      </Field>
 
       {analysis && analysis.rows.length === 0 && (
         <p
