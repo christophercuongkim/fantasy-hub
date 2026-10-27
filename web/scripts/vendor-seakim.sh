@@ -37,9 +37,10 @@ for item in "${surface[@]}"; do
   cp -R "$src/$item" "$dest/$item"
 done
 
-# Kill the Google Fonts @import — we self-host the same families via next/font
-# (app/fonts.ts), which assigns the identical CSS vars. Leaving it in would fetch
-# the fonts a second time at runtime. The :root fallback block stays.
+# Kill the Google Fonts @import — we self-host Instrument Sans + JetBrains Mono
+# via next/font (app/fonts.ts → --font-display / --font-sans / --font-mono),
+# matching SeaKim 0031. Leaving the @import in would fetch a second time at
+# runtime. The :root fallback block stays.
 fonts="$dest/tokens/fonts.css"
 grep -v 'fonts.googleapis.com' "$fonts" > "$fonts.tmp" && mv "$fonts.tmp" "$fonts"
 

@@ -98,9 +98,10 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
             overflow: "hidden",
             listStyle: "none",
             padding: 0,
-            background: "var(--surface-raised)",
-            border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-sm)",
+            // Listbox overlay: popover/menu role → xl (0035); hairline OK (0037).
+            background: "var(--surface-overlay)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-xl)",
             boxShadow: "var(--shadow-popover)",
           }}
         >
