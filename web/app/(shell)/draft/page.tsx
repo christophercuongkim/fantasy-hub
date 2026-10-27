@@ -1,13 +1,18 @@
-import { Badge, Card, EmptyState, Icon } from "@seakim/design-system";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  Icon,
+  PageBody,
+  PageHeader,
+} from "@seakim/design-system";
 import { auth, isAdmin } from "@/auth";
 import {
-  draftSeasons,
   earliestKicker,
   positionByRound,
   valueBoard,
 } from "@/lib/draft-superlatives";
 import { PositionalHeatmap, ScatterCard, ValueHistogram } from "./charts";
-import { SeasonFilter } from "@/components/SeasonFilter";
 import {
   ReachTable,
   TendencyTable,
@@ -108,11 +113,10 @@ export default async function Draft({
   const season =
     sp.season && /^\d{4}$/.test(sp.season) ? Number(sp.season) : undefined;
 
-  const [board, posRows, kicker, seasons] = await Promise.all([
+  const [board, posRows, kicker] = await Promise.all([
     valueBoard(season),
     positionByRound(season),
     earliestKicker(season),
-    draftSeasons(),
   ]);
   // A single season is one draft per manager (~15 picks), so the all-time
   // MIN_PICKS gate would empty the tendency table — relax it when filtered.
@@ -249,44 +253,11 @@ export default async function Draft({
   };
 
   return (
-    <main
-      style={{
-        maxWidth: "72rem",
-        margin: "0 auto",
-        padding: "var(--space-8) var(--space-5)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-8)",
-      }}
-    >
-      <header
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: "var(--space-4)",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <h1
-            style={{ font: "var(--type-title)", color: "var(--text-primary)" }}
-          >
-            Draft
-          </h1>
-          <p
-            style={{
-              marginTop: "var(--space-1)",
-              font: "var(--type-body-sm)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Every pick measured against consensus ADP — reach = drafted earlier
-            than the board.
-          </p>
-        </div>
-        <SeasonFilter basePath="/draft" seasons={seasons} value={season} />
-      </header>
+    <PageBody width="full">
+      <PageHeader
+        title="Draft"
+        description="Every pick measured against consensus ADP — reach = drafted earlier than the board."
+      />
 
       {board.length === 0 ? (
         <EmptyState
@@ -391,6 +362,6 @@ export default async function Draft({
           )}
         </>
       )}
-    </main>
+    </PageBody>
   );
 }
