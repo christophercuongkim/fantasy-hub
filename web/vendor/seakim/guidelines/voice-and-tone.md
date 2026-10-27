@@ -61,6 +61,9 @@ Fast, competitive, a little dry. The user is here for edge and banter, and check
 > No trips yet. Plan one and it'll show up here. → `Plan a trip`
 
 **Loading** — name the thing being fetched if it takes over a second. Never a bare spinner on a full page.
+Two sanctioned treatments carry this, per [0021](../decisions/0021-loading-states.md): a **skeleton**
+when you know the shape of what is arriving, and a **labeled loading state** (`LoadingState` / `SkLoadingState`)
+when you know only that something is.
 > Checking 40 airlines…
 
 **Error** — cause, consequence, next step. One sentence each, max.

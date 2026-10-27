@@ -37,6 +37,29 @@ the value is in the trail, and a silently edited ADR is worse than none.
 | [0015](0015-sequential-chart-ramp.md) | A sequential (magnitude) chart ramp | Accepted |
 | [0016](0016-many-series-trajectories.md) | Many-series trajectories: the >6 change-over-time case | Accepted |
 | [0017](0017-distribution-interval-glyph.md) | A distribution/interval glyph (`Range`) | Accepted |
+| [0018](0018-raised-shadow-direction.md) | Raised shadow casts away from the anchored edge | Accepted |
+| [0019](0019-versioning-second-pass.md) | Versioning, second pass: token revalues and honest binding versions | Accepted |
+| [0020](0020-preview-surfaces-are-gated.md) | Preview surfaces are deliverables, and a render gate proves it | Accepted |
+| [0021](0021-loading-states.md) | Loading is a skeleton or a labeled fallback, never a bare spinner | Accepted |
+| [0022](0022-anchored-popover-species.md) | Anchored contextual popover is a third overlay species | Accepted |
+| [0023](0023-sub-floor-chrome-hit-area.md) | A control may render below the touch floor only if its hit area is not | Accepted |
+| [0024](0024-avatar-receipts-and-stack.md) | Avatar as read-receipt, and an avatar stack primitive | Accepted |
+| [0025](0025-progressive-disclosure-metadata.md) | Metadata on demand, with a non-pointer path | Accepted |
+| [0026](0026-accent-as-ownership-fill.md) | The single-accent rule governs competing actions, not identity washes | Accepted |
+| [0027](0027-non-primary-floating-affordance.md) | A non-primary floating affordance is allowed, and is not a FAB | Accepted |
+| [0028](0028-searchable-select.md) | A searchable long-list picker is its own component (SkCombobox), not a hand-rolled trigger | Accepted |
+| [0029](0029-error-state.md) | The error state is a first-class treatment, not an SkEmptyState variant | Accepted |
+| [0030](0030-corners-take-a-radius-ladder.md) | Corners take a radius ladder | Accepted |
+| [0031](0031-one-typeface.md) | One text family, and a display slot kept open | Accepted |
+| [0032](0032-concentric-corners.md) | Concentric corners never round more than the corner they sit in | Accepted |
+| [0033](0033-quiet.md) | Quiet: chrome recedes, features stay. Direction for rules 8.0 | Accepted |
+| [0034](0034-press-is-a-tint.md) | Press is a tint, and nothing overshoots | Accepted |
+| [0035](0035-rungs-reassigned.md) | Controls take `lg`, cards take `xl`; `md` and `2xl` are pruned | Accepted |
+| [0036](0036-ink-primary.md) | The primary action is ink; the accent moves to links, focus, selection and identity | Accepted |
+| [0037](0037-fills-define.md) | Fills and gaps define; a hairline is the exception, and it is alpha | Accepted |
+| [0038](0038-promote-on-a-spike.md) | A design spike's say-so promotes a shape into the library | Accepted |
+| [0039](0039-flutter-parity.md) | The two bindings this repo owns ship every component together, and a gate proves it | Accepted |
+| [0040](0040-learning-profile.md) | A learning profile: an opt-in that puts the accent on the primary action, progress and the next step | Accepted |
 
 ## Writing one
 

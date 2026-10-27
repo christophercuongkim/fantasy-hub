@@ -6,4 +6,4 @@ Transient confirmation of something that already happened.
 ```
 
 Past tense, no exclamation mark, no emoji. One toast at a time, bottom-trailing.
-Pops in with `--ease-pop` and fades out — arrival is the only thing that overshoots.
+Fades in and out on `--ease-out`; nothing overshoots (0034).

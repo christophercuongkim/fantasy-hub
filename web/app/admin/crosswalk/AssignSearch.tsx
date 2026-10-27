@@ -100,7 +100,7 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
             padding: 0,
             background: "var(--surface-raised)",
             border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-md)",
+            borderRadius: "var(--radius-sm)",
             boxShadow: "var(--shadow-popover)",
           }}
         >

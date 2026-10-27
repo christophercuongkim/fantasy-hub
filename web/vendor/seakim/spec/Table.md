@@ -21,7 +21,7 @@ ever compared across rows, it is not a table.
 
 | Part | Required | Treatment |
 | --- | --- | --- |
-| Container | yes | 1px `--border-subtle`, `--radius-none`, no shadow |
+| Container | yes | `--surface-card` fill, `--radius-none`, no outline, no shadow (0037). Rows separate by hairline. |
 | Header row | yes | `--type-eyebrow` uppercase, `--tracking-caps`, `--text-tertiary`, hairline bottom border. Sticky on vertical scroll. |
 | Identifying column | yes | `--type-body-sm`, `--text-primary`. Leftmost. Never dropped. |
 | Supporting column | no | `--type-body-sm`, `--text-secondary` |
@@ -98,7 +98,7 @@ freezes. Different units means it is a record table and the rule above applies.
 
 ## Empty, loading, error
 
-- **Empty** — `EmptyState` inside the container border, `compact`. Name the thing and
+- **Empty** — `EmptyState` inside the container, `compact`. Name the thing and
   offer the action that creates it.
 - **Filtered to nothing** — different copy from empty: name the filter, offer to clear it.
   `No players match "novak" at PG.` then `Clear filters`

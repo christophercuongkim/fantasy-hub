@@ -29,17 +29,25 @@ Repo-specific rules. Layers on top of the global `~/CLAUDE.md`.
 ## Design system (binding)
 
 The UI is the **seakim design system**, vendored at `web/vendor/seakim` (bench
-theme, `data-app="bench"`). Its rules are **Law** for colour/component/layout
-decisions — not taste. Read the vendored source before overriding a default.
+theme, `data-app="bench"`; currently rules **8.6.x** / Quiet). Its rules are
+**Law** for colour/component/layout decisions — not taste. Read the vendored
+source before overriding a default. Key Quiet ADRs: `0033`–`0037`.
 
 - **`web/vendor/seakim/conformance.md` is binding.** One accent hue live at a
   time; the shared layer is achromatic; **semantic tokens only** — never read raw
-  ramp steps (`--brand-*`).
+  ramp steps (`--brand-*`). Primary actions are **ink** (`--fill-primary`); accent
+  is for links, focus, selection, and identity — not the primary button.
+- **Fills and gaps define regions** (hairlines are the alpha exception); press is a
+  **tint**, not a scale; motion is ease-out only (≤150ms). Light is the DS default;
+  fantasy-hub keeps an explicit dark root (`data-theme="dark"`).
+- **Corners** name a closed ladder rung by role (`none`/`xs`/`sm`/`lg`/`xl`/`full`/
+  `circle` — no `md`/`2xl`). Controls → `lg`, cards → `xl`.
 - **Charts** follow `web/vendor/seakim/guidelines/data-visualisation.md` *and* the
   dataviz skill: 1–2 series = accent + `--text-tertiary`; 3–6 = the fixed
   `--chart-1..6` categorical ramp (never the app accent); **6 is the ceiling**;
-  status colours are never series colours. No sequential ramp exists yet, so
-  magnitude reads as accent-at-opacity (see DS ADR `decisions/0015`, proposed).
+  status colours are never series colours. Magnitude uses `--chart-seq-1..4`
+  (ADR `0015`, accepted); accent-at-opacity is the sanctioned interim only where
+  seq is not yet wired.
 - Component contracts live in `spec/`; the *why* in `decisions/` (ADRs).
 - Import from the barrel `@seakim/design-system`; `var(--…)` tokens for layout.
   Function-prop components (`Table`/`Slider`/`DatePicker`) need a `"use client"`

@@ -8,6 +8,7 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   background: var(--surface-page);
+  letter-spacing: var(--tracking-ui);
   color: var(--text-primary);
   font: var(--type-body);
   letter-spacing: var(--tracking-normal);

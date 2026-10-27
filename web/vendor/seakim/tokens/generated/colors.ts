@@ -12,6 +12,7 @@ export const skHues = {
   sea: 245,
   turf: 145,
   plum: 320,
+  azure: 215,
 } as const;
 
 export type SkApp = keyof typeof skHues;
@@ -70,6 +71,19 @@ export const skBrandRamps = {
     '050': '#f9edfb',
     wash: '#29182c',
   },
+  azure: {
+    '100': '#c0eaf4',
+    '200': '#90d8e9',
+    '300': '#69cee6',
+    '400': '#00b8d6',
+    '500': '#009db7',
+    '600': '#008399',
+    '700': '#006374',
+    '800': '#004552',
+    '900': '#002a32',
+    '050': '#e2f6fb',
+    wash: '#00242c',
+  },
 } as const;
 
 export const skStone = {
@@ -79,7 +93,9 @@ export const skStone = {
   '200': '#e0deda',
   '300': '#c6c3bd',
   '400': '#a09c95',
+  '450': '#8e8a84',
   '500': '#7c7873',
+  '550': '#6c6964',
   '600': '#5c5955',
   '700': '#413f3c',
   '800': '#2b2a27',

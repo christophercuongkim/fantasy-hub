@@ -7,6 +7,7 @@ import { Checkbox } from './Checkbox.jsx';
 import { Radio } from './Radio.jsx';
 import { Switch } from './Switch.jsx';
 import { SegmentedControl } from './SegmentedControl.jsx';
+import { FileDrop } from './FileDrop.jsx';
 
 export function Demo() {
   return (
@@ -61,6 +62,23 @@ export function Demo() {
           <div className="lbl">Switch</div>
           <Switch label="Price alerts" hint="Email me when this fare drops" defaultChecked />
           <Switch label="Share with Priya" />
+        </div>
+      </div>
+      <div className="col" style={{ gridColumn: '1 / -1', gap: 'var(--space-5)' }}>
+        <div className="lbl">FileDrop · idle, chosen, uploading, error</div>
+        <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
+          <Field label="Résumé">
+            <FileDrop accept=".pdf" hint="PDF up to 5 MB" onFile={() => {}} />
+          </Field>
+          <Field label="Résumé">
+            <FileDrop accept=".pdf" hint="PDF up to 5 MB" file={{ name: 'Ada Okafor résumé.pdf', size: 82261 }} onRemove={() => {}} />
+          </Field>
+          <Field label="Résumé">
+            <FileDrop accept=".pdf" hint="PDF up to 5 MB" uploading uploadingLabel="Reading your résumé…" />
+          </Field>
+          <Field label="Résumé">
+            <FileDrop accept=".pdf" hint="PDF up to 5 MB" error="We couldn't read text from that PDF." onRetry={() => {}} />
+          </Field>
         </div>
       </div>
     </div>

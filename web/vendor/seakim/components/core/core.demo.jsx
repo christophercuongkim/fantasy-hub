@@ -4,6 +4,7 @@ import { IconButton } from './IconButton.jsx';
 import { Badge } from './Badge.jsx';
 import { Tag } from './Tag.jsx';
 import { Avatar } from './Avatar.jsx';
+import { AvatarStack } from './AvatarStack.jsx';
 import { Stat } from './Stat.jsx';
 
 export function Demo() {
@@ -61,6 +62,19 @@ export function Demo() {
             <Avatar name="Marcus Reid" size="md" status="live" />
             <Avatar name="Priya Shah" size="lg" status="out" />
           </div>
+        </div>
+        <div className="col" style={{ gap: 'var(--space-4)' }}>
+          <div className="lbl">AvatarStack</div>
+          <AvatarStack
+            max={3}
+            items={[
+              { name: 'Dana Okafor' },
+              { name: 'Marcus Reid', status: 'live' },
+              { name: 'Priya Shah' },
+              { name: 'Lena Cruz' },
+              { name: 'Sam Iwu' },
+            ]}
+          />
         </div>
       </div>
 

@@ -15,12 +15,13 @@ export function Avatar({ name = '', src, size = 'md', status, style, ...rest }) 
       <span
         title={name || undefined}
         style={{
-          width: px, height: px, borderRadius: 'var(--radius-circle)', overflow: 'hidden',
+          width: px, height: px, boxSizing: 'border-box', borderRadius: 'var(--radius-circle)', overflow: 'hidden',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           background: src ? 'var(--surface-inset)' : 'var(--fill-neutral)',
           color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)',
-          fontSize: fs, fontWeight: 'var(--weight-semibold)', letterSpacing: '0.01em',
-          boxShadow: 'inset 0 0 0 1px var(--border-subtle)', userSelect: 'none', ...style,
+          fontSize: fs, fontWeight: 'var(--weight-medium)', letterSpacing: '0.01em',
+          // The ring is a border, not an inset shadow (0037).
+          border: 'var(--border-hairline) solid var(--border-subtle)', userSelect: 'none', ...style,
         }}
       >
         {src
@@ -34,7 +35,8 @@ export function Avatar({ name = '', src, size = 'md', status, style, ...rest }) 
             width: Math.max(6, Math.round(px * 0.28)), height: Math.max(6, Math.round(px * 0.28)),
             borderRadius: 'var(--radius-circle)',
             background: status === 'live' ? 'var(--text-success)' : status === 'out' ? 'var(--text-danger)' : 'var(--text-tertiary)',
-            boxShadow: '0 0 0 2px var(--surface-card)',
+            // The gap ring draws outside the dot without touching layout, as the shadow did.
+            outline: 'var(--border-emphasis) solid var(--surface-card)',
           }}
         />
       )}

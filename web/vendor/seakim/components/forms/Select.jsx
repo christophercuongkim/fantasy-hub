@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from '../core/Icon.jsx';
+import { useCoarsePointer } from '../core/useCoarsePointer.js';
 
 const SIZES = {
   sm: { h: 'var(--control-h-sm)', fs: 'var(--text-xs)' },
@@ -10,6 +11,7 @@ const SIZES = {
 export function Select({ options = [], size = 'md', invalid = false, disabled = false, fullWidth = true, placeholder, style, ...rest }) {
   const [focus, setFocus] = useState(false);
   const [hover, setHover] = useState(false);
+  const coarse = useCoarsePointer();
   const s = SIZES[size] || SIZES.md;
   const border = invalid ? 'var(--text-danger)' : focus ? 'var(--border-focus)' : hover && !disabled ? 'var(--border-strong)' : 'var(--border-default)';
   return (
@@ -18,9 +20,9 @@ export function Select({ options = [], size = 'md', invalid = false, disabled = 
       onMouseLeave={() => setHover(false)}
       style={{
         position: 'relative', display: 'flex', alignItems: 'center',
-        width: fullWidth ? '100%' : undefined, height: s.h,
+        width: fullWidth ? '100%' : undefined, height: s.h, minHeight: coarse ? 44 : undefined,
         background: disabled ? 'var(--fill-disabled)' : 'var(--surface-raised)',
-        border: `1px solid ${disabled ? 'var(--border-disabled)' : border}`, borderRadius: 'var(--radius-none)',
+        border: `1px solid ${disabled ? 'var(--border-disabled)' : border}`, borderRadius: 'var(--radius-lg)',
         boxShadow: focus ? 'var(--focus-ring-inset)' : 'none',
          transition: 'var(--transition-control)', ...style,
       }}

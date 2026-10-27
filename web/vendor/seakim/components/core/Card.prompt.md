@@ -7,4 +7,4 @@ The default container for grouped content — search results, stays, matchups, s
 </Card>
 ```
 
-Use `media` for full-bleed imagery (flush, 0px radius). `selected` for the chosen option in a set. Do not add shadow — depth is reserved for overlays.
+Use `media` for full-bleed imagery (flush, `--radius-none`). `selected` for the chosen option in a set. Do not add shadow — depth is reserved for overlays.

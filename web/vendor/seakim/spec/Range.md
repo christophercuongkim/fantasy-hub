@@ -22,7 +22,7 @@ single exact number with no range — that is a `Stat`.
 
 | Part | Treatment |
 | --- | --- |
-| Track | Full domain width, `--surface-inset`, 1px `--border-subtle`. `--radius-none` — ends square. |
+| Track | Full domain width, `--surface-inset`, no outline (0037). `--radius-none` — ends square. |
 | Band | From `low` to `high`. `--text-tertiary`. No border, square ends. Carries a `min-width` of `--border-emphasis` so a near-zero-spread interval still reads as a tight band, not a smudge. |
 | Marker | At `mid`. `--border-emphasis` wide, `--text-primary`, spans just past the track. Square. |
 | Promoted band | `--fill-accent` — **one instance at a time**, never a whole column (see States). |

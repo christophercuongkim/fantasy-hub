@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Icon } from '../core/Icon.jsx';
+import { useCoarsePointer } from '../core/useCoarsePointer.js';
 
 export function Checkbox({ checked, defaultChecked = false, indeterminate = false, label, hint, disabled = false, onChange, style, ...rest }) {
   const [inner, setInner] = useState(defaultChecked);
   const on = checked != null ? checked : inner;
   const [hover, setHover] = useState(false);
+  const coarse = useCoarsePointer();
   const marked = on || indeterminate;
   function toggle() {
     if (disabled) return;
@@ -17,6 +19,7 @@ export function Checkbox({ checked, defaultChecked = false, indeterminate = fals
       onMouseLeave={() => setHover(false)}
       style={{
         display: 'flex', gap: 'var(--space-4)', alignItems: hint ? 'flex-start' : 'center',
+        minHeight: coarse ? 44 : undefined,
         cursor: disabled ? 'not-allowed' : 'pointer', ...style,
       }}
       {...rest}
@@ -28,9 +31,10 @@ export function Checkbox({ checked, defaultChecked = false, indeterminate = fals
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         background: disabled ? 'var(--fill-disabled)' : marked ? 'var(--fill-accent)' : 'var(--surface-raised)',
         border: `1px solid ${disabled ? 'var(--border-disabled)' : marked ? 'var(--fill-accent)' : hover ? 'var(--border-strong)' : 'var(--border-default)'}`,
-        borderRadius: 'var(--radius-none)',
+        borderRadius: 'var(--radius-sm)',
         color: disabled ? 'var(--text-disabled)' : 'var(--on-accent)',
         transition: 'var(--transition-control)',
+        // The mark settles in on toggle: state feedback, not a press or an enter (0034).
         transform: marked ? 'scale(1)' : 'scale(0.94)',
       }}>
         {indeterminate ? <Icon name="minus" size={11} weight="bold" /> : on ? <Icon name="check" size={11} weight="bold" /> : null}

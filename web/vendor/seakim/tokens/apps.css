@@ -55,7 +55,7 @@
   --brand-wash: oklch(0.24 0.045 145);
 }
 
-[data-app="reserve"], [data-app="reserved"] {
+[data-app="interview-prep"], [data-app="reserve"], [data-app="reserved"] {
   --hue-brand: var(--hue-plum);
   --brand-100: oklch(0.91 0.045 320);
   --brand-200: oklch(0.84 0.075 320);
@@ -68,4 +68,19 @@
   --brand-900: oklch(0.26 0.070 320);
   --brand-050: oklch(0.96 0.022 320);
   --brand-wash: oklch(0.24 0.045 320);
+}
+
+[data-app="job-search"] {
+  --hue-brand: var(--hue-azure);
+  --brand-100: oklch(0.91 0.045 215);
+  --brand-200: oklch(0.84 0.075 215);
+  --brand-300: oklch(0.80 0.100 215);
+  --brand-400: oklch(0.72 0.130 215);
+  --brand-500: oklch(0.64 0.140 215);
+  --brand-600: oklch(0.56 0.140 215);
+  --brand-700: oklch(0.46 0.120 215);
+  --brand-800: oklch(0.36 0.095 215);
+  --brand-900: oklch(0.26 0.070 215);
+  --brand-050: oklch(0.96 0.022 215);
+  --brand-wash: oklch(0.24 0.045 215);
 }

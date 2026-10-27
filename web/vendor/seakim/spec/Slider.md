@@ -15,17 +15,17 @@ is `SegmentedControl` or `Select`.
   +----------###########################-------+
             |||                       |||        <- thumbs: 12 wide x 20 tall
             ^^^                       ^^^
-  track 4px tall, --surface-inset + hairline
+  track 4px tall, --surface-inset, no outline
   filled span --fill-accent
 ```
 
 | Part | Treatment |
 | --- | --- |
-| Track | 4px tall, `--surface-inset`, 1px `--border-subtle`. `--radius-none` — the ends are square. |
+| Track | 4px tall, `--surface-inset`, no outline (0037). `--radius-none` — the ends are square. |
 | Filled portion | `--fill-accent`, no border. From track start to thumb, or between thumbs. |
 | Thumb | 12 wide x 20 tall, `--fill-accent`, 1px `--border-strong`. A vertical bar. |
 | Hit area | Invisible, `--control-h-touch` tall, centred on the track |
-| Ticks | 1px `--border-default` marks, only when the scale is discrete with fewer than 12 steps |
+| Ticks | `--border-hairline` `--border-default` marks, only when the scale is discrete with fewer than 12 steps |
 | Value | `--type-data`, in the `Field` label row. Always present. |
 
 The thumb is **taller than the track and narrower than it is tall**. That is the whole
@@ -38,7 +38,7 @@ either a shadow or bulk to read, and SeaKim gives it neither.
 | State | Treatment |
 | --- | --- |
 | Hover | Thumb border goes to `--border-focus`. No growth, no halo. |
-| Press / drag | Whole control scales `--press-scale`. The thumb does not grow. |
+| Press / drag | Nothing scales or moves (0034). The hover treatment holds for the drag; the thumb does not grow. |
 | Focus | Standard `--focus-ring` around the whole control, not the thumb |
 | Disabled | `opacity: 0.4` |
 

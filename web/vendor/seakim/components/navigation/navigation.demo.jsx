@@ -3,10 +3,13 @@ import { Tabs } from './Tabs.jsx';
 import { SideNav } from './SideNav.jsx';
 import { TabBar } from './TabBar.jsx';
 import { Badge } from '../core/Badge.jsx';
+import { Button } from '../core/Button.jsx';
 
 export function Demo() {
   const [tab, setTab] = useState('flights');
   const [dest, setDest] = useState('lineup');
+  const [day, setDay] = useState('d1');
+  const DAYS = Array.from({ length: 20 }, (_, i) => ({ value: `d${i + 1}`, label: `Day ${i + 1}` }));
   return (
     <div className="col" style={{ gap: 'var(--space-7)' }}>
       <div className="col" style={{ gap: 'var(--space-4)' }}>
@@ -17,6 +20,23 @@ export function Demo() {
           { value: 'cars', label: 'Cars', icon: 'car' },
           { value: 'notes', label: 'Notes', icon: 'note' },
         ]} />
+      </div>
+      <div className="col" style={{ gap: 'var(--space-4)' }}>
+        <div className="lbl">Tabs · fill, four tabs share the width</div>
+        <Tabs fill value={tab} onChange={setTab} tabs={[
+          { value: 'flights', label: 'Flights', icon: 'airplane-tilt', count: 4 },
+          { value: 'stays', label: 'Stays', icon: 'bed', count: 2 },
+          { value: 'cars', label: 'Cars', icon: 'car' },
+          { value: 'notes', label: 'Notes', icon: 'note' },
+        ]} />
+      </div>
+      <div className="col" style={{ gap: 'var(--space-4)' }}>
+        <div className="lbl">Tabs · fill, twenty tabs scroll; the buttons set value from outside</div>
+        <Tabs fill value={day} onChange={setDay} tabs={DAYS} />
+        <div className="row" style={{ gap: 'var(--space-3)' }}>
+          <Button size="sm" variant="secondary" onClick={() => setDay('d1')}>Go to day 1</Button>
+          <Button size="sm" variant="secondary" onClick={() => setDay('d17')}>Go to day 17</Button>
+        </div>
       </div>
       <div className="row" style={{ alignItems: 'stretch', gap: 'var(--space-8)' }}>
         <div className="col" style={{ gap: 'var(--space-4)' }}>

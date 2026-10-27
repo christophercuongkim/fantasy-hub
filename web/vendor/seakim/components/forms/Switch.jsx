@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCoarsePointer } from '../core/useCoarsePointer.js';
 
 const SIZES = { sm: { w: 30, h: 18, k: 12 }, md: { w: 38, h: 22, k: 16 } };
 
@@ -6,6 +7,7 @@ const SIZES = { sm: { w: 30, h: 18, k: 12 }, md: { w: 38, h: 22, k: 16 } };
 export function Switch({ checked, defaultChecked = false, onChange, label, hint, size = 'md', disabled = false, style, ...rest }) {
   const [inner, setInner] = useState(defaultChecked);
   const on = checked != null ? checked : inner;
+  const coarse = useCoarsePointer();
   const s = SIZES[size] || SIZES.md;
   const pad = (s.h - s.k) / 2;
   function toggle() {
@@ -16,7 +18,8 @@ export function Switch({ checked, defaultChecked = false, onChange, label, hint,
   return (
     <label style={{
       display: 'flex', alignItems: hint ? 'flex-start' : 'center', gap: 'var(--space-4)',
-      cursor: disabled ? 'not-allowed' : 'pointer', 
+      minHeight: coarse ? 44 : undefined,
+      cursor: disabled ? 'not-allowed' : 'pointer',
       justifyContent: label ? 'space-between' : 'flex-start', ...style,
     }} {...rest}>
       {(label || hint) && (
@@ -38,7 +41,7 @@ export function Switch({ checked, defaultChecked = false, onChange, label, hint,
           width: s.k, height: s.k, borderRadius: 'var(--radius-circle)',
           background: disabled ? 'var(--text-disabled)' : on ? 'var(--on-accent)' : 'var(--text-secondary)',
           transform: `translateX(${on ? s.w - s.k : 0}px)`,
-          transition: 'transform var(--dur-base) var(--ease-spring), background-color var(--dur-fast) var(--ease-out)',
+          transition: 'transform var(--dur-base) var(--ease-out), background-color var(--dur-fast) var(--ease-out)',
         }} />
       </span>
     </label>
