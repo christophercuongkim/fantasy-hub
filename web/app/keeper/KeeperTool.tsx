@@ -250,7 +250,9 @@ function Recommendation({ r }: { r: KeeperAnalysis }) {
         flexDirection: "column",
         gap: "var(--space-2)",
         padding: "var(--space-4)",
-        border: "1px solid var(--border-subtle)",
+        // Quiet §0.16 / 0037: panels are a fill + gap, not an outline.
+        background: "var(--surface-card)",
+        borderRadius: "var(--radius-xl)",
       }}
     >
       <span

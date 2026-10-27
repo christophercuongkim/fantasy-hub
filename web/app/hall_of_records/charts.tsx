@@ -153,9 +153,10 @@ export function Charts({
             zIndex: 50,
             left: tip.x + 14,
             top: tip.y + 14,
-            background: "var(--surface-raised)",
-            border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-sm)",
+            // Overlay tip: popover role → xl + alpha hairline (0035 / 0037).
+            background: "var(--surface-overlay)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "var(--radius-xl)",
             padding: "var(--space-2) var(--space-3)",
             font: "var(--type-caption)",
             boxShadow: "var(--shadow-popover)",

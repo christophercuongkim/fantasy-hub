@@ -11,8 +11,9 @@ const inputStyle: React.CSSProperties = {
   padding: "var(--space-3)",
   background: "var(--surface-inset)",
   color: "var(--text-primary)",
-  border: "1px solid var(--border-subtle)",
-  borderRadius: "var(--radius-none)",
+  // Inputs keep a hairline (0037); control rung is lg (0035).
+  border: "1px solid var(--border-default)",
+  borderRadius: "var(--radius-lg)",
 };
 
 const labelStyle: React.CSSProperties = {
