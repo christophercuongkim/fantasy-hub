@@ -1,20 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Badge, Button, Card, Range, Select } from "@seakim/design-system";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  Field,
+  Input,
+  Range,
+  Select,
+} from "@seakim/design-system";
 import type { League, SimMatchup, SimWeek } from "@/lib/matchups";
 import { simMatchup } from "./actions";
-
-const inputStyle: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "var(--text-sm)",
-  padding: "var(--space-3)",
-  background: "var(--surface-inset)",
-  color: "var(--text-primary)",
-  // Inputs keep a hairline (0037); control rung is lg (0035).
-  border: "1px solid var(--border-default)",
-  borderRadius: "var(--radius-lg)",
-};
 
 const labelStyle: React.CSSProperties = {
   font: "var(--type-eyebrow)",
@@ -268,15 +266,7 @@ export function MatchupBoard({
           flexWrap: "wrap",
         }}
       >
-        <label
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-2)",
-            minWidth: "7rem",
-          }}
-        >
-          <span style={labelStyle}>Season</span>
+        <Field label="Season" style={{ minWidth: "7rem" }}>
           <Select
             value={leagueKey}
             options={leagues.map((l) => ({
@@ -286,23 +276,17 @@ export function MatchupBoard({
             aria-label="Season"
             onChange={(e) => setLeagueKey(e.target.value)}
           />
-        </label>
-        <label
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-2)",
-            maxWidth: "5rem",
-          }}
-        >
-          <span style={labelStyle}>Week</span>
-          <input
+        </Field>
+        <Field label="Week" style={{ maxWidth: "5rem" }}>
+          <Input
             value={week}
             onChange={(e) => setWeek(e.target.value)}
             inputMode="numeric"
-            style={inputStyle}
+            mono
+            fullWidth
+            aria-label="Week"
           />
-        </label>
+        </Field>
         <Button
           disabled={pending || !leagueKey.trim() || !week.trim()}
           onClick={run}
@@ -312,15 +296,13 @@ export function MatchupBoard({
       </div>
 
       {error && (
-        <p
-          style={{
-            font: "var(--type-body-sm)",
-            fontFamily: "var(--font-mono)",
-            color: "var(--text-danger)",
-          }}
-        >
-          {error}
-        </p>
+        <ErrorState
+          compact
+          title="Simulation failed"
+          description={error}
+          onRetry={run}
+          retryLabel="Simulate again"
+        />
       )}
 
       {result && (
