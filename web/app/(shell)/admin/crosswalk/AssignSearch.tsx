@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { Input } from "@seakim/design-system";
+import { Field, Input } from "@seakim/design-system";
 import { confirmMatch, searchPlayers, type PlayerHit } from "./actions";
 
 // Free-text "assign any player" combobox for a review entry — used when the
@@ -71,21 +71,23 @@ export function AssignSearch({ sourceId }: { sourceId: string }) {
         maxWidth: "20rem",
       }}
     >
-      <Input
-        size="sm"
-        fullWidth
-        iconLeft="magnifying-glass"
-        role="combobox"
-        aria-expanded={showing}
-        aria-controls={listId}
-        aria-activedescendant={showing ? `${listId}-${active}` : undefined}
-        aria-autocomplete="list"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onFocus={() => hits.length && setOpen(true)}
-        onKeyDown={onKeyDown}
-        placeholder="or search any player…"
-      />
+      <Field label="Assign player">
+        <Input
+          size="sm"
+          fullWidth
+          iconLeft="magnifying-glass"
+          role="combobox"
+          aria-expanded={showing}
+          aria-controls={listId}
+          aria-activedescendant={showing ? `${listId}-${active}` : undefined}
+          aria-autocomplete="list"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onFocus={() => hits.length && setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder="Search any player…"
+        />
+      </Field>
       {showing && (
         <ul
           id={listId}

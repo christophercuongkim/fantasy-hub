@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button, Select } from "@seakim/design-system";
+import { Button, Field, Input, Select, Textarea } from "@seakim/design-system";
 import {
   discoverLeagues,
   saveCookie,
@@ -15,24 +15,6 @@ import {
 } from "./actions";
 
 type League = { season: number; key: string };
-
-const inputStyle: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "var(--text-sm)",
-  padding: "var(--space-3)",
-  background: "var(--surface-inset)",
-  color: "var(--text-primary)",
-  // Inputs keep a hairline (0037); control rung is lg (0035).
-  border: "1px solid var(--border-default)",
-  borderRadius: "var(--radius-lg)",
-};
-
-const labelStyle: React.CSSProperties = {
-  font: "var(--type-eyebrow)",
-  textTransform: "uppercase",
-  letterSpacing: "var(--tracking-caps)",
-  color: "var(--text-tertiary)",
-};
 
 export function YahooSync({ leagues }: { leagues: League[] }) {
   const [cookie, setCookie] = useState("");
@@ -52,20 +34,14 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
         gap: "var(--space-6)",
       }}
     >
-      <label
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-2)",
-        }}
-      >
-        <span style={labelStyle}>Yahoo cookie header</span>
-        <textarea
+      <Field label="Yahoo cookie header">
+        <Textarea
           value={cookie}
           onChange={(e) => setCookie(e.target.value)}
           rows={4}
           placeholder="A1=…; A3=…; T=…; Y=…"
-          style={{ ...inputStyle, resize: "vertical" }}
+          aria-label="Yahoo cookie header"
+          style={{ fontFamily: "var(--font-mono)" }}
         />
         <Button
           size="sm"
@@ -80,7 +56,7 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
         >
           Save cookie
         </Button>
-      </label>
+      </Field>
 
       <div
         style={{
@@ -90,15 +66,7 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           flexWrap: "wrap",
         }}
       >
-        <label
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-2)",
-            minWidth: "7rem",
-          }}
-        >
-          <span style={labelStyle}>Season</span>
+        <Field label="Season" style={{ minWidth: "7rem" }}>
           <Select
             value={leagueKey}
             options={leagues.map((l) => ({
@@ -108,7 +76,7 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
             aria-label="Season"
             onChange={(e) => setLeagueKey(e.target.value)}
           />
-        </label>
+        </Field>
         <Button
           variant="secondary"
           disabled={pending || !leagueKey.trim()}
@@ -224,22 +192,16 @@ export function YahooSync({ leagues }: { leagues: League[] }) {
           flexWrap: "wrap",
         }}
       >
-        <label
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-2)",
-            maxWidth: "5rem",
-          }}
-        >
-          <span style={labelStyle}>Week</span>
-          <input
+        <Field label="Week" style={{ maxWidth: "5rem" }}>
+          <Input
             value={week}
             onChange={(e) => setWeek(e.target.value)}
             inputMode="numeric"
-            style={inputStyle}
+            mono
+            fullWidth
+            aria-label="Week"
           />
-        </label>
+        </Field>
         <Button
           variant="secondary"
           disabled={pending || !leagueKey.trim() || !week.trim()}
