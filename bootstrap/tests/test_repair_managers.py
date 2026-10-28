@@ -10,7 +10,13 @@ def test_keeper_prefers_real_manager_then_picks_then_mine():
     # No real manager: the row that holds the draft wins over an empty shell.
     assert keeper([shell, unclaimed], fake) is unclaimed
     # Equal otherwise: the one flagged mine.
-    assert keeper([shell, {"id": "d", "manager_id": "fake", "picks": 0, "is_mine": False}], fake) is shell
+    assert (
+        keeper(
+            [shell, {"id": "d", "manager_id": "fake", "picks": 0, "is_mine": False}],
+            fake,
+        )
+        is shell
+    )
 
 
 def test_guid_shape():

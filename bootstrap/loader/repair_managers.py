@@ -30,9 +30,9 @@ from loader.load import ROOT, _manager_registry, _read_csv, _upsert_managers
 
 GUID = re.compile(r"^[A-Z0-9]{26}$")
 
-# (table, column) pairs that point at a league_teams row.
+# (table, column) pairs that point at a league_teams row. rosters and matchups
+# are handled before this list: both have a primary key the move can collide on.
 CHILD_REFS = [
-    ("rosters", "league_team_id"),
     ("draft_picks", "league_team_id"),
     ("matchups", "team_a_id"),
     ("matchups", "team_b_id"),
@@ -61,7 +61,8 @@ def _fake_managers(cur: psycopg.Cursor) -> set:
 
 
 def _relink_from_csv(cur: psycopg.Cursor, families: list[dict], fake: set) -> int:
-    guid_to_mid = _upsert_managers(cur, _manager_registry(families))
+    registry = {g: v for g, v in _manager_registry(families).items() if GUID.match(g)}
+    guid_to_mid = _upsert_managers(cur, registry)
     relinked = 0
     for fam in families:
         data_dir = ROOT / "data" / fam["slug"]
@@ -91,7 +92,13 @@ def _relink_from_csv(cur: psycopg.Cursor, families: list[dict], fake: set) -> in
                     WHERE league_id = %s AND name = %s
                       AND (manager_id IS NULL OR manager_id = ANY(%s))
                     """,
-                    (guid_to_mid[guid], guid == owner, league[0], t["team_name"], list(fake)),
+                    (
+                        guid_to_mid[guid],
+                        guid == owner,
+                        league[0],
+                        t["team_name"],
+                        list(fake),
+                    ),
                 )
                 relinked += cur.rowcount
     return relinked
@@ -110,7 +117,13 @@ def _merge_duplicates(cur: psycopg.Cursor, fake: set) -> list[str]:
     groups: dict[tuple, list[dict]] = {}
     for league_id, key, tid, name, mid, mine, picks in cur.fetchall():
         groups.setdefault((league_id, key), []).append(
-            {"id": tid, "name": name, "manager_id": mid, "is_mine": mine, "picks": picks}
+            {
+                "id": tid,
+                "name": name,
+                "manager_id": mid,
+                "is_mine": mine,
+                "picks": picks,
+            }
         )
     log = []
     for (_, key), rows in groups.items():
@@ -120,16 +133,56 @@ def _merge_duplicates(cur: psycopg.Cursor, fake: set) -> list[str]:
         for r in rows:
             if r is keep:
                 continue
+            _move_rosters_and_matchups(cur, keep["id"], r["id"])
             for table, col in CHILD_REFS:
                 cur.execute(
-                    f"UPDATE {table} SET {col} = %s WHERE {col} = %s",  # noqa: S608 — fixed names
+                    f"UPDATE {table} SET {col} = %s WHERE {col} = %s",  # fixed names
                     (keep["id"], r["id"]),
                 )
             if r["is_mine"]:
-                cur.execute("UPDATE league_teams SET is_mine = true WHERE id = %s", (keep["id"],))
+                cur.execute(
+                    "UPDATE league_teams SET is_mine = true WHERE id = %s",
+                    (keep["id"],),
+                )
             cur.execute("DELETE FROM league_teams WHERE id = %s", (r["id"],))
             log.append(f"{key}: merged {r['name']!r} into {keep['name']!r}")
     return log
+
+
+def _move_rosters_and_matchups(cur: psycopg.Cursor, keep, dup) -> None:
+    """A week the keeper already holds is the same week recorded under the
+    other row, so the duplicate's copy goes; then the rest moves over. Matchups
+    are canonical with the lower uuid as team_a (sync_matchups), which the move
+    can break, so swap sides where it did."""
+    cur.execute(
+        """
+        DELETE FROM rosters r WHERE r.league_team_id = %s AND EXISTS (
+            SELECT 1 FROM rosters k WHERE k.league_team_id = %s
+              AND k.week = r.week AND k.player_id = r.player_id)
+        """,
+        (dup, keep),
+    )
+    cur.execute(
+        "UPDATE rosters SET league_team_id = %s WHERE league_team_id = %s", (keep, dup)
+    )
+    cur.execute(
+        """
+        DELETE FROM matchups m WHERE (m.team_a_id = %s OR m.team_b_id = %s) AND EXISTS (
+            SELECT 1 FROM matchups k WHERE k.league_id = m.league_id AND k.week = m.week
+              AND (k.team_a_id = %s OR k.team_b_id = %s))
+        """,
+        (dup, dup, keep, keep),
+    )
+    cur.execute("UPDATE matchups SET team_a_id = %s WHERE team_a_id = %s", (keep, dup))
+    cur.execute("UPDATE matchups SET team_b_id = %s WHERE team_b_id = %s", (keep, dup))
+    cur.execute(
+        """
+        UPDATE matchups SET team_a_id = team_b_id, team_b_id = team_a_id,
+            team_a_score = team_b_score, team_b_score = team_a_score
+        WHERE (team_a_id = %s OR team_b_id = %s) AND team_a_id > team_b_id
+        """,
+        (keep, keep),
+    )
 
 
 def repair(cur: psycopg.Cursor, config_path: Path) -> dict:
@@ -137,9 +190,14 @@ def repair(cur: psycopg.Cursor, config_path: Path) -> dict:
     families = yaml.safe_load(config_path.read_text())["leagues"]
     relinked = _relink_from_csv(cur, families, fake)
     merged = _merge_duplicates(cur, fake)
-    cur.execute("UPDATE league_teams SET manager_id = NULL WHERE manager_id = ANY(%s)", (list(fake),))
+    cur.execute(
+        "UPDATE league_teams SET manager_id = NULL WHERE manager_id = ANY(%s)",
+        (list(fake),),
+    )
     unlinked = cur.rowcount
-    cur.execute("DELETE FROM team_claims WHERE claimant_manager_id = ANY(%s)", (list(fake),))
+    cur.execute(
+        "DELETE FROM team_claims WHERE claimant_manager_id = ANY(%s)", (list(fake),)
+    )
     cur.execute("DELETE FROM managers WHERE id = ANY(%s)", (list(fake),))
     return {
         "fake_managers": len(fake),
