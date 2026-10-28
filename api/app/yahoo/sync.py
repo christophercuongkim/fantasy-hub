@@ -32,7 +32,7 @@ from app.yahoo.parse_jsonf import (
 # A hidden GUID that slipped through once minted one "person" who owned every
 # hidden team across seasons (CHR-571), so the GUID must look like a GUID.
 HIDDEN_NICKNAME = "--hidden--"
-_GUID = re.compile(r"^[A-Z0-9]{26}$")
+_GUID = re.compile(r"^[A-Za-z0-9]{26}$")
 
 
 def _usable_manager(guid: str | None, nickname: str | None) -> bool:
@@ -98,16 +98,32 @@ def sync_teams(payload: dict) -> dict:
                 else None
             )
             if t.team_key:
-                # A bootstrapped row has the name but no key yet.
+                # A bootstrapped row has the name but no key yet. Not when the
+                # key already lives on another row: that is a team renamed back
+                # to its bootstrap name, and the keyed upsert handles it.
                 cur.execute(
                     """
                     UPDATE league_teams SET yahoo_team_key = %s
                     WHERE league_id = %s AND name = %s AND yahoo_team_key IS NULL
+                      AND NOT EXISTS (SELECT 1 FROM league_teams
+                                      WHERE league_id = %s AND yahoo_team_key = %s)
                     """,
-                    (t.team_key, league_id, t.name),
+                    (t.team_key, league_id, t.name, league_id, t.team_key),
                 )
-                # ponytail: two teams swapping names in one sync trip the
-                # (league_id, name) unique on the first rename; re-run fixes it.
+                # Another row still holding this name steps aside under a
+                # temporary name. A keyed one is a team that swapped names, and
+                # its own upsert later in this loop restores it; a keyless one is
+                # a bootstrap row the team renamed back to, left for the repair
+                # script to merge (it stays visible as "<name> ~bootstrap").
+                cur.execute(
+                    """
+                    UPDATE league_teams
+                    SET name = name || ' ~' || coalesce(yahoo_team_key, 'bootstrap')
+                    WHERE league_id = %s AND name = %s
+                      AND yahoo_team_key IS DISTINCT FROM %s
+                    """,
+                    (league_id, t.name, t.team_key),
+                )
                 conflict = """
                 ON CONFLICT (league_id, yahoo_team_key) WHERE yahoo_team_key IS NOT NULL
                 DO UPDATE SET name = EXCLUDED.name,"""

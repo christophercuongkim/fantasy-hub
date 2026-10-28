@@ -88,7 +88,8 @@ def test_usable_manager_skips_hidden_and_junk():
     # A hidden GUID with a real nickname is the CHR-571 shape: it must not
     # become a person either, or every hidden team collapses into one.
     assert sync._usable_manager("--hidden--", "Izey") is False
-    assert sync._usable_manager("ojp3ans4pwzcn2h4iv5pz6pat4", "Chris") is False
+    # Case is not identity.
+    assert sync._usable_manager("ojp3ans4pwzcn2h4iv5pz6pat4", "Chris") is True
     assert sync._usable_manager(None, "Someone") is False
     assert sync._usable_manager("W3GRV2ATIOO2JZAKNWQ7RSJZUY", None) is False
 
@@ -436,6 +437,8 @@ def test_sync_teams_upserts_on_team_key_and_backfills_it(monkeypatch):
     # upsert keyed on (league_id, yahoo_team_key) that updates the name.
     backfills = cur.statements("UPDATE league_teams SET yahoo_team_key")
     assert [p[0] for _, p in backfills] == ["470.l.1.t.10", "470.l.1.t.7"]
+    # Only keyed teams ask a same-named rival to step aside.
+    assert len(cur.statements("UPDATE league_teams SET name = name ||")) == 2
     inserts = cur.statements("INSERT INTO league_teams")
     assert len(inserts) == 3
     keyed = "ON CONFLICT (league_id, yahoo_team_key) WHERE yahoo_team_key IS NOT NULL"
