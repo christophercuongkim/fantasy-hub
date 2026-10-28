@@ -67,6 +67,13 @@ def _relink_from_csv(cur: psycopg.Cursor, families: list[dict], fake: set) -> in
     for fam in families:
         data_dir = ROOT / "data" / fam["slug"]
         owner = fam.get("owner_guid")
+        missing = [
+            s for s in fam["seasons"] if not (data_dir / f"teams-{s}.csv").exists()
+        ]
+        if missing:
+            # Without the CSVs step 1 relinks nothing and step 3 unlinks every
+            # hidden team, which is a worse state than the one being repaired.
+            raise SystemExit(f"{data_dir}: no teams csv for {missing}; scrape first")
         cur.execute(
             "SELECT id FROM league_families WHERE sport = %s AND yahoo_slug = %s",
             (fam["sport"], fam["slug"]),
