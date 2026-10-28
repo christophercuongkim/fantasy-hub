@@ -9,8 +9,10 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import {
   acquiredViaEnum,
   claimStatusEnum,
@@ -74,6 +76,12 @@ export const leagueTeams = pgTable(
     // A team is identified by (league, name) within a season — lets the importer
     // upsert idempotently and preserve a claim-set manager_id across re-scrapes.
     unique().on(t.leagueId, t.name),
+    // Once Yahoo has given a team its key, that is its identity: the sync
+    // upserts on it so a rename updates the row instead of adding one (CHR-571).
+    // Partial: bootstrap rows have no key until the first sync backfills it.
+    uniqueIndex("league_teams_league_id_yahoo_team_key_idx")
+      .on(t.leagueId, t.yahooTeamKey)
+      .where(sql`yahoo_team_key IS NOT NULL`),
   ],
 );
 

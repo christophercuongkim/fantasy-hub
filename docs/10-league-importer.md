@@ -26,7 +26,13 @@ nix develop .#scrape -c bash -c 'cd bootstrap && uv run python -m importer.scrap
 
 # load into a DB (idempotent, re-runnable)
 cd bootstrap && DATABASE_URL='<neon-url>' uv run python -m loader.load
+
+# repair manager links after a bad sync (dry run; --apply commits), see CHR-571
+cd bootstrap && DATABASE_URL='<neon-url>' uv run python -m loader.repair_managers
 ```
+`repair_managers` relinks teams from the CSV GUIDs, merges duplicate rows per
+`yahoo_team_key`, and deletes any managers row whose GUID is not a GUID. Run it
+on a Neon branch of prod first; the counts it prints are real either way.
 Data (`bootstrap/data/`) and the Chrome profile are gitignored (personal data).
 
 ## Known gaps / follow-ups

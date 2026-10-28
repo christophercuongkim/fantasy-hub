@@ -9,6 +9,7 @@ fixtures. See parse_jsonf for the shapes.
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 
 from app.crosswalk.names import normalize
@@ -24,17 +25,20 @@ from app.yahoo.parse_jsonf import (
     parse_user_leagues,
 )
 
-# Yahoo returns a real GUID but the nickname "--hidden--" for a manager not
-# visible to the logged-in user (pre-membership managers who left / private
-# profiles). We can't name them, so we don't mint a person — the team falls back
+# Yahoo hides a manager it won't show the caller (pre-membership managers who
+# left, private profiles) by putting "--hidden--" in the nickname, the GUID, or
+# both. We can't identify them, so we don't mint a person — the team falls back
 # to its own name, which is the pre-2022 unclaimed-era behaviour the pages intend.
+# A hidden GUID that slipped through once minted one "person" who owned every
+# hidden team across seasons (CHR-571), so the GUID must look like a GUID.
 HIDDEN_NICKNAME = "--hidden--"
+_GUID = re.compile(r"^[A-Z0-9]{26}$")
 
 
 def _usable_manager(guid: str | None, nickname: str | None) -> bool:
     return (
         bool(guid)
-        and len(guid) > 2  # a real GUID is 26 chars; skips junk like "--"
+        and _GUID.match(guid) is not None
         and bool(nickname)
         and nickname != HIDDEN_NICKNAME
     )
@@ -63,10 +67,12 @@ def sync_teams(payload: dict) -> dict:
     by GUID and link league_teams.manager_id — filling in the people the scrape
     couldn't (it only got a GUID where a /user/<guid> href was parseable).
 
-    Upserts each team on (league_id, name), so it both backfills an existing
-    league and creates the rows for a brand-new one. The leagues row must already
-    exist — bootstrap loads the historical seasons; upsert_league creates the
-    current one before this runs (see sync_league)."""
+    A team is its yahoo_team_key: the upsert matches on (league_id, key), so a
+    rename updates the row instead of creating a second one (CHR-571). Bootstrap
+    rows have no key, so the key is first backfilled onto the row with the same
+    name. A team without a key (never seen from Yahoo) still upserts on name. The
+    leagues row must already exist — bootstrap loads the historical seasons;
+    upsert_league creates the current one before this runs (see sync_league)."""
     lg = payload["fantasy_content"]["league"]
     league_key = lg["league_key"]
     teams = parse_teams(payload)
@@ -91,15 +97,32 @@ def sync_teams(payload: dict) -> dict:
                 if _usable_manager(t.manager_guid, t.manager_nickname)
                 else None
             )
-            # Upsert on (league_id, name): updates a known team, and creates the
-            # rows for a brand-new league (e.g. the current season pre-backfill).
+            if t.team_key:
+                # A bootstrapped row has the name but no key yet.
+                cur.execute(
+                    """
+                    UPDATE league_teams SET yahoo_team_key = %s
+                    WHERE league_id = %s AND name = %s AND yahoo_team_key IS NULL
+                    """,
+                    (t.team_key, league_id, t.name),
+                )
+                # ponytail: two teams swapping names in one sync trip the
+                # (league_id, name) unique on the first rename; re-run fixes it.
+                conflict = """
+                ON CONFLICT (league_id, yahoo_team_key) WHERE yahoo_team_key IS NOT NULL
+                DO UPDATE SET name = EXCLUDED.name,"""
+            else:
+                conflict = """
+                ON CONFLICT (league_id, name) DO UPDATE SET
+                    yahoo_team_key = EXCLUDED.yahoo_team_key,"""
             cur.execute(
                 """
                 INSERT INTO league_teams (league_id, name, is_mine, yahoo_team_key,
                     manager_id, wins, losses, ties, points_for, points_against)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (league_id, name) DO UPDATE SET
-                    yahoo_team_key = EXCLUDED.yahoo_team_key,
+                """
+                + conflict
+                + """
                     is_mine = EXCLUDED.is_mine,
                     manager_id = COALESCE(EXCLUDED.manager_id, league_teams.manager_id),
                     wins = EXCLUDED.wins, losses = EXCLUDED.losses,
