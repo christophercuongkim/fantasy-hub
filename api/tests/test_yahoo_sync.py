@@ -85,6 +85,10 @@ def test_usable_manager_skips_hidden_and_junk():
     # neither is a junk guid or a missing nickname.
     assert sync._usable_manager("W3GRV2ATIOO2JZAKNWQ7RSJZUY", "--hidden--") is False
     assert sync._usable_manager("--", "--hidden--") is False
+    # A hidden GUID with a real nickname is the CHR-571 shape: it must not
+    # become a person either, or every hidden team collapses into one.
+    assert sync._usable_manager("--hidden--", "Izey") is False
+    assert sync._usable_manager("ojp3ans4pwzcn2h4iv5pz6pat4", "Chris") is False
     assert sync._usable_manager(None, "Someone") is False
     assert sync._usable_manager("W3GRV2ATIOO2JZAKNWQ7RSJZUY", None) is False
 
@@ -377,3 +381,69 @@ def test_sync_player_status_no_league_row(monkeypatch):
         raise AssertionError("expected ValueError")
     except ValueError:
         pass
+
+
+class _TeamsCursor:
+    """Records every statement sync_teams runs; the league lookup finds a row."""
+
+    def __init__(self):
+        self.calls: list[tuple[str, tuple]] = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((" ".join(sql.split()), params))
+
+    def fetchone(self):
+        if self.calls[-1][0].startswith("SELECT id FROM leagues"):
+            return ("league-1",)
+        return ("manager-1",)
+
+    def statements(self, prefix):
+        return [c for c in self.calls if c[0].startswith(prefix)]
+
+
+def _team(key, name, guid="OJP3ANS4PWZCN2H4IV5PZ6PAT4", nickname="Chris"):
+    return SimpleNamespace(
+        team_key=key,
+        team_id="1",
+        name=name,
+        is_mine=False,
+        manager_guid=guid,
+        manager_nickname=nickname,
+        rank=None,
+        wins=None,
+        losses=None,
+        ties=None,
+        points_for=None,
+        points_against=None,
+    )
+
+
+def test_sync_teams_upserts_on_team_key_and_backfills_it(monkeypatch):
+    cur = _TeamsCursor()
+    monkeypatch.setattr(sync.postgres, "connect", lambda: _DraftConn(cur))
+    monkeypatch.setattr(
+        sync,
+        "parse_teams",
+        lambda payload: [
+            _team("470.l.1.t.10", "Warren J"),
+            _team(None, "Bootstrap Only"),
+            _team("470.l.1.t.7", "Hidden Owner", guid="--hidden--", nickname="Izey"),
+        ],
+    )
+    out = sync.sync_teams({"fantasy_content": {"league": {"league_key": "470.l.1"}}})
+
+    # The keyed team: key backfilled onto a same-named bootstrap row, then an
+    # upsert keyed on (league_id, yahoo_team_key) that updates the name.
+    backfills = cur.statements("UPDATE league_teams SET yahoo_team_key")
+    assert [p[0] for _, p in backfills] == ["470.l.1.t.10", "470.l.1.t.7"]
+    inserts = cur.statements("INSERT INTO league_teams")
+    assert len(inserts) == 3
+    keyed = "ON CONFLICT (league_id, yahoo_team_key) WHERE yahoo_team_key IS NOT NULL"
+    assert keyed + " DO UPDATE SET name = EXCLUDED.name" in inserts[0][0]
+    # The keyless team still upserts on name.
+    assert "ON CONFLICT (league_id, name)" in inserts[1][0]
+    # The hidden GUID minted no manager: its row's manager_id is None, and only
+    # the two real managers were upserted.
+    assert inserts[2][1][4] is None
+    assert len(cur.statements("INSERT INTO managers")) == 2
+    assert out == {"league_key": "470.l.1", "teams_written": 3, "managers_linked": 2}

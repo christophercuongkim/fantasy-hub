@@ -259,3 +259,11 @@ would NOT recreate it.
    write to a scratch table you own, never the real migrated one.
 3. If you do desync it, recreate from the exact migration SQL (same constraint names)
    so a future schema-diff stays clean.
+
+## A Yahoo placeholder is not an identity
+
+**Rule:** before keying anything on a value Yahoo returns, check it has the shape of that value. A GUID is 26 alphanumeric characters; "--hidden--" is a placeholder Yahoo puts in the GUID field, the nickname, or both.
+
+**Why:** the sync guard only rejected a hidden nickname. One sync with hidden GUIDs minted a single "person" who then owned every hidden team in every season, and the `COALESCE(new, old)` link rule overwrote the correct bootstrap links with it (CHR-571). The upsert on (league, name) also turned every rename into a new team row.
+
+**How to apply:** `_usable_manager` requires the GUID shape. Teams upsert on `yahoo_team_key` once they have one. `bootstrap/loader/repair_managers.py` undoes the damage if it happens again; rehearse it on a Neon branch of prod before `--apply`.

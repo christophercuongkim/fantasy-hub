@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "league_teams_league_id_yahoo_team_key_idx" ON "league_teams" USING btree ("league_id","yahoo_team_key") WHERE yahoo_team_key IS NOT NULL;
